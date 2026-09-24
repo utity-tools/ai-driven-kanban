@@ -96,6 +96,10 @@ docs/             Architecture and ADRs
   - `revoke truncate, references, trigger, maintain on table <t> from authenticated;`
     (Supabase grants them by default, and TRUNCATE bypasses RLS)
   - `revoke update` on the table, then `grant update (<columns>)` only for editable columns.
+- Schemas ([ADR 0007](docs/adr/0007-date-only-due-dates-and-internal-schema.md)): `public` for tables and
+  RPCs the app calls; `internal` for SECURITY INVOKER helpers only; `private` for SECURITY DEFINER
+  internals. Never expose `internal` or `private` through the API.
+- Dates without a time (due dates) use the `date` type and are interpreted in the viewer's time zone.
 - After any migration: `pnpm db:reset && pnpm db:types && pnpm db:test`.
 - RLS policies are tested with pgTAP in `supabase/tests/database/`: every new policy gets a test.
 
