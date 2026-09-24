@@ -103,6 +103,13 @@ export type Database = {
             referencedRelation: "boards"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "board_members_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       boards: {
@@ -159,6 +166,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "board_members"
             referencedColumns: ["board_id", "user_id"]
+          },
+          {
+            foreignKeyName: "card_assignees_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -248,6 +262,33 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -260,6 +301,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      shares_board_with: { Args: { p_user_id: string }; Returns: boolean }
     }
     Enums: {
       board_role: "owner" | "editor" | "viewer"
