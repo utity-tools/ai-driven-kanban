@@ -66,6 +66,13 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Only what the app uses: Postgres, Auth (gotrue), REST (postgrest) and the API gateway (kong).
+      - name: Start Supabase (auth stack)
+        run: >-
+          pnpm exec supabase start
+          -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      # NEXT_PUBLIC_* values are inlined at build time, so .env.local must exist before the build.
+      - run: pnpm env:local
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e

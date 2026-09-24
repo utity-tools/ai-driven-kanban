@@ -68,7 +68,9 @@ src/app/          Routes, layouts, Server Actions
 src/components/   UI (board, columns, cards, AI proposal review)
 src/lib/ai/       Prompts (versioned), Zod schemas, model calls
 src/lib/graph/    Deterministic dependency logic (cycles, blocked tasks, bottlenecks)
-src/lib/db/       Supabase clients and generated types
+src/lib/db/       Supabase clients (browser, server, session) and generated types
+src/lib/auth/     Auth helpers: session, redirects, form schemas, error mapping
+src/proxy.ts      Session refresh and route protection (Next 16 replaces middleware.ts)
 supabase/         Migrations (source of truth for the schema) and seed
 evals/            AI quality dataset and eval runner (not part of CI)
 tests/            unit/ and e2e/

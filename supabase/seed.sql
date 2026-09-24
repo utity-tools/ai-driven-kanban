@@ -4,6 +4,10 @@
 -- Demo accounts (password: password123, emails confirmed):
 --   alice@example.com  owner of "Demo board"
 --   bob@example.com    editor on "Demo board"
+--
+-- Like any real sign-up, inserting Alice and Bob into auth.users also gives each of
+-- them an empty default "My board" (To do / In progress / Done) via the
+-- on_auth_user_created trigger.
 
 -- ---------------------------------------------------------------------------
 -- Auth users + email identities
