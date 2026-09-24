@@ -5,6 +5,8 @@ import { expect, type Page } from "@playwright/test";
 
 /** Seeded accounts (see supabase/seed.sql). */
 export const ALICE = { email: "alice@example.com", password: "password123" } as const;
+/** Editor (not owner) on Alice's "Demo board". */
+export const BOB = { email: "bob@example.com", password: "password123" } as const;
 
 /**
  * Alice's signed-in storage state, written once per run by `auth.setup.ts`.
@@ -13,6 +15,9 @@ export const ALICE = { email: "alice@example.com", password: "password123" } as 
  * would break other tests running in parallel.
  */
 export const ALICE_STORAGE_STATE = path.join(__dirname, "../../../playwright/.auth/alice.json");
+
+/** Bob's signed-in storage state, same rules as ALICE_STORAGE_STATE (never sign out with it). */
+export const BOB_STORAGE_STATE = path.join(__dirname, "../../../playwright/.auth/bob.json");
 
 /** Unique per call, so sign-up tests never collide across workers or runs. */
 export function uniqueEmail(): string {

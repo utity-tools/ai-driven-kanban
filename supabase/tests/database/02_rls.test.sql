@@ -5,7 +5,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(41);
+select plan(42);
 
 -- Fixtures -----------------------------------------------------------------------
 -- A = board owner, B = outsider, E = editor, V = viewer
@@ -196,10 +196,16 @@ select lives_ok(
   $$,
   'editor can label cards and assign members'
 );
+-- Cards must be archived before they can be deleted (see 06_board_editing).
+select isnt_empty(
+  $$ update public.cards set archived_at = now()
+     where id = '00000000-0000-4000-d000-000000000002' returning 1 $$,
+  'editor can archive cards'
+);
 select results_eq(
   $$ delete from public.cards where id = '00000000-0000-4000-d000-000000000002' returning id $$,
   $$ values ('00000000-0000-4000-d000-000000000002'::uuid) $$,
-  'editor can delete cards'
+  'editor can delete archived cards'
 );
 select throws_ok(
   $$ insert into public.cards (board_id, column_id, title, position, created_by)

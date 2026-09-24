@@ -1,7 +1,8 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 
 import {
   Dialog,
@@ -10,12 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { archiveCard, restoreCard } from "@/lib/boards/actions";
+import { neighborCardId } from "@/lib/boards/board-updates";
 import { hrefWithoutCard, selectedCardId, wasOpenedFromBoard } from "@/lib/boards/card-url";
-import type { CardDetail } from "@/lib/boards/view-model";
+import { type CardDetail, buildCardDetails } from "@/lib/boards/view-model";
 
+import { useBoard } from "./board-context";
 import { CardDetails } from "./card-details";
-
-type Shown = { id: string; card: CardDetail | null };
 
 /**
  * The card modal. Its open state IS the URL (`?card=<id>`), so reload, share
@@ -24,20 +26,25 @@ type Shown = { id: string; card: CardDetail | null };
  * link, reload) replaces the URL without the param so closing never leaves
  * the app.
  *
- * Delivery 4 makes this editable: `CardDetails` is the piece that will turn
- * into a form; this component only owns URL state.
+ * Archived cards open read-only (with Restore); archiving from here closes
+ * the modal and moves focus to a neighbouring card, since the card itself
+ * leaves the board.
  */
-export function CardDialog({ cards }: { cards: CardDetail[] }) {
+export function CardDialog() {
+  const { view, now, boardId, mutate } = useBoard();
   const searchParams = useSearchParams();
   const cardId = selectedCardId(searchParams);
-  const card = cardId === null ? null : (cards.find((c) => c.id === cardId) ?? null);
 
   // Keep showing the last card while the close animation runs (the URL has
   // already dropped the param by then).
-  const [shown, setShown] = useState<Shown | null>(null);
-  if (cardId !== null && (shown?.id !== cardId || shown.card !== card)) {
-    setShown({ id: cardId, card });
-  }
+  const [lastId, setLastId] = useState<string | null>(null);
+  if (cardId !== null && cardId !== lastId) setLastId(cardId);
+  const shownId = cardId ?? lastId;
+  const card =
+    shownId === null ? null : (buildCardDetails(view, now).find((c) => c.id === shownId) ?? null);
+
+  // Where focus goes when the modal closes after archiving (the card is gone).
+  const focusAfterArchive = useRef<{ columnId: string; neighbor: string | null } | null>(null);
 
   function close() {
     if (wasOpenedFromBoard(window.history.state)) {
@@ -51,6 +58,44 @@ export function CardDialog({ cards }: { cards: CardDetail[] }) {
     }
   }
 
+  function restore(target: CardDetail) {
+    mutate({ type: "restoreCard", cardId: target.id }, () =>
+      restoreCard({ boardId, cardId: target.id }),
+    );
+  }
+
+  function archive(target: CardDetail) {
+    focusAfterArchive.current = {
+      columnId: target.columnId,
+      neighbor: neighborCardId(view, target.id),
+    };
+    mutate(
+      { type: "archiveCard", cardId: target.id, archivedAt: new Date().toISOString() },
+      () => archiveCard({ boardId, cardId: target.id }),
+      {
+        onSuccess: () =>
+          toast.success(`Archived “${target.title}”`, {
+            action: { label: "Undo", onClick: () => restore(target) },
+          }),
+      },
+    );
+    close();
+  }
+
+  function finalFocus(): HTMLElement | boolean {
+    const target = focusAfterArchive.current;
+    focusAfterArchive.current = null;
+    if (!target) return true; // back to the card link that opened the modal
+    return (
+      (target.neighbor &&
+        document.querySelector<HTMLElement>(`[data-card-id="${target.neighbor}"] a`)) ||
+      document.querySelector<HTMLElement>(
+        `[data-column-id="${target.columnId}"] [data-add-card-trigger]`,
+      ) ||
+      true
+    );
+  }
+
   return (
     <Dialog
       open={cardId !== null}
@@ -58,14 +103,23 @@ export function CardDialog({ cards }: { cards: CardDetail[] }) {
         if (!open) close();
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto p-5 sm:max-w-xl">
-        {shown?.card ? (
-          <CardDetails card={shown.card} />
+      <DialogContent
+        finalFocus={finalFocus}
+        className="max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto p-5 sm:max-w-xl"
+      >
+        {card ? (
+          <CardDetails
+            // Reset any open editor when switching cards.
+            key={card.id}
+            card={card}
+            onArchive={archive}
+            onRestore={restore}
+          />
         ) : (
           <DialogHeader>
             <DialogTitle className="text-lg">Card not found</DialogTitle>
             <DialogDescription>
-              This card doesn&apos;t exist on this board, or it has been archived.
+              This card doesn&apos;t exist on this board, or it has been deleted.
             </DialogDescription>
           </DialogHeader>
         )}

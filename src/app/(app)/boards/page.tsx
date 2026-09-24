@@ -2,6 +2,7 @@ import { LayoutGridIcon } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { NewBoardDialog } from "@/components/boards/new-board-dialog";
 import { requireUser } from "@/lib/auth/session";
 import { listBoards } from "@/lib/boards/queries";
 
@@ -17,11 +18,16 @@ export default async function BoardsPage() {
       aria-labelledby="boards-heading"
       className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8"
     >
-      <h1 id="boards-heading" className="text-2xl font-semibold tracking-tight">
-        Your boards
-      </h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 id="boards-heading" className="text-2xl font-semibold tracking-tight">
+          Your boards
+        </h1>
+        <NewBoardDialog />
+      </div>
       {boards.length === 0 ? (
-        <p className="text-muted-foreground">You don&apos;t have any boards yet.</p>
+        <p className="text-muted-foreground">
+          You don&apos;t have any boards yet. Create one to get started.
+        </p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {boards.map((board) => (
