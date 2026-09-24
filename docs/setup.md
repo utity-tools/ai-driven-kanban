@@ -33,6 +33,9 @@ Local Supabase services (URLs also shown by `pnpm db:status`):
 | Studio (database UI)  | http://127.0.0.1:54323 |
 | Mailpit (auth emails) | see `pnpm db:status`   |
 
+Seeded local users: `alice@example.com` and `bob@example.com`, password `password123`.
+New sign-ups get a default board automatically.
+
 Stop the database when you are not using it: `pnpm db:stop`.
 
 ## Commands
@@ -60,12 +63,12 @@ Stop the database when you are not using it: `pnpm db:stop`.
  Supabase in Docker     ephemeral Postgres      Supabase kanban-staging   no database until v0.1
 ```
 
-| Environment | App                                                            | Database                                                            | Schema changes arrive via                                     |
-| ----------- | -------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Local       | `pnpm dev`                                                     | Supabase local (Docker)                                             | `pnpm db:reset`                                               |
-| CI          | GitHub Actions                                                 | ephemeral local Postgres (`supabase db start`)                      | migrations + seed on every run                                |
-| Preview     | Vercel, one deployment per PR, private (Vercel Authentication) | `kanban-staging` (eu-west-1)                                        | `db-migrations.yml` on PRs that change `supabase/migrations/` |
-| Production  | Vercel, deployed on every merge to `main`                      | not created yet ([ADR 0003](adr/0003-defer-production-database.md)) | `db-migrations.yml` after merge, with manual approval         |
+| Environment | App                                                            | Database                                                                        | Schema changes arrive via                                     |
+| ----------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Local       | `pnpm dev`                                                     | Supabase local (Docker)                                                         | `pnpm db:reset`                                               |
+| CI          | GitHub Actions                                                 | ephemeral local Supabase: Postgres for DB tests; Postgres + Auth + REST for E2E | migrations + seed on every run                                |
+| Preview     | Vercel, one deployment per PR, private (Vercel Authentication) | `kanban-staging` (eu-west-1)                                                    | `db-migrations.yml` on PRs that change `supabase/migrations/` |
+| Production  | Vercel, deployed on every merge to `main`                      | not created yet ([ADR 0003](adr/0003-defer-production-database.md))             | `db-migrations.yml` after merge, with manual approval         |
 
 ### Where each variable lives
 
@@ -93,12 +96,13 @@ Summary of [ADR 0003](adr/0003-defer-production-database.md):
 
 ## Known issues and fixes
 
-| Symptom                                                                               | Cause                                                                   | Fix                                                                                                                               |
-| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm test:e2e` passes but never exits; a `next-server` keeps port 3000 busy          | `pnpm start` as Playwright's `webServer` leaves `next-server` running   | Already fixed: `playwright.config.ts` calls `next` directly. To free the port: `lsof -iTCP:3000 -sTCP:LISTEN`, then kill that PID |
-| Supabase or Vercel variables disappear from `.env.local`                              | `vercel link` / `vercel env pull` rewrite the file                      | `pnpm env:local` merges its values back and keeps the rest                                                                        |
-| PR says "This branch is out-of-date with the base branch"                             | `main` requires branches to be up to date before merging                | Click **Update branch** (or `@dependabot rebase` on Dependabot PRs), wait for CI, merge                                           |
-| Pre-commit fails with "File ignored because of a matching ignore pattern"             | ESLint warning on ignored files plus `--max-warnings=0`                 | Already fixed: lint-staged passes `--no-warn-ignored`                                                                             |
-| Migrations job cannot reach the database from CI                                      | GitHub runners are IPv4-only; the direct DB host is IPv6                | Use the **Session pooler** host (port 5432), never the direct or transaction pooler one                                           |
-| Preview URL answers 302 / asks to log in                                              | Vercel Authentication protects previews                                 | Expected: previews are private, production is public                                                                              |
-| First deployment of a new Vercel project shows up as Production from a feature branch | Observed with a brand new project that had no production deployment yet | Resolves on the next merge to `main`                                                                                              |
+| Symptom                                                                               | Cause                                                                                       | Fix                                                                                                                               |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm test:e2e` passes but never exits; a `next-server` keeps port 3000 busy          | `pnpm start` as Playwright's `webServer` leaves `next-server` running                       | Already fixed: `playwright.config.ts` calls `next` directly. To free the port: `lsof -iTCP:3000 -sTCP:LISTEN`, then kill that PID |
+| Supabase or Vercel variables disappear from `.env.local`                              | `vercel link` / `vercel env pull` rewrite the file                                          | `pnpm env:local` merges its values back and keeps the rest                                                                        |
+| PR says "This branch is out-of-date with the base branch"                             | `main` requires branches to be up to date before merging                                    | Click **Update branch** (or `@dependabot rebase` on Dependabot PRs), wait for CI, merge                                           |
+| Pre-commit fails with "File ignored because of a matching ignore pattern"             | ESLint warning on ignored files plus `--max-warnings=0`                                     | Already fixed: lint-staged passes `--no-warn-ignored`                                                                             |
+| Migrations job cannot reach the database from CI                                      | GitHub runners are IPv4-only; the direct DB host is IPv6                                    | Use the **Session pooler** host (port 5432), never the direct or transaction pooler one                                           |
+| "Continue with GitHub" fails locally with "provider is not enabled"                   | GitHub OAuth is only configured on hosted projects ([ADR 0005](adr/0005-authentication.md)) | Use email + password locally (seeded `alice@example.com` / `password123`, or sign up)                                             |
+| Preview URL answers 302 / asks to log in                                              | Vercel Authentication protects previews                                                     | Expected: previews are private, production is public                                                                              |
+| First deployment of a new Vercel project shows up as Production from a feature branch | Observed with a brand new project that had no production deployment yet                     | Resolves on the next merge to `main`                                                                                              |
