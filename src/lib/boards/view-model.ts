@@ -21,9 +21,14 @@ export type CardSummary = {
 
 export type ColumnView = { id: string; title: string; position: string; cards: CardSummary[] };
 
+/** An archived card: hidden from its column, listed in the Archived panel. */
+export type ArchivedCard = CardSummary & { archivedAt: string };
+
 export type BoardView = {
   board: { id: string; title: string };
   columns: ColumnView[];
+  /** Most recently archived first. */
+  archivedCards: ArchivedCard[];
   labels: Label[];
   members: BoardMember[];
 };
@@ -46,6 +51,7 @@ export type RawBoardData = {
     position: string;
     due_at: string | null;
     completed_at: string | null;
+    archived_at: string | null;
     card_assignees: { profile: ProfileRow | null }[];
     card_labels: { board_labels: LabelRow | null }[];
   }[];
@@ -78,6 +84,11 @@ function compareLabels(a: Label, b: Label): number {
   return compareNames(an, bn) || comparePositions(a.color, b.color) || comparePositions(a.id, b.id);
 }
 
+/** Most recently archived first; ties by id. */
+export function compareArchived(a: ArchivedCard, b: ArchivedCard): number {
+  return Date.parse(b.archivedAt) - Date.parse(a.archivedAt) || comparePositions(a.id, b.id);
+}
+
 function isPresent<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
 }
@@ -86,17 +97,19 @@ function isPresent<T>(value: T | null | undefined): value is T {
  * Groups cards into their columns and orders everything. The SQL queries
  * already order by position, id; sorting again here (byte order, never
  * localeCompare) keeps the result correct whatever order the rows arrive in.
- * Cards whose column is not on the board are dropped. Profiles hidden by RLS
- * (null embeds) are skipped.
+ * Archived cards go to `archivedCards` instead of their column. Cards whose
+ * column is not on the board are dropped. Profiles hidden by RLS (null
+ * embeds) are skipped.
  */
 export function assembleBoardView(raw: RawBoardData): BoardView {
   const cardsByColumn = new Map<string, CardSummary[]>();
   for (const column of raw.columns) cardsByColumn.set(column.id, []);
+  const archivedCards: ArchivedCard[] = [];
 
   for (const row of raw.cards) {
     const bucket = cardsByColumn.get(row.column_id);
     if (!bucket) continue;
-    bucket.push({
+    const card: CardSummary = {
       id: row.id,
       columnId: row.column_id,
       title: row.title,
@@ -114,8 +127,11 @@ export function assembleBoardView(raw: RawBoardData): BoardView {
         .filter(isPresent)
         .map(toPerson)
         .sort(comparePeople),
-    });
+    };
+    if (row.archived_at === null) bucket.push(card);
+    else archivedCards.push({ ...card, archivedAt: row.archived_at });
   }
+  archivedCards.sort(compareArchived);
 
   const columns = [...raw.columns].sort(compareByPosition).map((column) => ({
     id: column.id,
@@ -132,6 +148,7 @@ export function assembleBoardView(raw: RawBoardData): BoardView {
   return {
     board: { id: raw.board.id, title: raw.board.title },
     columns,
+    archivedCards,
     labels: raw.labels.map((l) => ({ id: l.id, name: l.name, color: l.color })).sort(compareLabels),
     members,
   };
@@ -163,24 +180,45 @@ export type CardDetail = {
   id: string;
   title: string;
   description: string | null;
+  columnId: string;
   columnTitle: string;
+  /** Set when the card is archived (shown read-only, with Restore). */
+  archivedAt: string | null;
   labels: Label[];
   assignees: Person[];
   due: DueInfo | null;
 };
 
+function toCardDetail(
+  card: CardSummary,
+  columnTitle: string,
+  archivedAt: string | null,
+  now: Date,
+): CardDetail {
+  return {
+    id: card.id,
+    title: card.title,
+    description: card.description,
+    columnId: card.columnId,
+    columnTitle,
+    archivedAt,
+    labels: card.labels,
+    assignees: card.assignees,
+    due: describeDue(card, now),
+  };
+}
+
+/** Details of every card on the board, active cards first (in board order), then archived. */
 export function buildCardDetails(view: BoardView, now: Date): CardDetail[] {
-  return view.columns.flatMap((column) =>
-    column.cards.map((card) => ({
-      id: card.id,
-      title: card.title,
-      description: card.description,
-      columnTitle: column.title,
-      labels: card.labels,
-      assignees: card.assignees,
-      due: describeDue(card, now),
-    })),
-  );
+  const columnTitles = new Map(view.columns.map((column) => [column.id, column.title]));
+  return [
+    ...view.columns.flatMap((column) =>
+      column.cards.map((card) => toCardDetail(card, column.title, null, now)),
+    ),
+    ...view.archivedCards.map((card) =>
+      toCardDetail(card, columnTitles.get(card.columnId) ?? "", card.archivedAt, now),
+    ),
+  ];
 }
 
 export function cardCount(view: BoardView): number {

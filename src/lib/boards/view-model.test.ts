@@ -28,6 +28,7 @@ function card(
     description: null,
     due_at: null,
     completed_at: null,
+    archived_at: null,
     card_assignees: [],
     card_labels: [],
     ...overrides,
@@ -72,6 +73,35 @@ describe("assembleBoardView", () => {
     expect(view.columns[0]?.cards.map((c) => c.id)).toEqual(["c4", "c1a", "c1b", "c2", "c3"]);
     expect(view.columns[1]?.cards.map((c) => c.id)).toEqual(["d1"]);
     expect(cardCount(view)).toBe(6);
+  });
+
+  it("moves archived cards out of their columns, most recently archived first", () => {
+    const view = assembleBoardView(
+      raw({
+        cards: [
+          card({ id: "c1", column_id: "col-todo", position: "a0" }),
+          card({
+            id: "old",
+            column_id: "col-todo",
+            position: "a1",
+            archived_at: "2026-09-01T00:00:00Z",
+          }),
+          card({
+            id: "new",
+            column_id: "col-done",
+            position: "a0",
+            archived_at: "2026-09-20T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+
+    expect(view.columns.map((c) => c.cards.map((x) => x.id))).toEqual([["c1"], []]);
+    expect(view.archivedCards.map((c) => [c.id, c.archivedAt])).toEqual([
+      ["new", "2026-09-20T00:00:00Z"],
+      ["old", "2026-09-01T00:00:00Z"],
+    ]);
+    expect(cardCount(view)).toBe(1);
   });
 
   it("keeps empty columns and drops cards of unknown columns", () => {
@@ -168,6 +198,29 @@ describe("buildCardDetails", () => {
     expect(details.map((d) => [d.id, d.columnTitle, d.due?.status ?? null])).toEqual([
       ["c1", "To do", "due-soon"],
       ["d1", "Done", null],
+    ]);
+  });
+
+  it("includes archived cards after the active ones, flagged as archived", () => {
+    const view = assembleBoardView(
+      raw({
+        cards: [
+          card({ id: "c1", column_id: "col-todo", position: "a0" }),
+          card({
+            id: "x1",
+            column_id: "col-done",
+            position: "a0",
+            archived_at: "2026-09-20T00:00:00Z",
+          }),
+        ],
+      }),
+    );
+
+    const details = buildCardDetails(view, new Date("2026-10-01T12:00:00Z"));
+
+    expect(details.map((d) => [d.id, d.columnId, d.columnTitle, d.archivedAt])).toEqual([
+      ["c1", "col-todo", "To do", null],
+      ["x1", "col-done", "Done", "2026-09-20T00:00:00Z"],
     ]);
   });
 });

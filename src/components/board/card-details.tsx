@@ -1,28 +1,88 @@
-import { AlignLeftIcon, CalendarIcon, TagIcon, UsersIcon } from "lucide-react";
+"use client";
+
+import {
+  AlignLeftIcon,
+  ArchiveIcon,
+  ArchiveRestoreIcon,
+  CalendarIcon,
+  TagIcon,
+  UsersIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
+import { Button } from "@/components/ui/button";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { renameCard } from "@/lib/boards/actions";
+import { CARD_TITLE_MAX } from "@/lib/boards/schemas";
 import type { CardDetail } from "@/lib/boards/view-model";
 
+import { useBoard } from "./board-context";
+import { DescriptionEditor } from "./description-editor";
 import { DueBadge } from "./due-badge";
+import { InlineEdit } from "./inline-edit";
 import { LabelList } from "./label-chip";
 import { Markdown } from "./markdown";
 import { UserAvatar, personName } from "./user-avatar";
 
-/** Read-only content of the card modal. Must render inside a Dialog. */
-export function CardDetails({ card }: { card: CardDetail }) {
+type Props = {
+  card: CardDetail;
+  onArchive: (card: CardDetail) => void;
+  onRestore: (card: CardDetail) => void;
+};
+
+/**
+ * Content of the card modal. Must render inside a Dialog. Owners and editors
+ * can rename the card, edit its description and archive it; archived cards
+ * are read-only until restored. Labels, due date and assignees are read-only
+ * for now.
+ */
+export function CardDetails({ card, onArchive, onRestore }: Props) {
+  const { boardId, permissions, mutate } = useBoard();
+  const archived = card.archivedAt !== null;
+  const editable = permissions.canEdit && !archived;
   const description = card.description?.trim();
 
   return (
     <>
       <DialogHeader className="pr-8">
         <DialogTitle className="text-lg leading-snug font-semibold break-words">
-          {card.title}
+          {editable ? (
+            <InlineEdit
+              value={card.title}
+              label="Card title"
+              hint="Rename card"
+              maxLength={CARD_TITLE_MAX}
+              multiline
+              onSave={(title) =>
+                mutate({ type: "renameCard", cardId: card.id, title }, () =>
+                  renameCard({ boardId, cardId: card.id, title }),
+                )
+              }
+            />
+          ) : (
+            card.title
+          )}
         </DialogTitle>
         <DialogDescription>
-          In column <span className="font-medium text-foreground">{card.columnTitle}</span>
+          {archived ? "Archived, from column " : "In column "}
+          <span className="font-medium text-foreground">{card.columnTitle}</span>
         </DialogDescription>
       </DialogHeader>
+
+      {archived ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed px-3 py-2 text-sm">
+          <p>
+            This card is archived and not shown on the board.
+            {permissions.canEdit ? null : " It is read-only."}
+          </p>
+          {permissions.canEdit ? (
+            <Button variant="outline" size="sm" onClick={() => onRestore(card)}>
+              <ArchiveRestoreIcon aria-hidden />
+              Restore
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {card.labels.length > 0 ? (
@@ -50,12 +110,23 @@ export function CardDetails({ card }: { card: CardDetail }) {
       </div>
 
       <Field icon={<AlignLeftIcon />} title="Description">
-        {description ? (
+        {editable ? (
+          <DescriptionEditor cardId={card.id} description={card.description} />
+        ) : description ? (
           <Markdown>{description}</Markdown>
         ) : (
           <p className="text-sm text-muted-foreground">No description.</p>
         )}
       </Field>
+
+      {editable ? (
+        <div className="flex justify-end border-t pt-4">
+          <Button variant="outline" size="sm" onClick={() => onArchive(card)}>
+            <ArchiveIcon aria-hidden />
+            Archive
+          </Button>
+        </div>
+      ) : null}
     </>
   );
 }

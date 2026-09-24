@@ -40,9 +40,10 @@ export const getBoard = cache(async (id: string): Promise<BoardSummary | null> =
 });
 
 /**
- * Everything the read-only board view needs: columns and non-archived cards
- * (ordered by fractional-indexing position, then id), labels and members.
- * Returns `null` when the board is missing or not accessible.
+ * Everything the board view needs: columns and cards (ordered by
+ * fractional-indexing position, then id; archived cards are split out for the
+ * Archived panel), labels and members. Returns `null` when the board is
+ * missing or not accessible.
  */
 export const getBoardView = cache(async (id: string): Promise<BoardView | null> => {
   const board = await getBoard(id);
@@ -59,10 +60,9 @@ export const getBoardView = cache(async (id: string): Promise<BoardView | null> 
     supabase
       .from("cards")
       .select(
-        "id, title, description, position, due_at, completed_at, column_id, card_assignees(profile:profiles(id, display_name, avatar_url)), card_labels(board_labels(id, name, color))",
+        "id, title, description, position, due_at, completed_at, archived_at, column_id, card_assignees(profile:profiles(id, display_name, avatar_url)), card_labels(board_labels(id, name, color))",
       )
       .eq("board_id", board.id)
-      .is("archived_at", null)
       .order("position", { ascending: true })
       .order("id", { ascending: true }),
     supabase.from("board_labels").select("id, name, color").eq("board_id", board.id),
