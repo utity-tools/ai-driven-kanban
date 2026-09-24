@@ -9,7 +9,7 @@ export async function AppHeader() {
 
   return (
     <header className="border-b">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4">
+      <div className="flex h-14 w-full items-center justify-between gap-4 px-4">
         <Link
           href="/boards"
           className="rounded-md font-semibold tracking-tight outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
