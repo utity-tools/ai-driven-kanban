@@ -294,6 +294,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_board: { Args: { p_title: string }; Returns: string }
       has_board_role: {
         Args: {
           p_board_id: string
