@@ -9,16 +9,260 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      board_columns: {
+        Row: {
+          board_id: string
+          created_at: string
+          id: string
+          position: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          id?: string
+          position: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          id?: string
+          position?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_columns_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      board_labels: {
+        Row: {
+          board_id: string
+          color: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          board_id: string
+          color: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Update: {
+          board_id?: string
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_labels_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      board_members: {
+        Row: {
+          board_id: string
+          created_at: string
+          role: Database["public"]["Enums"]["board_role"]
+          user_id: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          role: Database["public"]["Enums"]["board_role"]
+          user_id: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          role?: Database["public"]["Enums"]["board_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_members_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      boards: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      card_assignees: {
+        Row: {
+          board_id: string
+          card_id: string
+          user_id: string
+        }
+        Insert: {
+          board_id: string
+          card_id: string
+          user_id: string
+        }
+        Update: {
+          board_id?: string
+          card_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_assignees_card_same_board_fkey"
+            columns: ["card_id", "board_id"]
+            isOneToOne: false
+            referencedRelation: "cards"
+            referencedColumns: ["id", "board_id"]
+          },
+          {
+            foreignKeyName: "card_assignees_member_fkey"
+            columns: ["board_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "board_members"
+            referencedColumns: ["board_id", "user_id"]
+          },
+        ]
+      }
+      card_labels: {
+        Row: {
+          board_id: string
+          card_id: string
+          label_id: string
+        }
+        Insert: {
+          board_id: string
+          card_id: string
+          label_id: string
+        }
+        Update: {
+          board_id?: string
+          card_id?: string
+          label_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_labels_card_same_board_fkey"
+            columns: ["card_id", "board_id"]
+            isOneToOne: false
+            referencedRelation: "cards"
+            referencedColumns: ["id", "board_id"]
+          },
+          {
+            foreignKeyName: "card_labels_label_same_board_fkey"
+            columns: ["label_id", "board_id"]
+            isOneToOne: false
+            referencedRelation: "board_labels"
+            referencedColumns: ["id", "board_id"]
+          },
+        ]
+      }
+      cards: {
+        Row: {
+          archived_at: string | null
+          board_id: string
+          column_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_at: string | null
+          id: string
+          position: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          board_id: string
+          column_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          position: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          board_id?: string
+          column_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          position?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cards_column_same_board_fkey"
+            columns: ["column_id", "board_id"]
+            isOneToOne: false
+            referencedRelation: "board_columns"
+            referencedColumns: ["id", "board_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_board_role: {
+        Args: {
+          p_board_id: string
+          p_roles: Database["public"]["Enums"]["board_role"][]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      board_role: "owner" | "editor" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -145,7 +389,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      board_role: ["owner", "editor", "viewer"],
+    },
   },
 } as const
 
