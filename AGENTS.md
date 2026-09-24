@@ -35,6 +35,8 @@ history matter as much as features.
 | Reset local DB (re-runs migrations + seed) | `pnpm db:reset`                  |
 | New migration                              | `pnpm db:migration <name>`       |
 | Regenerate DB types                        | `pnpm db:types`                  |
+| DB tests (pgTAP: schema + RLS)             | `pnpm db:test`                   |
+| SQL lint                                   | `pnpm db:lint`                   |
 | Local Supabase URLs and status             | `pnpm db:status`                 |
 | Generate `.env.local` from local Supabase  | `pnpm env:local`                 |
 
@@ -85,8 +87,15 @@ docs/             Architecture and ADRs
 ### Database
 
 - The schema lives in `supabase/migrations`. Never edit an applied migration; add a new one.
-- Every new table enables RLS and gets policies **in the same migration**.
-- After any migration: `pnpm db:reset && pnpm db:types`.
+- Every new table enables RLS and gets policies **in the same migration**, using
+  `public.has_board_role(board_id, roles)` (see [ADR 0004](docs/adr/0004-board-authorization-model.md)).
+- Every new table also revokes default privileges and uses column-level updates:
+  - `revoke all on table <t> from anon;`
+  - `revoke truncate, references, trigger, maintain on table <t> from authenticated;`
+    (Supabase grants them by default, and TRUNCATE bypasses RLS)
+  - `revoke update` on the table, then `grant update (<columns>)` only for editable columns.
+- After any migration: `pnpm db:reset && pnpm db:types && pnpm db:test`.
+- RLS policies are tested with pgTAP in `supabase/tests/database/`: every new policy gets a test.
 
 ### AI
 

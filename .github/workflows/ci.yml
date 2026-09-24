@@ -30,6 +30,30 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+  database:
+    name: Database tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Postgres only (no auth, storage, studio…): applies migrations and seed.
+      - run: pnpm exec supabase db start
+      - name: RLS and schema tests (pgTAP)
+        run: pnpm db:test
+      - name: SQL lint
+        run: pnpm db:lint
+      - name: Generated types are up to date
+        run: |
+          pnpm db:types
+          git diff --exit-code -- src/lib/db/types.ts \
+            || (echo "::error::src/lib/db/types.ts is stale. Run pnpm db:types and commit it." && exit 1)
+
   e2e:
     name: Build and E2E tests
     runs-on: ubuntu-latest

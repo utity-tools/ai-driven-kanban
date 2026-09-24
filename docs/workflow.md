@@ -49,8 +49,8 @@ Without Claude Code the flow is the same by hand: branch, commit (hooks run), pu
 | Claude Code hooks       | `.claude/settings.json`, `.claude/hooks/`   | blocks commit/push on `main`, `--no-verify` and force push; formats every edited file                                                                | Claude Code                |
 | Claude Code permissions | `.claude/settings.json`                     | cannot read `.env` files, run `supabase db push` or deploy to production                                                                             | Claude Code                |
 | Git hooks (Husky)       | `.husky/`                                   | `pre-commit`: no commits on `main`, lint + format + related tests. `commit-msg`: commitlint. `pre-push`: no pushes to `main`, typecheck + unit tests | everyone                   |
-| CI                      | `.github/workflows/ci.yml`, `pr-title.yml`  | format, lint, typecheck, unit tests, build, E2E, PR title                                                                                            | every PR                   |
-| Branch rules            | ruleset "Protect main"                      | PR required, 3 checks green, branch up to date, conversations resolved, squash only, no force push or deletion                                       | everyone, including admins |
+| CI                      | `.github/workflows/ci.yml`, `pr-title.yml`  | format, lint, typecheck, unit tests, pgTAP + SQL lint, build, E2E, PR title                                                                          | every PR                   |
+| Branch rules            | ruleset "Protect main"                      | PR required, 4 checks green (incl. Database tests), branch up to date, conversations resolved, squash only, no force push or deletion                | everyone, including admins |
 
 ## Dependencies
 
