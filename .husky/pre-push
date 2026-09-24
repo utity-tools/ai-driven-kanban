@@ -1,0 +1,10 @@
+# Block updates to an existing remote main. Creating it (first push) is allowed.
+zero="0000000000000000000000000000000000000000"
+while read -r _local_ref _local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ] && [ "$remote_sha" != "$zero" ]; then
+    echo "✖ Pushing to main is not allowed. Push your branch and open a PR."
+    exit 1
+  fi
+done
+
+pnpm typecheck && pnpm test

@@ -1,0 +1,7 @@
+# Block commits on main (except the very first commit of the repo).
+if [ "$(git branch --show-current)" = "main" ] && git rev-parse -q --verify HEAD >/dev/null; then
+  echo "✖ Commits on main are not allowed. Create a branch: git switch -c feat/<name>"
+  exit 1
+fi
+
+pnpm exec lint-staged
