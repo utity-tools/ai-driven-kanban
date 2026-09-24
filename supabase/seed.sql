@@ -83,11 +83,12 @@ values
   ('1abe1000-0000-4000-8000-000000000004', 'b0a4d000-0000-4000-8000-000000000001', 'design', 'pink'),
   ('1abe1000-0000-4000-8000-000000000005', 'b0a4d000-0000-4000-8000-000000000001', '', 'green');
 
--- Due dates are relative to the reset time so "overdue" / "due soon" stay true:
---   card 5 overdue, card 4 due in 2 days (due soon), card 9 done (completed_at set),
---   cards 2 and 8 due later, the rest have no due date. Card 11 is archived.
+-- Due dates are date-only (cards.due_on) and relative to the reset date, so "overdue" /
+-- "due soon" stay true: card 5 overdue (2 days ago), card 4 due tomorrow (due soon),
+-- card 9 done (due 3 days ago, completed_at set), cards 2 and 8 due later, the rest have
+-- no due date. Card 11 is archived.
 insert into public.cards (
-  id, board_id, column_id, title, description, position, due_at, completed_at, archived_at, created_by
+  id, board_id, column_id, title, description, position, due_on, completed_at, archived_at, created_by
 )
 values
   -- To do
@@ -100,7 +101,7 @@ values
    E'- Per-user limit: **10 proposals / hour**\n' ||
    E'- Return `429` with a `Retry-After` header\n' ||
    E'- Log rejected requests (no user text in logs)',
-   'a1', now() + interval '10 days', null, null, 'b0b00000-0000-4000-8000-000000000002'),
+   'a1', current_date + 10, null, null, 'b0b00000-0000-4000-8000-000000000002'),
   ('ca4d0000-0000-4000-8000-000000000003', 'b0a4d000-0000-4000-8000-000000000001',
    'c0100000-0000-4000-8000-000000000001', 'Empty state for boards without cards',
    'Friendly illustration plus a "Create your first card" call to action.',
@@ -114,14 +115,14 @@ values
    E'- [x] Reorder within a column\n' ||
    E'- [ ] Move to another column\n' ||
    E'- [ ] Keyboard accessible (see the shortcuts card)',
-   'a0', now() + interval '2 days', null, null, 'a11ce000-0000-4000-8000-000000000001'),
+   'a0', current_date + 1, null, null, 'a11ce000-0000-4000-8000-000000000001'),
   ('ca4d0000-0000-4000-8000-000000000005', 'b0a4d000-0000-4000-8000-000000000001',
    'c0100000-0000-4000-8000-000000000002', 'Card order resets after refreshing the page',
    E'**Steps to reproduce**\n\n' ||
    E'1. Move a card to the top of *To do*\n' ||
    E'2. Refresh the page\n\n' ||
    E'**Expected:** the card stays on top. **Actual:** it goes back to its old position.',
-   'a1', now() - interval '2 days', null, null, 'b0b00000-0000-4000-8000-000000000002'),
+   'a1', current_date - 2, null, null, 'b0b00000-0000-4000-8000-000000000002'),
   ('ca4d0000-0000-4000-8000-000000000006', 'b0a4d000-0000-4000-8000-000000000001',
    'c0100000-0000-4000-8000-000000000002', 'Spike: Supabase Realtime for live board updates',
    null, 'a2', null, null, null, 'b0b00000-0000-4000-8000-000000000002'),
@@ -133,13 +134,13 @@ values
    'a0', null, null, null, 'a11ce000-0000-4000-8000-000000000001'),
   ('ca4d0000-0000-4000-8000-000000000008', 'b0a4d000-0000-4000-8000-000000000001',
    'c0100000-0000-4000-8000-000000000003', 'pgTAP tests for label and assignee policies',
-   null, 'a1', now() + interval '5 days', null, null, 'b0b00000-0000-4000-8000-000000000002'),
+   null, 'a1', current_date + 5, null, null, 'b0b00000-0000-4000-8000-000000000002'),
 
   -- Done
   ('ca4d0000-0000-4000-8000-000000000009', 'b0a4d000-0000-4000-8000-000000000001',
    'c0100000-0000-4000-8000-000000000004', 'Create the board data model',
    E'Boards, members with roles, columns, cards, labels and assignees. See ADR 0004.',
-   'a0', now() - interval '3 days', now() - interval '4 days', null, 'a11ce000-0000-4000-8000-000000000001'),
+   'a0', current_date - 3, now() - interval '4 days', null, 'a11ce000-0000-4000-8000-000000000001'),
   ('ca4d0000-0000-4000-8000-00000000000a', 'b0a4d000-0000-4000-8000-000000000001',
    'c0100000-0000-4000-8000-000000000004', 'Sign in with GitHub',
    null, 'a1', null, null, null, 'a11ce000-0000-4000-8000-000000000001'),
