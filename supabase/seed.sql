@@ -1,0 +1,3 @@
+-- Local and CI seed data. Runs after migrations on `pnpm db:reset`.
+-- Never runs against staging or prod.
+-- The demo account and sample board are added with the first schema (v0.1).
