@@ -1,8 +1,10 @@
 name: Database migrations
 
 # Staging: migrations from a PR are applied so its Vercel preview has the new schema.
-# Production: applied after merge to main, only once a prod project exists
-# (repo variable SUPABASE_PROD_PROJECT_REF) and after manual approval (environment rule).
+# Production: applied after merge to main, only when enabled (repo variable
+# PRODUCTION_DB_ENABLED=true) and after manual approval (environment rule).
+# Connection: direct Postgres connection through the session pooler, no Supabase
+# access token (see docs/adr/0002-migrations-via-direct-connection.md).
 on:
   pull_request:
     # Changes to this workflow are exercised against staging too (no-op without new migrations).
@@ -35,9 +37,9 @@ jobs:
     timeout-minutes: 10
     environment: staging
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      POOLER_HOST: ${{ vars.SUPABASE_POOLER_HOST }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -46,23 +48,27 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec supabase link --project-ref "$PROJECT_REF"
+      - name: Build connection URL
+        run: |
+          password="$(jq -rn --arg p "$SUPABASE_DB_PASSWORD" '$p | @uri')"
+          echo "::add-mask::$password"
+          echo "DB_URL=postgresql://postgres.${PROJECT_REF}:${password}@${POOLER_HOST}:5432/postgres" >> "$GITHUB_ENV"
       - name: Pending migrations (dry run)
-        run: pnpm exec supabase db push --dry-run
+        run: pnpm exec supabase db push --db-url "$DB_URL" --dry-run
       - name: Apply migrations
         if: github.event_name == 'pull_request' || inputs.dry_run == false
-        run: pnpm exec supabase db push
+        run: pnpm exec supabase db push --db-url "$DB_URL"
 
   production:
     name: Migrate production
-    if: github.event_name == 'push' && vars.SUPABASE_PROD_PROJECT_REF != ''
+    if: github.event_name == 'push' && vars.PRODUCTION_DB_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: production
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      PROJECT_REF: ${{ vars.SUPABASE_PROD_PROJECT_REF }}
+      PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      POOLER_HOST: ${{ vars.SUPABASE_POOLER_HOST }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -71,8 +77,12 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec supabase link --project-ref "$PROJECT_REF"
+      - name: Build connection URL
+        run: |
+          password="$(jq -rn --arg p "$SUPABASE_DB_PASSWORD" '$p | @uri')"
+          echo "::add-mask::$password"
+          echo "DB_URL=postgresql://postgres.${PROJECT_REF}:${password}@${POOLER_HOST}:5432/postgres" >> "$GITHUB_ENV"
       - name: Pending migrations (dry run)
-        run: pnpm exec supabase db push --dry-run
+        run: pnpm exec supabase db push --db-url "$DB_URL" --dry-run
       - name: Apply migrations
-        run: pnpm exec supabase db push
+        run: pnpm exec supabase db push --db-url "$DB_URL"
