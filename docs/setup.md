@@ -48,6 +48,7 @@ Stop the database when you are not using it: `pnpm db:stop`.
 | Reset local DB (migrations + seed)            | `pnpm db:reset`                                   |
 | New migration                                 | `pnpm db:migration <name>`                        |
 | Regenerate DB types                           | `pnpm db:types`                                   |
+| DB tests (pgTAP) / SQL lint                   | `pnpm db:test` / `pnpm db:lint`                   |
 | Write local Supabase values into `.env.local` | `pnpm env:local`                                  |
 
 ## Environments
@@ -56,15 +57,15 @@ Stop the database when you are not using it: `pnpm db:stop`.
  local                  CI                      preview (per PR)          production
  ─────                  ──                      ────────────────          ──────────
  pnpm dev               GitHub Actions          Vercel preview URL        ai-driven-kanban.vercel.app
- Supabase in Docker     no database yet (v0.1)  Supabase kanban-staging   no database until v0.1
+ Supabase in Docker     ephemeral Postgres      Supabase kanban-staging   no database until v0.1
 ```
 
-| Environment | App                                                            | Database                                                             | Schema changes arrive via                                     |
-| ----------- | -------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Local       | `pnpm dev`                                                     | Supabase local (Docker)                                              | `pnpm db:reset`                                               |
-| CI          | GitHub Actions                                                 | none yet; ephemeral local Supabase is added with the first migration | —                                                             |
-| Preview     | Vercel, one deployment per PR, private (Vercel Authentication) | `kanban-staging` (eu-west-1)                                         | `db-migrations.yml` on PRs that change `supabase/migrations/` |
-| Production  | Vercel, deployed on every merge to `main`                      | not created yet ([ADR 0003](adr/0003-defer-production-database.md))  | `db-migrations.yml` after merge, with manual approval         |
+| Environment | App                                                            | Database                                                            | Schema changes arrive via                                     |
+| ----------- | -------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Local       | `pnpm dev`                                                     | Supabase local (Docker)                                             | `pnpm db:reset`                                               |
+| CI          | GitHub Actions                                                 | ephemeral local Postgres (`supabase db start`)                      | migrations + seed on every run                                |
+| Preview     | Vercel, one deployment per PR, private (Vercel Authentication) | `kanban-staging` (eu-west-1)                                        | `db-migrations.yml` on PRs that change `supabase/migrations/` |
+| Production  | Vercel, deployed on every merge to `main`                      | not created yet ([ADR 0003](adr/0003-defer-production-database.md)) | `db-migrations.yml` after merge, with manual approval         |
 
 ### Where each variable lives
 
