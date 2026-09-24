@@ -218,7 +218,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
-          due_at: string | null
+          due_on: string | null
           id: string
           position: string
           title: string
@@ -232,7 +232,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
-          due_at?: string | null
+          due_on?: string | null
           id?: string
           position: string
           title: string
@@ -246,7 +246,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
-          due_at?: string | null
+          due_on?: string | null
           id?: string
           position?: string
           title?: string

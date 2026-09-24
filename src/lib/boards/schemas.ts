@@ -1,10 +1,14 @@
 import { z } from "zod";
 
+import { MAX_DUE_YEAR, MIN_DUE_YEAR, isDateOnly } from "./due-date";
+import { LABEL_COLORS } from "./label-colors";
+
 /** Same limits as the database checks (supabase/migrations). */
 export const BOARD_TITLE_MAX = 100;
 export const COLUMN_TITLE_MAX = 50;
 export const CARD_TITLE_MAX = 200;
 export const DESCRIPTION_MAX = 10_000;
+export const LABEL_NAME_MAX = 30;
 
 /**
  * Titles are single-line: line breaks and runs of whitespace (e.g. from a
@@ -72,6 +76,70 @@ export const updateCardDescriptionSchema = z.object({
 /** Archive, restore and delete-permanently all identify a card the same way. */
 export const cardRefSchema = z.object({ boardId, cardId });
 
+// ---------------------------------------------------------------------------
+// Card details: due date, labels, assignees
+// ---------------------------------------------------------------------------
+
+/**
+ * A date-only due date, "YYYY-MM-DD", that exists on the calendar and is in
+ * the range the database accepts (years 2000-9999).
+ */
+export const dueOnSchema = z
+  .string({ error: "Invalid due date." })
+  .refine(isDateOnly, { error: "Invalid due date." })
+  .refine(
+    (value) => {
+      const year = Number(value.slice(0, 4));
+      return year >= MIN_DUE_YEAR && year <= MAX_DUE_YEAR;
+    },
+    { error: `Due dates must be between the years ${MIN_DUE_YEAR} and ${MAX_DUE_YEAR}.` },
+  );
+
+/** `null` removes the due date (and the "done" mark with it). */
+export const setCardDueDateSchema = z.object({ boardId, cardId, dueOn: dueOnSchema.nullable() });
+export const setCardCompletedSchema = z.object({
+  boardId,
+  cardId,
+  completed: z.boolean({ error: "Invalid value." }),
+});
+
+/** Optional (empty = colour-only label), single-line like titles. */
+export const labelNameSchema = z
+  .string({ error: "Invalid label name." })
+  .transform(normalizeTitle)
+  .pipe(
+    z.string().max(LABEL_NAME_MAX, {
+      error: `Label names can be at most ${LABEL_NAME_MAX} characters.`,
+    }),
+  );
+export const labelColorSchema = z.enum(LABEL_COLORS, { error: "Pick a label colour." });
+
+const labelId = id("label");
+const userId = id("member");
+
+/**
+ * The client picks the new label's id so its optimistic copy keeps the same
+ * key. With `cardId`, the new label is also attached to that card.
+ */
+export const createLabelSchema = z.object({
+  boardId,
+  labelId,
+  name: labelNameSchema,
+  color: labelColorSchema,
+  cardId: cardId.optional(),
+});
+export const updateLabelSchema = z.object({
+  boardId,
+  labelId,
+  name: labelNameSchema,
+  color: labelColorSchema,
+});
+export const deleteLabelSchema = z.object({ boardId, labelId });
+/** Attach and detach. */
+export const cardLabelSchema = z.object({ boardId, cardId, labelId });
+/** Assign and unassign. */
+export const cardAssigneeSchema = z.object({ boardId, cardId, userId });
+
 export type CreateBoardInput = z.input<typeof createBoardSchema>;
 export type RenameBoardInput = z.input<typeof renameBoardSchema>;
 export type DeleteBoardInput = z.input<typeof deleteBoardSchema>;
@@ -82,6 +150,13 @@ export type CreateCardInput = z.input<typeof createCardSchema>;
 export type RenameCardInput = z.input<typeof renameCardSchema>;
 export type UpdateCardDescriptionInput = z.input<typeof updateCardDescriptionSchema>;
 export type CardRefInput = z.input<typeof cardRefSchema>;
+export type SetCardDueDateInput = z.input<typeof setCardDueDateSchema>;
+export type SetCardCompletedInput = z.input<typeof setCardCompletedSchema>;
+export type CreateLabelInput = z.input<typeof createLabelSchema>;
+export type UpdateLabelInput = z.input<typeof updateLabelSchema>;
+export type DeleteLabelInput = z.input<typeof deleteLabelSchema>;
+export type CardLabelInput = z.input<typeof cardLabelSchema>;
+export type CardAssigneeInput = z.input<typeof cardAssigneeSchema>;
 
 /** First validation message, for a toast or an inline error. */
 export function firstIssueMessage(error: z.ZodError): string {

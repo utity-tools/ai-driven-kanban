@@ -1,6 +1,14 @@
 import { compareByPosition } from "./ordering";
 import { positionAfterLast } from "./positions";
-import { type BoardView, type CardSummary, type ColumnView, compareArchived } from "./view-model";
+import {
+  type BoardView,
+  type CardSummary,
+  type ColumnView,
+  type Label,
+  compareArchived,
+  compareLabels,
+  comparePeople,
+} from "./view-model";
 
 /**
  * Changes the board UI applies optimistically (`useOptimistic`) while the
@@ -15,7 +23,32 @@ export type BoardUpdate =
   | { type: "renameCard"; cardId: string; title: string }
   | { type: "setDescription"; cardId: string; description: string | null }
   | { type: "archiveCard"; cardId: string; archivedAt: string }
-  | { type: "restoreCard"; cardId: string };
+  | { type: "restoreCard"; cardId: string }
+  /** `null` removes the date and the "done" mark (see setCardDueDate). */
+  | { type: "setDueDate"; cardId: string; dueOn: string | null }
+  | { type: "setCompleted"; cardId: string; completedAt: string | null }
+  /** A new board label; with `cardId`, also attached to that card. */
+  | { type: "addLabel"; label: Label; cardId?: string }
+  | { type: "updateLabel"; label: Label }
+  | { type: "deleteLabel"; labelId: string }
+  | { type: "attachLabel"; cardId: string; labelId: string }
+  | { type: "detachLabel"; cardId: string; labelId: string }
+  | { type: "assignMember"; cardId: string; userId: string }
+  | { type: "unassignMember"; cardId: string; userId: string };
+
+/** Applies `fn` to every card, active and archived. */
+function mapAllCards(view: BoardView, fn: (card: CardSummary) => CardSummary): BoardView {
+  return {
+    ...view,
+    columns: view.columns.map((column) => ({ ...column, cards: column.cards.map(fn) })),
+    archivedCards: view.archivedCards.map((card) => ({ ...fn(card), archivedAt: card.archivedAt })),
+  };
+}
+
+function withLabel(card: CardSummary, label: Label): CardSummary {
+  if (card.labels.some((l) => l.id === label.id)) return card;
+  return { ...card, labels: [...card.labels, label].sort(compareLabels) };
+}
 
 function mapColumns(view: BoardView, fn: (column: ColumnView) => ColumnView): BoardView {
   return { ...view, columns: view.columns.map(fn) };
@@ -62,7 +95,7 @@ export function applyBoardUpdate(view: BoardView, update: BoardUpdate): BoardVie
         const added: CardSummary = {
           ...card,
           description: null,
-          dueAt: null,
+          dueOn: null,
           completedAt: null,
           labels: [],
           assignees: [],
@@ -106,7 +139,91 @@ export function applyBoardUpdate(view: BoardView, update: BoardUpdate): BoardVie
         archivedCards: view.archivedCards.filter((c) => c.id !== card.id),
       };
     }
+
+    case "setDueDate":
+      return mapCard(view, update.cardId, (card) => ({
+        ...card,
+        dueOn: update.dueOn,
+        completedAt: update.dueOn === null ? null : card.completedAt,
+      }));
+
+    case "setCompleted":
+      return mapCard(view, update.cardId, (card) =>
+        card.dueOn === null ? card : { ...card, completedAt: update.completedAt },
+      );
+
+    case "addLabel": {
+      const { label, cardId } = update;
+      if (view.labels.some((l) => l.id === label.id)) return view;
+      const added = { ...view, labels: [...view.labels, label].sort(compareLabels) };
+      return cardId ? mapCard(added, cardId, (card) => withLabel(card, label)) : added;
+    }
+
+    case "updateLabel": {
+      const { label } = update;
+      if (!view.labels.some((l) => l.id === label.id)) return view;
+      const replace = (labels: Label[]) =>
+        labels.map((l) => (l.id === label.id ? label : l)).sort(compareLabels);
+      return {
+        ...mapAllCards(view, (card) =>
+          card.labels.some((l) => l.id === label.id)
+            ? { ...card, labels: replace(card.labels) }
+            : card,
+        ),
+        labels: replace(view.labels),
+      };
+    }
+
+    case "deleteLabel": {
+      const keep = (l: Label) => l.id !== update.labelId;
+      return {
+        ...mapAllCards(view, (card) =>
+          card.labels.some((l) => !keep(l)) ? { ...card, labels: card.labels.filter(keep) } : card,
+        ),
+        labels: view.labels.filter(keep),
+      };
+    }
+
+    case "attachLabel": {
+      const label = view.labels.find((l) => l.id === update.labelId);
+      if (!label) return view;
+      return mapCard(view, update.cardId, (card) => withLabel(card, label));
+    }
+
+    case "detachLabel":
+      return mapCard(view, update.cardId, (card) => ({
+        ...card,
+        labels: card.labels.filter((l) => l.id !== update.labelId),
+      }));
+
+    case "assignMember": {
+      const member = view.members.find((m) => m.id === update.userId);
+      if (!member) return view;
+      const person = {
+        id: member.id,
+        displayName: member.displayName,
+        avatarUrl: member.avatarUrl,
+      };
+      return mapCard(view, update.cardId, (card) =>
+        card.assignees.some((p) => p.id === person.id)
+          ? card
+          : { ...card, assignees: [...card.assignees, person].sort(comparePeople) },
+      );
+    }
+
+    case "unassignMember":
+      return mapCard(view, update.cardId, (card) => ({
+        ...card,
+        assignees: card.assignees.filter((p) => p.id !== update.userId),
+      }));
   }
+}
+
+/** How many cards (active and archived) carry a label: deleting it removes it from all of them. */
+export function labelCardCount(view: BoardView, labelId: string): number {
+  return [...view.columns.flatMap((c) => c.cards), ...view.archivedCards].filter((card) =>
+    card.labels.some((l) => l.id === labelId),
+  ).length;
 }
 
 /** Position for a new card at the bottom of a column (archived cards included). */

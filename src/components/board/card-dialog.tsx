@@ -31,7 +31,7 @@ import { CardDetails } from "./card-details";
  * leaves the board.
  */
 export function CardDialog() {
-  const { view, now, boardId, mutate } = useBoard();
+  const { view, boardId, mutate } = useBoard();
   const searchParams = useSearchParams();
   const cardId = selectedCardId(searchParams);
 
@@ -41,7 +41,7 @@ export function CardDialog() {
   if (cardId !== null && cardId !== lastId) setLastId(cardId);
   const shownId = cardId ?? lastId;
   const card =
-    shownId === null ? null : (buildCardDetails(view, now).find((c) => c.id === shownId) ?? null);
+    shownId === null ? null : (buildCardDetails(view).find((c) => c.id === shownId) ?? null);
 
   // Where focus goes when the modal closes after archiving (the card is gone).
   const focusAfterArchive = useRef<{ columnId: string; neighbor: string | null } | null>(null);

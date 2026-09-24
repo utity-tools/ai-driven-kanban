@@ -3,8 +3,10 @@
 import { Suspense, startTransition, useOptimistic } from "react";
 import { toast } from "sonner";
 
+import { useToday } from "@/hooks/use-today";
 import { type ActionResult, GENERIC_ERROR } from "@/lib/boards/action-result";
 import { type BoardUpdate, applyBoardUpdate } from "@/lib/boards/board-updates";
+import { toUtcDateOnly } from "@/lib/boards/due-date";
 import type { BoardPermissions } from "@/lib/boards/permissions";
 import type { BoardView } from "@/lib/boards/view-model";
 
@@ -15,7 +17,7 @@ import { CardDialog } from "./card-dialog";
 
 type Props = {
   view: BoardView;
-  /** ISO timestamp of the request (due-date status is computed against it). */
+  /** ISO timestamp of the request. */
   now: string;
   permissions: BoardPermissions;
 };
@@ -27,6 +29,7 @@ type Props = {
  */
 export function BoardWorkspace({ view, now, permissions }: Props) {
   const [optimisticView, applyOptimistic] = useOptimistic(view, applyBoardUpdate);
+  const today = useToday();
 
   function mutate(
     update: BoardUpdate | null,
@@ -53,6 +56,8 @@ export function BoardWorkspace({ view, now, permissions }: Props) {
     boardPath: `/boards/${view.board.id}`,
     permissions,
     now: new Date(now),
+    today,
+    serverToday: toUtcDateOnly(new Date(now)),
     mutate,
   };
 

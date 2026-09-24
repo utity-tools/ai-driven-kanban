@@ -4,7 +4,8 @@ import { useState } from "react";
 
 import { renameColumn } from "@/lib/boards/actions";
 import { COLUMN_TITLE_MAX } from "@/lib/boards/schemas";
-import { type ColumnView, describeDue } from "@/lib/boards/view-model";
+import { describeDue } from "@/lib/boards/due-date";
+import type { ColumnView } from "@/lib/boards/view-model";
 
 import { AddColumn } from "./add-column";
 import { useBoard } from "./board-context";
@@ -62,7 +63,7 @@ export function BoardColumns() {
 }
 
 function BoardColumn({ column, onDelete }: { column: ColumnView; onDelete: () => void }) {
-  const { boardId, boardPath, now, permissions, mutate } = useBoard();
+  const { boardId, boardPath, today, serverToday, permissions, mutate } = useBoard();
   const headingId = `column-${column.id}`;
   const count = column.cards.length;
 
@@ -105,7 +106,11 @@ function BoardColumn({ column, onDelete }: { column: ColumnView; onDelete: () =>
         <ol aria-label={`${column.title} cards`} className="grid gap-2">
           {column.cards.map((card) => (
             <li key={card.id}>
-              <CardFace boardPath={boardPath} card={card} due={describeDue(card, now)} />
+              <CardFace
+                boardPath={boardPath}
+                card={card}
+                due={describeDue(card, today, serverToday)}
+              />
             </li>
           ))}
         </ol>

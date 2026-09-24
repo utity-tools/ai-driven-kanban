@@ -18,8 +18,15 @@ export type BoardContextValue = {
   boardId: string;
   boardPath: string;
   permissions: BoardPermissions;
-  /** Request time, from the server (due-date status is relative to it). */
+  /** Request time, from the server. */
   now: Date;
+  /**
+   * The viewer's local date ("YYYY-MM-DD"): due-date status is relative to it.
+   * `null` on the server and during hydration (see useToday).
+   */
+  today: string | null;
+  /** The server's (UTC) date: only used to format due dates while `today` is unknown. */
+  serverToday: string;
   /**
    * Runs a Server Action in a transition. `update` is applied to `view` at
    * once and dropped when the action ends (the fresh server board replaces

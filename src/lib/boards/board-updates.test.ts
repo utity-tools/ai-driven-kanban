@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyBoardUpdate,
   columnCardCounts,
+  labelCardCount,
   neighborCardId,
   neighborColumnId,
   nextCardPosition,
@@ -18,7 +19,7 @@ function card(id: string, columnId: string, position: string): CardSummary {
     title: `Card ${id}`,
     description: null,
     position,
-    dueAt: null,
+    dueOn: null,
     completedAt: null,
     labels: [],
     assignees: [],
@@ -182,5 +183,202 @@ describe("neighbors", () => {
     expect(neighborColumnId(view(), "done")).toBe("todo");
     expect(neighborColumnId(view(), "todo")).toBe("done");
     expect(neighborColumnId(view(), "missing")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Card details: due date, labels, assignees
+// ---------------------------------------------------------------------------
+
+const bug = { id: "l-bug", name: "bug", color: "red" };
+const api = { id: "l-api", name: "api", color: "blue" };
+const green = { id: "l-green", name: "", color: "green" };
+const alice = { id: "u-alice", displayName: "Alice", avatarUrl: null, role: "owner" as const };
+const bob = { id: "u-bob", displayName: "Bob", avatarUrl: null, role: "editor" as const };
+
+/** A board with labels and members; t1 has "bug", archived x1 has "bug" too. */
+function detailedView(): BoardView {
+  const base = view();
+  const withBug = (c: CardSummary) => (c.id === "t1" ? { ...c, labels: [bug] } : c);
+  return {
+    ...base,
+    columns: base.columns.map((col) => ({ ...col, cards: col.cards.map(withBug) })),
+    archivedCards: base.archivedCards.map((c) => ({ ...c, labels: [bug] })),
+    labels: [api, bug, green],
+    members: [alice, bob],
+  };
+}
+
+function findCard(v: BoardView, id: string): CardSummary | undefined {
+  return [...v.columns.flatMap((c) => c.cards), ...v.archivedCards].find((c) => c.id === id);
+}
+
+describe("applyBoardUpdate: due dates", () => {
+  it("sets and changes a due date, keeping the done mark", () => {
+    let next = applyBoardUpdate(view(), { type: "setDueDate", cardId: "t1", dueOn: "2026-10-02" });
+    next = applyBoardUpdate(next, {
+      type: "setCompleted",
+      cardId: "t1",
+      completedAt: "2026-10-01T10:00:00Z",
+    });
+    next = applyBoardUpdate(next, { type: "setDueDate", cardId: "t1", dueOn: "2026-10-05" });
+
+    expect(findCard(next, "t1")).toMatchObject({
+      dueOn: "2026-10-05",
+      completedAt: "2026-10-01T10:00:00Z",
+    });
+  });
+
+  it("removing the date also clears the done mark", () => {
+    let next = applyBoardUpdate(view(), { type: "setDueDate", cardId: "t1", dueOn: "2026-10-02" });
+    next = applyBoardUpdate(next, { type: "setCompleted", cardId: "t1", completedAt: "x" });
+    next = applyBoardUpdate(next, { type: "setDueDate", cardId: "t1", dueOn: null });
+
+    expect(findCard(next, "t1")).toMatchObject({ dueOn: null, completedAt: null });
+  });
+
+  it("marks done and not done; ignores cards without a due date", () => {
+    const dated = applyBoardUpdate(view(), {
+      type: "setDueDate",
+      cardId: "t1",
+      dueOn: "2026-10-02",
+    });
+    const done = applyBoardUpdate(dated, { type: "setCompleted", cardId: "t1", completedAt: "x" });
+    expect(findCard(done, "t1")?.completedAt).toBe("x");
+    const undone = applyBoardUpdate(done, {
+      type: "setCompleted",
+      cardId: "t1",
+      completedAt: null,
+    });
+    expect(findCard(undone, "t1")?.completedAt).toBeNull();
+
+    const noDate = applyBoardUpdate(view(), {
+      type: "setCompleted",
+      cardId: "t2",
+      completedAt: "x",
+    });
+    expect(findCard(noDate, "t2")?.completedAt).toBeNull();
+  });
+
+  it("updates archived cards too", () => {
+    const next = applyBoardUpdate(view(), {
+      type: "setDueDate",
+      cardId: "x1",
+      dueOn: "2026-10-02",
+    });
+    expect(next.archivedCards[0]).toMatchObject({
+      dueOn: "2026-10-02",
+      archivedAt: expect.any(String),
+    });
+  });
+});
+
+describe("applyBoardUpdate: labels", () => {
+  it("attaches a board label in label order, once", () => {
+    const attach = { type: "attachLabel" as const, cardId: "t1", labelId: "l-api" };
+    const next = applyBoardUpdate(applyBoardUpdate(detailedView(), attach), attach);
+
+    expect(findCard(next, "t1")?.labels.map((l) => l.id)).toEqual(["l-api", "l-bug"]);
+  });
+
+  it("ignores attaching a label that isn't on the board", () => {
+    const before = detailedView();
+    const next = applyBoardUpdate(before, { type: "attachLabel", cardId: "t2", labelId: "nope" });
+    expect(findCard(next, "t2")?.labels).toEqual([]);
+  });
+
+  it("detaches a label", () => {
+    const next = applyBoardUpdate(detailedView(), {
+      type: "detachLabel",
+      cardId: "t1",
+      labelId: "l-bug",
+    });
+    expect(findCard(next, "t1")?.labels).toEqual([]);
+    expect(findCard(next, "x1")?.labels).toEqual([bug]); // other cards keep it
+  });
+
+  it("creates a label in order, once, optionally attached to a card", () => {
+    const label = { id: "l-docs", name: "docs", color: "sky" };
+    const update = { type: "addLabel" as const, label, cardId: "t2" };
+    const next = applyBoardUpdate(applyBoardUpdate(detailedView(), update), update);
+
+    expect(next.labels.map((l) => l.id)).toEqual(["l-api", "l-bug", "l-docs", "l-green"]);
+    expect(findCard(next, "t2")?.labels).toEqual([label]);
+
+    const unattached = applyBoardUpdate(detailedView(), { type: "addLabel", label });
+    expect(unattached.labels).toHaveLength(4);
+    expect(findCard(unattached, "t2")?.labels).toEqual([]);
+  });
+
+  it("edits a label everywhere: board list and every card, archived included, re-sorted", () => {
+    const renamed = { ...bug, name: "zz-bug", color: "orange" };
+    let next = applyBoardUpdate(detailedView(), {
+      type: "attachLabel",
+      cardId: "t1",
+      labelId: "l-api",
+    });
+    next = applyBoardUpdate(next, { type: "updateLabel", label: renamed });
+
+    expect(next.labels.map((l) => l.name)).toEqual(["api", "zz-bug", ""]);
+    expect(findCard(next, "t1")?.labels).toEqual([api, renamed]);
+    expect(findCard(next, "x1")?.labels).toEqual([renamed]);
+    expect(next.archivedCards[0]?.archivedAt).toBe("2026-09-20T00:00:00Z");
+  });
+
+  it("ignores editing an unknown label", () => {
+    const before = detailedView();
+    const next = applyBoardUpdate(before, {
+      type: "updateLabel",
+      label: { id: "nope", name: "x", color: "red" },
+    });
+    expect(next).toBe(before);
+  });
+
+  it("deletes a label from the board and every card", () => {
+    const next = applyBoardUpdate(detailedView(), { type: "deleteLabel", labelId: "l-bug" });
+
+    expect(next.labels.map((l) => l.id)).toEqual(["l-api", "l-green"]);
+    expect(findCard(next, "t1")?.labels).toEqual([]);
+    expect(findCard(next, "x1")?.labels).toEqual([]);
+  });
+});
+
+describe("applyBoardUpdate: assignees", () => {
+  it("assigns a member (without their role) in name order, once", () => {
+    const assign = (userId: string) => ({ type: "assignMember" as const, cardId: "t1", userId });
+    let next = applyBoardUpdate(detailedView(), assign("u-bob"));
+    next = applyBoardUpdate(next, assign("u-alice"));
+    next = applyBoardUpdate(next, assign("u-bob"));
+
+    expect(findCard(next, "t1")?.assignees).toEqual([
+      { id: "u-alice", displayName: "Alice", avatarUrl: null },
+      { id: "u-bob", displayName: "Bob", avatarUrl: null },
+    ]);
+  });
+
+  it("ignores assigning someone who isn't a member", () => {
+    const next = applyBoardUpdate(detailedView(), {
+      type: "assignMember",
+      cardId: "t1",
+      userId: "u-stranger",
+    });
+    expect(findCard(next, "t1")?.assignees).toEqual([]);
+  });
+
+  it("unassigns a member", () => {
+    let next = applyBoardUpdate(detailedView(), {
+      type: "assignMember",
+      cardId: "t1",
+      userId: "u-bob",
+    });
+    next = applyBoardUpdate(next, { type: "unassignMember", cardId: "t1", userId: "u-bob" });
+    expect(findCard(next, "t1")?.assignees).toEqual([]);
+  });
+});
+
+describe("labelCardCount", () => {
+  it("counts active and archived cards carrying the label", () => {
+    expect(labelCardCount(detailedView(), "l-bug")).toBe(2);
+    expect(labelCardCount(detailedView(), "l-api")).toBe(0);
   });
 });

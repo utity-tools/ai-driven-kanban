@@ -5,18 +5,27 @@ import {
   CARD_TITLE_MAX,
   COLUMN_TITLE_MAX,
   DESCRIPTION_MAX,
+  LABEL_NAME_MAX,
+  cardAssigneeSchema,
+  cardLabelSchema,
   cardRefSchema,
   createBoardSchema,
   createCardSchema,
   createColumnSchema,
+  createLabelSchema,
   deleteBoardSchema,
   deleteColumnSchema,
+  deleteLabelSchema,
+  dueOnSchema,
   firstIssueMessage,
   normalizeTitle,
   renameBoardSchema,
   renameCardSchema,
   renameColumnSchema,
+  setCardCompletedSchema,
+  setCardDueDateSchema,
   updateCardDescriptionSchema,
+  updateLabelSchema,
 } from "./schemas";
 
 const BOARD = "b0a4d000-0000-4000-8000-000000000001";
@@ -154,5 +163,108 @@ describe("updateCardDescriptionSchema", () => {
 
   it("rejects a missing description", () => {
     expect(updateCardDescriptionSchema.safeParse(base).success).toBe(false);
+  });
+});
+
+const LABEL = "1abe1000-0000-4000-8000-000000000001";
+const USER = "a11ce000-0000-4000-8000-000000000001";
+
+describe("dueOnSchema", () => {
+  it("accepts real dates between the years 2000 and 9999", () => {
+    for (const value of ["2026-10-02", "2000-01-01", "9999-12-31", "2028-02-29"]) {
+      expect(dueOnSchema.parse(value)).toBe(value);
+    }
+  });
+
+  it("rejects other formats and impossible dates", () => {
+    for (const value of ["2026-10-02T00:00:00Z", "2026-2-3", "02/10/2026", "2026-02-30", ""]) {
+      expect(messageOf(dueOnSchema.safeParse(value))).toBe("Invalid due date.");
+    }
+    expect(messageOf(dueOnSchema.safeParse(20261002))).toBe("Invalid due date.");
+  });
+
+  it("rejects years outside the database range", () => {
+    expect(messageOf(dueOnSchema.safeParse("1999-12-31"))).toBe(
+      "Due dates must be between the years 2000 and 9999.",
+    );
+    expect(dueOnSchema.safeParse("0999-01-01").success).toBe(false);
+  });
+});
+
+describe("setCardDueDateSchema / setCardCompletedSchema", () => {
+  it("accepts a date or null (remove)", () => {
+    expect(
+      setCardDueDateSchema.parse({ boardId: BOARD, cardId: CARD, dueOn: "2026-10-02" }).dueOn,
+    ).toBe("2026-10-02");
+    expect(setCardDueDateSchema.parse({ boardId: BOARD, cardId: CARD, dueOn: null }).dueOn).toBe(
+      null,
+    );
+    expect(setCardDueDateSchema.safeParse({ boardId: BOARD, cardId: CARD }).success).toBe(false);
+  });
+
+  it("needs a boolean", () => {
+    expect(
+      setCardCompletedSchema.parse({ boardId: BOARD, cardId: CARD, completed: true }).completed,
+    ).toBe(true);
+    expect(
+      setCardCompletedSchema.safeParse({ boardId: BOARD, cardId: CARD, completed: "yes" }).success,
+    ).toBe(false);
+  });
+});
+
+describe("label schemas", () => {
+  const base = { boardId: BOARD, labelId: LABEL };
+
+  it("normalises the name and allows it to be empty (colour-only)", () => {
+    expect(createLabelSchema.parse({ ...base, name: "  front\n end ", color: "sky" })).toEqual({
+      ...base,
+      name: "front end",
+      color: "sky",
+    });
+    expect(updateLabelSchema.parse({ ...base, name: "   ", color: "black" }).name).toBe("");
+  });
+
+  it(`limits names to ${LABEL_NAME_MAX} characters`, () => {
+    const ok = "x".repeat(LABEL_NAME_MAX);
+    expect(updateLabelSchema.safeParse({ ...base, name: ok, color: "red" }).success).toBe(true);
+    expect(messageOf(updateLabelSchema.safeParse({ ...base, name: `${ok}x`, color: "red" }))).toBe(
+      `Label names can be at most ${LABEL_NAME_MAX} characters.`,
+    );
+  });
+
+  it("only accepts the ten label colours", () => {
+    expect(messageOf(createLabelSchema.safeParse({ ...base, name: "", color: "teal" }))).toBe(
+      "Pick a label colour.",
+    );
+    expect(createLabelSchema.safeParse({ ...base, name: "" }).success).toBe(false);
+  });
+
+  it("optionally attaches the new label to a card", () => {
+    expect(createLabelSchema.parse({ ...base, name: "", color: "red", cardId: CARD }).cardId).toBe(
+      CARD,
+    );
+    expect(
+      createLabelSchema.safeParse({ ...base, name: "", color: "red", cardId: "x" }).success,
+    ).toBe(false);
+  });
+
+  it("validates ids for delete, attach and detach", () => {
+    expect(deleteLabelSchema.safeParse(base).success).toBe(true);
+    expect(messageOf(deleteLabelSchema.safeParse({ boardId: BOARD, labelId: "x" }))).toBe(
+      "Invalid label.",
+    );
+    expect(cardLabelSchema.safeParse({ ...base, cardId: CARD }).success).toBe(true);
+    expect(cardLabelSchema.safeParse({ ...base, cardId: "x" }).success).toBe(false);
+  });
+});
+
+describe("cardAssigneeSchema", () => {
+  it("needs board, card and member ids", () => {
+    expect(
+      cardAssigneeSchema.safeParse({ boardId: BOARD, cardId: CARD, userId: USER }).success,
+    ).toBe(true);
+    expect(
+      messageOf(cardAssigneeSchema.safeParse({ boardId: BOARD, cardId: CARD, userId: "bob" })),
+    ).toBe("Invalid member.");
   });
 });

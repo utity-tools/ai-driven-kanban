@@ -60,7 +60,7 @@ export const getBoardView = cache(async (id: string): Promise<BoardView | null> 
     supabase
       .from("cards")
       .select(
-        "id, title, description, position, due_at, completed_at, archived_at, column_id, card_assignees(profile:profiles(id, display_name, avatar_url)), card_labels(board_labels(id, name, color))",
+        "id, title, description, position, due_on, completed_at, archived_at, column_id, card_assignees(profile:profiles(id, display_name, avatar_url)), card_labels(board_labels(id, name, color))",
       )
       .eq("board_id", board.id)
       .order("position", { ascending: true })

@@ -14,3 +14,9 @@ export function columnDeletionSummary(counts: { total: number; archived: number 
 export function boardDeletionSummary(counts: { columns: number; cards: number }): string {
   return `This permanently deletes the board with its ${pluralize(counts.columns, "column")} and ${pluralize(counts.cards, "card")}, archived cards included. This can't be undone.`;
 }
+
+/** What deleting a label does, for its confirmation. */
+export function labelDeletionSummary(cardCount: number): string {
+  if (cardCount === 0) return "The label isn't on any card. This can't be undone.";
+  return `This removes it from ${pluralize(cardCount, "card")}. This can't be undone.`;
+}

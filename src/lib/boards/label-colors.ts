@@ -88,3 +88,8 @@ export function labelAccessibleName({ name, color }: { name: string; color: stri
   const colour = isLabelColor(color) ? color : "Unnamed";
   return `${colour.charAt(0).toUpperCase()}${colour.slice(1)} label`;
 }
+
+/** Name of a colour for people and assistive tech, e.g. "Sky". */
+export function labelColorName(color: string): string {
+  return `${color.charAt(0).toUpperCase()}${color.slice(1)}`;
+}

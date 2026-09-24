@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/sheet";
 import { GENERIC_ERROR } from "@/lib/boards/action-result";
 import { deleteCard, restoreCard } from "@/lib/boards/actions";
-import { formatDueDate } from "@/lib/boards/due-date";
+import { formatTimestampDate } from "@/lib/boards/due-date";
 import type { ArchivedCard } from "@/lib/boards/view-model";
 
 import { useBoard } from "./board-context";
@@ -122,7 +122,9 @@ export function ArchivedPanel() {
                     </p>
                     <p className="text-xs text-muted-foreground">
                       From {columnTitles.get(card.columnId) ?? "a deleted column"} · archived{" "}
-                      <time dateTime={card.archivedAt}>{formatDueDate(card.archivedAt, now)}</time>
+                      <time dateTime={card.archivedAt}>
+                        {formatTimestampDate(card.archivedAt, now)}
+                      </time>
                     </p>
                   </div>
                   {permissions.canEdit ? (

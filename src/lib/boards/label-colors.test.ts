@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { LABEL_COLORS, isLabelColor, labelAccessibleName, labelColorClasses } from "./label-colors";
+import {
+  LABEL_COLORS,
+  isLabelColor,
+  labelAccessibleName,
+  labelColorClasses,
+  labelColorName,
+} from "./label-colors";
 
 describe("labelColorClasses", () => {
   it.each(LABEL_COLORS)("has light and dark classes for %s", (color) => {
@@ -39,5 +45,12 @@ describe("labelAccessibleName", () => {
     expect(labelAccessibleName({ name: "", color: "green" })).toBe("Green label");
     expect(labelAccessibleName({ name: "  ", color: "sky" })).toBe("Sky label");
     expect(labelAccessibleName({ name: "", color: "teal" })).toBe("Unnamed label");
+  });
+});
+
+describe("labelColorName", () => {
+  it("capitalises the colour", () => {
+    expect(labelColorName("sky")).toBe("Sky");
+    expect(labelColorName("black")).toBe("Black");
   });
 });
