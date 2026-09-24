@@ -35,6 +35,8 @@ history matter as much as features.
 | Reset local DB (re-runs migrations + seed) | `pnpm db:reset`                  |
 | New migration                              | `pnpm db:migration <name>`       |
 | Regenerate DB types                        | `pnpm db:types`                  |
+| Local Supabase URLs and status             | `pnpm db:status`                 |
+| Generate `.env.local` from local Supabase  | `pnpm env:local`                 |
 
 ## Workflow (mandatory)
 
