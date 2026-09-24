@@ -8,7 +8,8 @@ a language model proposes technical subtasks, estimates and dependencies. You re
 proposal (accept, edit or reject) before anything is saved. Blocked tasks, dependency cycles and
 bottlenecks are detected with deterministic, tested logic and surfaced in real time.
 
-> **Status:** project setup. The roadmap is below.
+> **Status:** setup complete (tooling, CI/CD, environments). Next up: v0.1.
+> Live: [ai-driven-kanban.vercel.app](https://ai-driven-kanban.vercel.app)
 
 ## Stack
 
@@ -33,14 +34,21 @@ Requirements: Node 24, pnpm, Docker (e.g. [OrbStack](https://orbstack.dev)).
 
 ```bash
 pnpm install
-pnpm dev
+pnpm db:start     # local Supabase in Docker
+pnpm env:local    # writes local Supabase values into .env.local
+pnpm dev          # http://localhost:3000
 ```
 
-| Command                       | What it does                       |
-| ----------------------------- | ---------------------------------- |
-| `pnpm lint` / `pnpm format`   | ESLint / Prettier                  |
-| `pnpm typecheck`              | Route type generation + TypeScript |
-| `pnpm test` / `pnpm test:e2e` | Vitest / Playwright                |
+Full guide, commands, environments and known issues: [docs/setup.md](docs/setup.md).
+
+## Documentation
+
+| Doc                          | What it covers                                                             |
+| ---------------------------- | -------------------------------------------------------------------------- |
+| [Setup](docs/setup.md)       | First run, commands, environments, where each variable lives, known issues |
+| [Workflow](docs/workflow.md) | Branch → PR → preview → merge, agents, enforcement layers, dependencies    |
+| [Security](docs/security.md) | Secrets inventory, rules, safeguards, leak procedure, incidents            |
+| [ADRs](docs/adr)             | Architecture decisions and why they were made                              |
 
 ## How this project is built
 
@@ -52,7 +60,8 @@ Development is AI-assisted, with guardrails:
   QA and a read-only code reviewer.
 - **Enforced workflow:** feature branches, Conventional Commits, PRs squash-merged into `main`
   with CI green. Enforced by Claude Code hooks, git hooks and branch rules, not just by convention.
-- **Decisions** are recorded as ADRs in [`docs/adr`](docs/adr).
+- **Decisions** are recorded as ADRs in [`docs/adr`](docs/adr), incidents as blameless
+  post-mortems in [`docs/incidents`](docs/incidents).
 
 ## License
 
