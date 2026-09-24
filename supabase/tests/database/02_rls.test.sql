@@ -16,6 +16,15 @@ insert into auth.users (id, email) values
   ('00000000-0000-4000-a000-00000000000e', 'e@test.local'),
   ('00000000-0000-4000-a000-00000000000f', 'v@test.local');
 
+-- Sign-up gives every user a default "My board" (see 04_onboarding). Remove them so the
+-- assertions below ("the outsider sees nothing", unscoped updates/deletes) only concern
+-- the shared board created in this file.
+delete from public.boards
+where owner_id in (
+  '00000000-0000-4000-a000-00000000000a', '00000000-0000-4000-a000-00000000000b',
+  '00000000-0000-4000-a000-00000000000e', '00000000-0000-4000-a000-00000000000f'
+);
+
 -- pgTAP keeps its state in temp tables created by plan(); let the API roles use them.
 grant usage on schema extensions to anon, authenticated;
 grant all on all tables in schema pg_temp to anon, authenticated;
