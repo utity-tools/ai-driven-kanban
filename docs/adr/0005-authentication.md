@@ -50,3 +50,4 @@ not enough to rely on confirmation emails for sign-ups.
   staging yet).
 - A failing trigger would block sign-up, so `handle_new_user` stays minimal and is covered by
   pgTAP tests.
+  Extended in [ADR 0006](0006-public-profiles.md) to create the user's profile first.
