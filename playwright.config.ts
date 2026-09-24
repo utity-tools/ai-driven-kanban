@@ -15,7 +15,11 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    // Signs the seeded user in once and saves the session for tests that only need to be signed in.
+    { name: "setup", testMatch: /.*\.setup\.ts/ },
+    { name: "chromium", use: { ...devices["Desktop Chrome"] }, dependencies: ["setup"] },
+  ],
   webServer: {
     // CI tests the production build; locally reuse a running dev server.
     // Call next directly: "pnpm start" leaves next-server running and Playwright hangs on exit.
