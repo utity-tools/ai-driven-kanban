@@ -1,0 +1,78 @@
+name: Database migrations
+
+# Staging: migrations from a PR are applied so its Vercel preview has the new schema.
+# Production: applied after merge to main, only once a prod project exists
+# (repo variable SUPABASE_PROD_PROJECT_REF) and after manual approval (environment rule).
+on:
+  pull_request:
+    # Changes to this workflow are exercised against staging too (no-op without new migrations).
+    paths: ["supabase/migrations/**", ".github/workflows/db-migrations.yml"]
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only show the migrations that would be applied to staging"
+        type: boolean
+        default: true
+
+concurrency:
+  group: db-migrations-${{ github.event_name == 'push' && 'production' || 'staging' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  staging:
+    name: Migrate staging
+    # Fork PRs have no access to secrets.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec supabase link --project-ref "$PROJECT_REF"
+      - name: Pending migrations (dry run)
+        run: pnpm exec supabase db push --dry-run
+      - name: Apply migrations
+        if: github.event_name == 'pull_request' || inputs.dry_run == false
+        run: pnpm exec supabase db push
+
+  production:
+    name: Migrate production
+    if: github.event_name == 'push' && vars.SUPABASE_PROD_PROJECT_REF != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: ${{ vars.SUPABASE_PROD_PROJECT_REF }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec supabase link --project-ref "$PROJECT_REF"
+      - name: Pending migrations (dry run)
+        run: pnpm exec supabase db push --dry-run
+      - name: Apply migrations
+        run: pnpm exec supabase db push
