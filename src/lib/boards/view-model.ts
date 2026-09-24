@@ -1,4 +1,3 @@
-import { type DueStatus, formatDueDate, getDueStatus } from "./due-date";
 import { compareByPosition, comparePositions } from "./ordering";
 
 export type BoardRole = "owner" | "editor" | "viewer";
@@ -13,7 +12,8 @@ export type CardSummary = {
   title: string;
   description: string | null;
   position: string;
-  dueAt: string | null;
+  /** Date-only due date, "YYYY-MM-DD" (see due-date.ts). */
+  dueOn: string | null;
   completedAt: string | null;
   labels: Label[];
   assignees: Person[];
@@ -49,7 +49,7 @@ export type RawBoardData = {
     title: string;
     description: string | null;
     position: string;
-    due_at: string | null;
+    due_on: string | null;
     completed_at: string | null;
     archived_at: string | null;
     card_assignees: { profile: ProfileRow | null }[];
@@ -73,12 +73,12 @@ function compareNames(a: string | null, b: string | null): number {
   return comparePositions(a.toLowerCase(), b.toLowerCase());
 }
 
-function comparePeople(a: Person, b: Person): number {
+export function comparePeople(a: Person, b: Person): number {
   return compareNames(a.displayName, b.displayName) || comparePositions(a.id, b.id);
 }
 
 /** Labels in a stable order: by name (colour-only labels last), then colour, then id. */
-function compareLabels(a: Label, b: Label): number {
+export function compareLabels(a: Label, b: Label): number {
   const an = a.name.trim() || null;
   const bn = b.name.trim() || null;
   return compareNames(an, bn) || comparePositions(a.color, b.color) || comparePositions(a.id, b.id);
@@ -115,7 +115,7 @@ export function assembleBoardView(raw: RawBoardData): BoardView {
       title: row.title,
       description: row.description,
       position: row.position,
-      dueAt: row.due_at,
+      dueOn: row.due_on,
       completedAt: row.completed_at,
       labels: row.card_labels
         .map((l) => l.board_labels)
@@ -155,27 +155,14 @@ export function assembleBoardView(raw: RawBoardData): BoardView {
 }
 
 // ---------------------------------------------------------------------------
-// Due dates and card details (computed on the server at render time)
+// Card details
 // ---------------------------------------------------------------------------
 
-export type DueInfo = {
-  status: Exclude<DueStatus, "none">;
-  /** e.g. "Oct 2" */
-  text: string;
-  /** ISO timestamp, for <time dateTime>. */
-  iso: string;
-};
-
-export function describeDue(
-  card: Pick<CardSummary, "dueAt" | "completedAt">,
-  now: Date,
-): DueInfo | null {
-  const status = getDueStatus(card, now);
-  if (status === "none" || card.dueAt === null) return null;
-  return { status, text: formatDueDate(card.dueAt, now), iso: new Date(card.dueAt).toISOString() };
-}
-
-/** Everything the card modal shows. Serialisable, so it can cross to a Client Component. */
+/**
+ * Everything the card modal shows. The due status is not computed here: it
+ * depends on the viewer's local date, which only the browser knows (see
+ * due-date.ts and useToday).
+ */
 export type CardDetail = {
   id: string;
   title: string;
@@ -186,14 +173,14 @@ export type CardDetail = {
   archivedAt: string | null;
   labels: Label[];
   assignees: Person[];
-  due: DueInfo | null;
+  dueOn: string | null;
+  completedAt: string | null;
 };
 
 function toCardDetail(
   card: CardSummary,
   columnTitle: string,
   archivedAt: string | null,
-  now: Date,
 ): CardDetail {
   return {
     id: card.id,
@@ -204,19 +191,20 @@ function toCardDetail(
     archivedAt,
     labels: card.labels,
     assignees: card.assignees,
-    due: describeDue(card, now),
+    dueOn: card.dueOn,
+    completedAt: card.completedAt,
   };
 }
 
 /** Details of every card on the board, active cards first (in board order), then archived. */
-export function buildCardDetails(view: BoardView, now: Date): CardDetail[] {
+export function buildCardDetails(view: BoardView): CardDetail[] {
   const columnTitles = new Map(view.columns.map((column) => [column.id, column.title]));
   return [
     ...view.columns.flatMap((column) =>
-      column.cards.map((card) => toCardDetail(card, column.title, null, now)),
+      column.cards.map((card) => toCardDetail(card, column.title, null)),
     ),
     ...view.archivedCards.map((card) =>
-      toCardDetail(card, columnTitles.get(card.columnId) ?? "", card.archivedAt, now),
+      toCardDetail(card, columnTitles.get(card.columnId) ?? "", card.archivedAt),
     ),
   ];
 }

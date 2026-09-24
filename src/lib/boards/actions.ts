@@ -16,17 +16,24 @@ import {
 } from "./action-result";
 import { positionAfterLast } from "./positions";
 import {
+  cardAssigneeSchema,
+  cardLabelSchema,
   cardRefSchema,
   createBoardSchema,
+  createLabelSchema,
   createCardSchema,
   createColumnSchema,
   deleteBoardSchema,
   deleteColumnSchema,
+  deleteLabelSchema,
   firstIssueMessage,
   renameBoardSchema,
   renameCardSchema,
   renameColumnSchema,
+  setCardCompletedSchema,
+  setCardDueDateSchema,
   updateCardDescriptionSchema,
+  updateLabelSchema,
 } from "./schemas";
 
 /*
@@ -288,5 +295,166 @@ export async function deleteCard(input: unknown): Promise<ActionResult> {
       data,
       "Only archived cards can be deleted, and only by the board's owners and editors.",
     );
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Card details: due date
+// ---------------------------------------------------------------------------
+
+/**
+ * Sets (or with `null` removes) a card's date-only due date. Removing the date
+ * also clears the "done" mark: done belongs to the date (it is the checkbox
+ * next to it), and a stale mark would make a date set later show up as done.
+ * Changing the date keeps the mark.
+ */
+export async function setCardDueDate(input: unknown): Promise<ActionResult> {
+  return run(setCardDueDateSchema, input, async ({ boardId, cardId, dueOn }, supabase) => {
+    const { data, error } = await supabase
+      .from("cards")
+      .update(dueOn === null ? { due_on: null, completed_at: null } : { due_on: dueOn })
+      .eq("id", cardId)
+      .eq("board_id", boardId)
+      .select("id");
+    if (error) {
+      return failure(
+        friendlyDbError(error, { "23514": "Due dates must be between the years 2000 and 9999." }),
+      );
+    }
+    return affected(data);
+  });
+}
+
+/** Marks a card's due date as done (completed_at = now) or not done. Needs a due date. */
+export async function setCardCompleted(input: unknown): Promise<ActionResult> {
+  return run(setCardCompletedSchema, input, async ({ boardId, cardId, completed }, supabase) => {
+    const { data, error } = await supabase
+      .from("cards")
+      .update({ completed_at: completed ? new Date().toISOString() : null })
+      .eq("id", cardId)
+      .eq("board_id", boardId)
+      .not("due_on", "is", null)
+      .select("id");
+    if (error) return failure(friendlyDbError(error));
+    return affected(data, "Set a due date before marking it as done.");
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Card details: labels
+// ---------------------------------------------------------------------------
+
+/** Creates a board label; with `cardId`, also attaches it to that card. */
+export async function createLabel(input: unknown): Promise<ActionResult> {
+  return run(
+    createLabelSchema,
+    input,
+    async ({ boardId, labelId, name, color, cardId }, supabase) => {
+      const { error } = await supabase
+        .from("board_labels")
+        .insert({ id: labelId, board_id: boardId, name, color });
+      if (error) return failure(friendlyDbError(error));
+      if (!cardId) return { ok: true };
+
+      const attached = await supabase
+        .from("card_labels")
+        .insert({ card_id: cardId, label_id: labelId, board_id: boardId });
+      if (attached.error) {
+        return failure("The label was created, but it couldn't be added to this card.");
+      }
+      return { ok: true };
+    },
+  );
+}
+
+export async function updateLabel(input: unknown): Promise<ActionResult> {
+  return run(updateLabelSchema, input, async ({ boardId, labelId, name, color }, supabase) => {
+    const { data, error } = await supabase
+      .from("board_labels")
+      .update({ name, color })
+      .eq("id", labelId)
+      .eq("board_id", boardId)
+      .select("id");
+    if (error) return failure(friendlyDbError(error));
+    return affected(data);
+  });
+}
+
+/** Deletes a board label; it disappears from every card (FK cascade). */
+export async function deleteLabel(input: unknown): Promise<ActionResult> {
+  return run(deleteLabelSchema, input, async ({ boardId, labelId }, supabase) => {
+    const { data, error } = await supabase
+      .from("board_labels")
+      .delete()
+      .eq("id", labelId)
+      .eq("board_id", boardId)
+      .select("id");
+    if (error) return failure(friendlyDbError(error));
+    return affected(data);
+  });
+}
+
+/**
+ * Attaches a label to a card. Idempotent: attaching a label the card already
+ * has is a success. The composite foreign keys reject a label or card from
+ * another board.
+ */
+export async function attachLabel(input: unknown): Promise<ActionResult> {
+  return run(cardLabelSchema, input, async ({ boardId, cardId, labelId }, supabase) => {
+    const { error } = await supabase
+      .from("card_labels")
+      .insert({ card_id: cardId, label_id: labelId, board_id: boardId });
+    if (error && error.code !== "23505") return failure(friendlyDbError(error));
+    return { ok: true };
+  });
+}
+
+export async function detachLabel(input: unknown): Promise<ActionResult> {
+  return run(cardLabelSchema, input, async ({ boardId, cardId, labelId }, supabase) => {
+    const { data, error } = await supabase
+      .from("card_labels")
+      .delete()
+      .eq("card_id", cardId)
+      .eq("label_id", labelId)
+      .eq("board_id", boardId)
+      .select("card_id");
+    if (error) return failure(friendlyDbError(error));
+    return affected(data);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Card details: assignees
+// ---------------------------------------------------------------------------
+
+/**
+ * Assigns a board member to a card. Idempotent like attachLabel; only board
+ * members can be assigned (enforced by a foreign key to board_members).
+ */
+export async function assignMember(input: unknown): Promise<ActionResult> {
+  return run(cardAssigneeSchema, input, async ({ boardId, cardId, userId }, supabase) => {
+    const { error } = await supabase
+      .from("card_assignees")
+      .insert({ card_id: cardId, user_id: userId, board_id: boardId });
+    if (error && error.code !== "23505") {
+      return failure(
+        friendlyDbError(error, { "23503": "Only members of this board can be assigned." }),
+      );
+    }
+    return { ok: true };
+  });
+}
+
+export async function unassignMember(input: unknown): Promise<ActionResult> {
+  return run(cardAssigneeSchema, input, async ({ boardId, cardId, userId }, supabase) => {
+    const { data, error } = await supabase
+      .from("card_assignees")
+      .delete()
+      .eq("card_id", cardId)
+      .eq("user_id", userId)
+      .eq("board_id", boardId)
+      .select("card_id");
+    if (error) return failure(friendlyDbError(error));
+    return affected(data);
   });
 }

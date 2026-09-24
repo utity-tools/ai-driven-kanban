@@ -13,10 +13,14 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { renameCard } from "@/lib/boards/actions";
+import { describeDue } from "@/lib/boards/due-date";
 import { CARD_TITLE_MAX } from "@/lib/boards/schemas";
 import type { CardDetail } from "@/lib/boards/view-model";
 
 import { useBoard } from "./board-context";
+import { DoneCheckbox, DueDatePicker } from "./card-due-date";
+import { LabelPicker } from "./card-label-picker";
+import { MemberPicker } from "./card-member-picker";
 import { DescriptionEditor } from "./description-editor";
 import { DueBadge } from "./due-badge";
 import { InlineEdit } from "./inline-edit";
@@ -32,15 +36,16 @@ type Props = {
 
 /**
  * Content of the card modal. Must render inside a Dialog. Owners and editors
- * can rename the card, edit its description and archive it; archived cards
- * are read-only until restored. Labels, due date and assignees are read-only
- * for now.
+ * can rename the card, edit its description, labels, members and due date
+ * (the action row), and archive it; archived cards and viewers get a
+ * read-only view.
  */
 export function CardDetails({ card, onArchive, onRestore }: Props) {
-  const { boardId, permissions, mutate } = useBoard();
+  const { boardId, permissions, today, serverToday, mutate } = useBoard();
   const archived = card.archivedAt !== null;
   const editable = permissions.canEdit && !archived;
   const description = card.description?.trim();
+  const due = describeDue(card, today, serverToday);
 
   return (
     <>
@@ -84,15 +89,26 @@ export function CardDetails({ card, onArchive, onRestore }: Props) {
         </div>
       ) : null}
 
+      {editable ? (
+        <div role="group" aria-label="Card details" className="flex flex-wrap gap-2">
+          <LabelPicker card={card} />
+          <MemberPicker card={card} />
+          <DueDatePicker card={card} />
+        </div>
+      ) : null}
+
       <div className="grid gap-4 sm:grid-cols-2">
         {card.labels.length > 0 ? (
           <Field icon={<TagIcon />} title="Labels">
             <LabelList labels={card.labels} />
           </Field>
         ) : null}
-        {card.due ? (
+        {due ? (
           <Field icon={<CalendarIcon />} title="Due date">
-            <DueBadge due={card.due} showStatus className="w-fit" />
+            <div className="flex flex-wrap items-center gap-3">
+              <DueBadge due={due} showStatus className="w-fit" />
+              {editable ? <DoneCheckbox card={card} /> : null}
+            </div>
           </Field>
         ) : null}
         {card.assignees.length > 0 ? (

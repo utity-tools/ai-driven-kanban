@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  type RawBoardData,
-  assembleBoardView,
-  buildCardDetails,
-  cardCount,
-  describeDue,
-} from "./view-model";
+import { type RawBoardData, assembleBoardView, buildCardDetails, cardCount } from "./view-model";
 
 const alice = { id: "u-alice", display_name: "Alice Martin", avatar_url: null };
 const bob = {
@@ -26,7 +20,7 @@ function card(
   return {
     title: overrides.id,
     description: null,
-    due_at: null,
+    due_on: null,
     completed_at: null,
     archived_at: null,
     card_assignees: [],
@@ -166,38 +160,28 @@ describe("assembleBoardView", () => {
   });
 });
 
-describe("describeDue", () => {
-  const now = new Date("2026-10-01T12:00:00Z");
-
-  it("is null without a due date", () => {
-    expect(describeDue({ dueAt: null, completedAt: null }, now)).toBeNull();
-  });
-
-  it("returns status, short text and ISO date", () => {
-    expect(describeDue({ dueAt: "2026-09-29T12:00:00+00:00", completedAt: null }, now)).toEqual({
-      status: "overdue",
-      text: "Sep 29",
-      iso: "2026-09-29T12:00:00.000Z",
-    });
-  });
-});
-
 describe("buildCardDetails", () => {
-  it("adds the column title and due info to every card", () => {
+  it("adds the column title and the raw due fields to every card", () => {
     const view = assembleBoardView(
       raw({
         cards: [
-          card({ id: "c1", column_id: "col-todo", position: "a0", due_at: "2026-10-02T00:00:00Z" }),
+          card({
+            id: "c1",
+            column_id: "col-todo",
+            position: "a0",
+            due_on: "2026-10-02",
+            completed_at: "2026-10-01T08:00:00Z",
+          }),
           card({ id: "d1", column_id: "col-done", position: "a0" }),
         ],
       }),
     );
 
-    const details = buildCardDetails(view, new Date("2026-10-01T12:00:00Z"));
+    const details = buildCardDetails(view);
 
-    expect(details.map((d) => [d.id, d.columnTitle, d.due?.status ?? null])).toEqual([
-      ["c1", "To do", "due-soon"],
-      ["d1", "Done", null],
+    expect(details.map((d) => [d.id, d.columnTitle, d.dueOn, d.completedAt])).toEqual([
+      ["c1", "To do", "2026-10-02", "2026-10-01T08:00:00Z"],
+      ["d1", "Done", null, null],
     ]);
   });
 
@@ -216,7 +200,7 @@ describe("buildCardDetails", () => {
       }),
     );
 
-    const details = buildCardDetails(view, new Date("2026-10-01T12:00:00Z"));
+    const details = buildCardDetails(view);
 
     expect(details.map((d) => [d.id, d.columnId, d.columnTitle, d.archivedAt])).toEqual([
       ["c1", "col-todo", "To do", null],

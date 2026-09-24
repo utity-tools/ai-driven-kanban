@@ -1,6 +1,7 @@
 import { AlignLeftIcon } from "lucide-react";
 
-import type { CardSummary, DueInfo } from "@/lib/boards/view-model";
+import type { DueInfo } from "@/lib/boards/due-date";
+import type { CardSummary } from "@/lib/boards/view-model";
 
 import { CardLink } from "./card-link";
 import { DueBadge } from "./due-badge";

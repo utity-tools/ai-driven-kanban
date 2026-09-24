@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { boardDeletionSummary, columnDeletionSummary, pluralize } from "./copy";
+import {
+  boardDeletionSummary,
+  columnDeletionSummary,
+  labelDeletionSummary,
+  pluralize,
+} from "./copy";
 
 describe("pluralize", () => {
   it("uses the singular only for exactly one", () => {
@@ -32,5 +37,13 @@ describe("boardDeletionSummary", () => {
     expect(boardDeletionSummary({ columns: 1, cards: 11 })).toBe(
       "This permanently deletes the board with its 1 column and 11 cards, archived cards included. This can't be undone.",
     );
+  });
+});
+
+describe("labelDeletionSummary", () => {
+  it("says how many cards lose the label", () => {
+    expect(labelDeletionSummary(0)).toBe("The label isn't on any card. This can't be undone.");
+    expect(labelDeletionSummary(1)).toBe("This removes it from 1 card. This can't be undone.");
+    expect(labelDeletionSummary(3)).toBe("This removes it from 3 cards. This can't be undone.");
   });
 });
