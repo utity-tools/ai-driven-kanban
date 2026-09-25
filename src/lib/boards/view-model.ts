@@ -1,3 +1,5 @@
+import { type Subtask, type SubtaskRow, toSubtasks } from "@/lib/subtasks/subtask";
+
 import { compareByPosition, comparePositions } from "./ordering";
 
 export type BoardRole = "owner" | "editor" | "viewer";
@@ -17,6 +19,8 @@ export type CardSummary = {
   completedAt: string | null;
   labels: Label[];
   assignees: Person[];
+  /** The card's checklist, in order. */
+  subtasks: Subtask[];
 };
 
 export type ColumnView = { id: string; title: string; position: string; cards: CardSummary[] };
@@ -54,6 +58,7 @@ export type RawBoardData = {
     archived_at: string | null;
     card_assignees: { profile: ProfileRow | null }[];
     card_labels: { board_labels: LabelRow | null }[];
+    card_subtasks: SubtaskRow[];
   }[];
   labels: LabelRow[];
   members: { role: BoardRole; profile: ProfileRow | null }[];
@@ -127,6 +132,7 @@ export function assembleBoardView(raw: RawBoardData): BoardView {
         .filter(isPresent)
         .map(toPerson)
         .sort(comparePeople),
+      subtasks: toSubtasks(row.card_subtasks),
     };
     if (row.archived_at === null) bucket.push(card);
     else archivedCards.push({ ...card, archivedAt: row.archived_at });
@@ -175,6 +181,7 @@ export type CardDetail = {
   assignees: Person[];
   dueOn: string | null;
   completedAt: string | null;
+  subtasks: Subtask[];
 };
 
 function toCardDetail(
@@ -193,6 +200,7 @@ function toCardDetail(
     assignees: card.assignees,
     dueOn: card.dueOn,
     completedAt: card.completedAt,
+    subtasks: card.subtasks,
   };
 }
 

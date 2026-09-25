@@ -18,6 +18,7 @@ import { type CardDetail, buildCardDetails } from "@/lib/boards/view-model";
 
 import { useBoard } from "./board-context";
 import { CardDetails } from "./card-details";
+import { isSubtaskDragActive } from "./sortable-subtask-list";
 
 /**
  * The card modal. Its open state IS the URL (`?card=<id>`), so reload, share
@@ -99,8 +100,14 @@ export function CardDialog() {
   return (
     <Dialog
       open={cardId !== null}
-      onOpenChange={(open) => {
-        if (!open) close();
+      onOpenChange={(open, details) => {
+        if (open) return;
+        // Escape while dragging a subtask only cancels the drag.
+        if (details.reason === "escape-key" && isSubtaskDragActive()) {
+          details.cancel();
+          return;
+        }
+        close();
       }}
     >
       <DialogContent

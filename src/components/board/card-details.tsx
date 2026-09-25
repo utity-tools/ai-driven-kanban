@@ -5,6 +5,7 @@ import {
   ArchiveIcon,
   ArchiveRestoreIcon,
   CalendarIcon,
+  ListChecksIcon,
   TagIcon,
   UsersIcon,
 } from "lucide-react";
@@ -19,6 +20,7 @@ import type { CardDetail } from "@/lib/boards/view-model";
 
 import { useBoard } from "./board-context";
 import { DoneCheckbox, DueDatePicker } from "./card-due-date";
+import { CardSubtasks } from "./card-subtasks";
 import { LabelPicker } from "./card-label-picker";
 import { MemberPicker } from "./card-member-picker";
 import { DescriptionEditor } from "./description-editor";
@@ -37,7 +39,7 @@ type Props = {
 /**
  * Content of the card modal. Must render inside a Dialog. Owners and editors
  * can rename the card, edit its description, labels, members and due date
- * (the action row), and archive it; archived cards and viewers get a
+ * (the action row), manage its subtasks, and archive it; archived cards and viewers get a
  * read-only view.
  */
 export function CardDetails({ card, onArchive, onRestore }: Props) {
@@ -134,6 +136,12 @@ export function CardDetails({ card, onArchive, onRestore }: Props) {
           <p className="text-sm text-muted-foreground">No description.</p>
         )}
       </Field>
+
+      {editable || card.subtasks.length > 0 ? (
+        <Field icon={<ListChecksIcon />} title="Subtasks">
+          <CardSubtasks card={card} editable={editable} />
+        </Field>
+      ) : null}
 
       {editable ? (
         <div className="flex justify-end border-t pt-4">
