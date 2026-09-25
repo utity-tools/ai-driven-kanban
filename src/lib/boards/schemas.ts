@@ -19,7 +19,8 @@ export function normalizeTitle(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function title(noun: string, max: number) {
+/** A required single-line title (see normalizeTitle), e.g. `titleSchema("card", 200)`. */
+export function titleSchema(noun: string, max: number) {
   return z
     .string({ error: `Enter a ${noun} title.` })
     .transform(normalizeTitle)
@@ -37,9 +38,9 @@ function capitalize(value: string): string {
 
 const id = (noun: string) => z.uuid({ error: `Invalid ${noun}.` });
 
-export const boardTitleSchema = title("board", BOARD_TITLE_MAX);
-export const columnTitleSchema = title("column", COLUMN_TITLE_MAX);
-export const cardTitleSchema = title("card", CARD_TITLE_MAX);
+export const boardTitleSchema = titleSchema("board", BOARD_TITLE_MAX);
+export const columnTitleSchema = titleSchema("column", COLUMN_TITLE_MAX);
+export const cardTitleSchema = titleSchema("card", CARD_TITLE_MAX);
 
 /** Markdown. Surrounding whitespace is trimmed; empty means "no description" (null). */
 export const descriptionSchema = z
