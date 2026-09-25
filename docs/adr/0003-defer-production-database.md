@@ -2,6 +2,8 @@
 
 - **Status:** accepted
 - **Date:** 2026-09-24
+- **Implemented:** 2026-09-25, at v0.1. The initial migration of `kanban-prod` needs a manual
+  workflow run: see [ADR 0010](0010-manual-production-migration-runs.md).
 
 ## Context
 

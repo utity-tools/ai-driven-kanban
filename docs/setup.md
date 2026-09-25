@@ -60,7 +60,7 @@ Stop the database when you are not using it: `pnpm db:stop`.
  local                  CI                      preview (per PR)          production
  ─────                  ──                      ────────────────          ──────────
  pnpm dev               GitHub Actions          Vercel preview URL        ai-driven-kanban.vercel.app
- Supabase in Docker     ephemeral Postgres      Supabase kanban-staging   no database until v0.1
+ Supabase in Docker     ephemeral Postgres      Supabase kanban-staging   Supabase kanban-prod
 ```
 
 | Environment | App                                                            | Database                                                                        | Schema changes arrive via                                     |
@@ -68,38 +68,52 @@ Stop the database when you are not using it: `pnpm db:stop`.
 | Local       | `pnpm dev`                                                     | Supabase local (Docker)                                                         | `pnpm db:reset`                                               |
 | CI          | GitHub Actions                                                 | ephemeral local Supabase: Postgres for DB tests; Postgres + Auth + REST for E2E | migrations + seed on every run                                |
 | Preview     | Vercel, one deployment per PR, private (Vercel Authentication) | `kanban-staging` (eu-west-1)                                                    | `db-migrations.yml` on PRs that change `supabase/migrations/` |
-| Production  | Vercel, deployed on every merge to `main`                      | not created yet ([ADR 0003](adr/0003-defer-production-database.md))             | `db-migrations.yml` after merge, with manual approval         |
+| Production  | Vercel, deployed on every merge to `main`                      | `kanban-prod` (eu-west-1)                                                       | `db-migrations.yml` after merge, with manual approval         |
 
 ### Where each variable lives
 
-| Name                                           | Where                                       | Kind                      | Used by                        |
-| ---------------------------------------------- | ------------------------------------------- | ------------------------- | ------------------------------ |
-| `NEXT_PUBLIC_SUPABASE_URL`                     | `.env.local` · Vercel **Preview**           | public                    | app                            |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`         | `.env.local` · Vercel **Preview**           | public (protected by RLS) | app                            |
-| `SUPABASE_SECRET_KEY`                          | `.env.local` only                           | **secret**, bypasses RLS  | server code, when needed       |
-| `VERCEL_OIDC_TOKEN`                            | `.env.local` (written by `vercel env pull`) | secret, short-lived       | Vercel services from local dev |
-| `SUPABASE_DB_PASSWORD`                         | GitHub environment `staging`                | **secret**                | migrations workflow            |
-| `SUPABASE_PROJECT_REF`, `SUPABASE_POOLER_HOST` | GitHub environment `staging`                | variables                 | migrations workflow            |
-| `PRODUCTION_DB_ENABLED`                        | GitHub repo variable (not set yet)          | variable                  | turns on production migrations |
+| Name                                           | Where                                             | Kind                      | Used by                        |
+| ---------------------------------------------- | ------------------------------------------------- | ------------------------- | ------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`                     | `.env.local` · Vercel **Preview**, **Production** | public                    | app                            |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`         | `.env.local` · Vercel **Preview**, **Production** | public (protected by RLS) | app                            |
+| `SUPABASE_SECRET_KEY`                          | `.env.local` only                                 | **secret**, bypasses RLS  | server code, when needed       |
+| `VERCEL_OIDC_TOKEN`                            | `.env.local` (written by `vercel env pull`)       | secret, short-lived       | Vercel services from local dev |
+| `SUPABASE_DB_PASSWORD`                         | GitHub environments `staging`, `production`       | **secret**                | migrations workflow            |
+| `SUPABASE_PROJECT_REF`, `SUPABASE_POOLER_HOST` | GitHub environments `staging`, `production`       | variables                 | migrations workflow            |
+| `PRODUCTION_DB_ENABLED`                        | GitHub repo variable, `true` since v0.1           | variable                  | turns on production migrations |
 
 `.env.example` documents the app variables. Only that file is committed.
 
-### Enabling production (v0.1)
+### Setting up production (v0.1)
 
-Summary of [ADR 0003](adr/0003-defer-production-database.md):
+[ADR 0003](adr/0003-defer-production-database.md) deferred the production database until v0.1.
+Setting it up, in order:
 
-1. Create the Supabase project `kanban-prod` (same region, eu-west-1).
+1. Create the Supabase project `kanban-prod` (same region as staging, eu-west-1).
 2. GitHub environment `production`: variables `SUPABASE_PROJECT_REF`, `SUPABASE_POOLER_HOST`
-   (Connect → Session pooler) and secret `SUPABASE_DB_PASSWORD`.
+   (Connect → Session pooler) and secret `SUPABASE_DB_PASSWORD`. Keep the required reviewer rule.
 3. GitHub repo variable `PRODUCTION_DB_ENABLED=true`.
-4. Vercel **Production** env: `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` of `kanban-prod`.
+4. Apply every existing migration: **Actions → Database migrations → Run workflow** with
+   `target=production`, first with `dry_run` on (lists the migrations), then off. Approve the
+   `production` environment each time. The push trigger only fires on new migrations, hence the
+   manual run ([ADR 0010](adr/0010-manual-production-migration-runs.md)). The seed is never applied.
+5. Auth settings on `kanban-prod`, see [Hosted Auth settings](#hosted-auth-settings-every-supabase-cloud-project).
+   Production uses its own GitHub OAuth App.
+6. Vercel **Production** env: `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   of `kanban-prod`, then redeploy production (`NEXT_PUBLIC_*` values are inlined at build time).
+7. Smoke test on production: demo mode, email sign-up, GitHub sign-in, drag and drop.
 
 ### Hosted Auth settings (every Supabase cloud project)
 
 Local projects read these from `supabase/config.toml`; hosted projects need them set in the dashboard:
 
 - **Authentication → Sign In / Providers → Allow anonymous sign-ins: on**. Demo mode depends on it ([ADR 0009](adr/0009-demo-mode-with-anonymous-users.md)).
-- GitHub provider and redirect URLs, as described in [ADR 0005](adr/0005-authentication.md).
+- **Authentication → URL Configuration:** Site URL is the app's URL (production:
+  `https://ai-driven-kanban.vercel.app`), and every URL the app redirects back to is in the
+  redirect URLs allow-list ([ADR 0005](adr/0005-authentication.md)).
+- **GitHub provider:** one GitHub OAuth App per Supabase project, with callback
+  `https://<project-ref>.supabase.co/auth/v1/callback`; paste its client ID and secret in
+  **Authentication → Sign In / Providers → GitHub**.
 
 ## Known issues and fixes
 

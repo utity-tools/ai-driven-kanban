@@ -24,6 +24,8 @@ The rules are not only written down: each layer below enforces them.
    has migrations, `db-migrations.yml` applies them to staging.
 5. **Merge:** you review the preview and click **Squash and merge**. The PR title becomes the
    commit on `main`. The branch is deleted and Vercel deploys to production.
+   If the PR has migrations, `db-migrations.yml` waits for your approval of the `production`
+   environment and then applies them to `kanban-prod`.
 6. **Sync locally:**
    ```bash
    git switch main && git pull && git branch -d <branch>
