@@ -7,7 +7,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(66);
+select plan(69);
 
 -- ---------------------------------------------------------------------------
 -- Schema
@@ -171,10 +171,16 @@ select throws_ok(
 select set_config('request.jwt.claims', '{"sub": "00000000-0000-4000-a000-000000000902", "role": "authenticated"}', true);
 
 select lives_ok(
-  $$ insert into public.card_subtasks (id, board_id, card_id, title, estimate, position, source)
+  $$ insert into public.card_subtasks (id, board_id, card_id, title, estimate, position)
      values ('00000000-0000-4000-f000-000000000902', current_setting('test.board1')::uuid,
-             '00000000-0000-4000-d000-00000000090a', 'Accepted AI proposal', 5, 'a1', 'ai') $$,
-  'editor creates a subtask accepted from an AI proposal, with an estimate'
+             '00000000-0000-4000-d000-00000000090a', 'Estimated subtask', 5, 'a1') $$,
+  'editor creates a subtask with an estimate'
+);
+select throws_ok(
+  $$ insert into public.card_subtasks (board_id, card_id, title, position, source)
+     values (current_setting('test.board1')::uuid, '00000000-0000-4000-d000-00000000090a', 'Forged', 'a2', 'ai') $$,
+  '42501', null,
+  'clients cannot insert source ai: only the accept-proposal flow writes it'
 );
 
 select throws_ok(
@@ -268,9 +274,10 @@ select throws_ok(
 select throws_ok(
   $$ insert into public.card_subtasks (board_id, card_id, title, position, source)
      values (current_setting('test.board1')::uuid, '00000000-0000-4000-d000-00000000090a', 'Bot', 'a3', 'robot') $$,
-  '23514', null,
-  'source must be manual or ai'
+  '42501', null,
+  'clients cannot insert any source other than manual'
 );
+select col_has_check('public', 'card_subtasks', 'source', 'source is limited to manual or ai by a check');
 
 -- ---------------------------------------------------------------------------
 -- Viewer: read only
@@ -350,6 +357,15 @@ select throws_ok(
   '23514', 'A card can have at most 100 subtasks',
   'the 101st subtask of a card is rejected'
 );
+select set_config('request.jwt.claims', '{"sub": "00000000-0000-4000-a000-000000000903", "role": "authenticated"}', true);
+select throws_ok(
+  $$ insert into public.card_subtasks (board_id, card_id, title, position)
+     values (current_setting('test.board1')::uuid, '00000000-0000-4000-d000-00000000090c', 'Viewer', 'b1') $$,
+  '42501', null,
+  'a viewer on a full card gets the permission error, not the limit'
+);
+select set_config('request.jwt.claims', '{"sub": "00000000-0000-4000-a000-000000000902", "role": "authenticated"}', true);
+
 select lives_ok(
   $$ delete from public.card_subtasks
      where card_id = '00000000-0000-4000-d000-00000000090c' and position = 'a100';

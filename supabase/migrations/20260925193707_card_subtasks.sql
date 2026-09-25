@@ -20,8 +20,11 @@
 --     subtask inserts on the same card only (it does not conflict with the FK's KEY SHARE
 --     lock, nor with inserts on other cards). In READ COMMITTED the COUNT that follows takes
 --     a fresh snapshot, so it sees the rows committed by the transaction it waited for.
---   * The lock is subject to the caller's RLS: a non-editor finds no card to lock, the count
---     is irrelevant, and the INSERT policy rejects the row right after (42501).
+--   * The lock is subject to the caller's RLS (FOR UPDATE applies the cards UPDATE policy):
+--     a non-editor finds no card to lock, the trigger skips the count, and the INSERT policy
+--     rejects the row right after (42501) rather than reporting the limit.
+--   * `source`: clients can only insert 'manual' (INSERT policy). 'ai' will be written only by
+--     the server-side flow that accepts an AI proposal, so acceptance metrics cannot be forged.
 --   * Rows inserted earlier in the same statement are visible to the trigger, so a single
 --     multi-row INSERT cannot slip past the limit either.
 --   * Error: 23514 (check_violation), like the table's CHECK constraints.
@@ -61,7 +64,8 @@ comment on column public.card_subtasks.position is
   'Fractional-indexing key (base62, COLLATE "C"); order within the card, ties broken by id.';
 comment on column public.card_subtasks.completed_at is 'When the subtask was checked; null = not done.';
 comment on column public.card_subtasks.source is
-  'Who proposed it: manual (typed by a user) or ai (an accepted AI proposal). Not updatable.';
+  'Who proposed it: manual (typed by a user) or ai (an accepted AI proposal). Clients can '
+  'only insert manual; not updatable.';
 comment on column public.card_subtasks.created_by is 'User who created (or accepted) the subtask.';
 
 -- Hot path: render a card's checklist in order. Also serves the composite FK's cascade
@@ -92,6 +96,12 @@ begin
   from public.cards c
   where c.id = new.card_id
   for no key update;
+
+  -- Not writable by the caller (or no such card): let RLS or the FK reject the row with
+  -- the right error instead of reporting the limit.
+  if not found then
+    return new;
+  end if;
 
   if (select count(*) from public.card_subtasks s where s.card_id = new.card_id) >= 100 then
     raise exception 'A card can have at most 100 subtasks'
@@ -143,6 +153,9 @@ create policy "card_subtasks: owners and editors can create"
   with check (
     public.has_board_role(board_id, '{owner,editor}')
     and created_by = (select auth.uid())
+    -- Clients can only add manual subtasks: 'ai' is written by the server-side flow that
+    -- accepts an AI proposal (v0.2 delivery 4), so acceptance metrics cannot be forged.
+    and source = 'manual'
   );
 
 create policy "card_subtasks: owners and editors can update"
