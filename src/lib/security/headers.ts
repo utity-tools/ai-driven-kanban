@@ -1,9 +1,10 @@
 /**
- * HTTP security headers sent on every route (wired in `next.config.ts`).
+ * HTTP security headers.
  *
- * The CSP is deliberately partial: it covers framing, plugins, `<base>` and form
- * targets, but not `script-src`/`style-src`. A strict nonce-based script policy
- * needs dynamic rendering everywhere and is deferred (ADR 0011).
+ * `next.config.ts` sends the static headers on every route, static assets included, with a
+ * CSP that needs no nonce. The proxy replaces that CSP on rendered routes with one that adds a
+ * nonce-based `script-src` (ADR 0012). `style-src` stays open: Tailwind, Radix and dnd-kit set
+ * inline styles.
  */
 
 export type SecurityHeader = { key: string; value: string };
@@ -23,14 +24,41 @@ function formActionSources(supabaseUrl: string | undefined): string[] {
   return sources;
 }
 
-export function contentSecurityPolicy(supabaseUrl: string | undefined): string {
+export type ScriptPolicy = {
+  /** Per-request nonce; Next.js reads it from the request's CSP and adds it to its scripts. */
+  nonce: string;
+  /** React uses `eval` in development to rebuild server error stacks. */
+  isDev: boolean;
+};
+
+/**
+ * Only scripts carrying the nonce run, plus the scripts they load (`'strict-dynamic'`).
+ * `'self'` is ignored by browsers that support `'strict-dynamic'` and is a fallback for older ones.
+ */
+function scriptSources({ nonce, isDev }: ScriptPolicy): string[] {
+  const sources = ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'"];
+  if (isDev) sources.push("'unsafe-eval'");
+  return sources;
+}
+
+export function contentSecurityPolicy(
+  supabaseUrl: string | undefined,
+  scripts?: ScriptPolicy,
+): string {
   const directives = [
     "frame-ancestors 'none'",
     "object-src 'none'",
     "base-uri 'self'",
     `form-action ${formActionSources(supabaseUrl).join(" ")}`,
   ];
+  if (scripts) directives.push(`script-src ${scriptSources(scripts).join(" ")}`);
   return directives.join("; ");
+}
+
+/** A fresh, unguessable nonce: 128 random bits, base64-encoded. */
+export function createNonce(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return btoa(String.fromCharCode(...bytes));
 }
 
 export function securityHeaders(supabaseUrl: string | undefined): SecurityHeader[] {

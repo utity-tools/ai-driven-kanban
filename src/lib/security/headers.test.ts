@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { contentSecurityPolicy, securityHeaders } from "./headers";
+import { contentSecurityPolicy, createNonce, securityHeaders } from "./headers";
 
 describe("contentSecurityPolicy", () => {
   it("forbids framing, plugins and foreign <base> URLs", () => {
@@ -24,9 +24,37 @@ describe("contentSecurityPolicy", () => {
     expect(contentSecurityPolicy(url)).toMatch(/form-action 'self' https:\/\/github\.com$/);
   });
 
-  it("does not restrict scripts or styles yet (ADR 0011)", () => {
+  it("leaves scripts unrestricted without a nonce (static assets, next.config.ts)", () => {
     const csp = contentSecurityPolicy("https://abc.supabase.co");
     expect(csp).not.toMatch(/script-src|style-src|default-src/);
+  });
+
+  it("allows only nonced scripts and what they load when given a nonce", () => {
+    const csp = contentSecurityPolicy("https://abc.supabase.co", { nonce: "abc123", isDev: false });
+    expect(csp).toMatch(/; script-src 'self' 'nonce-abc123' 'strict-dynamic'$/);
+    expect(csp).not.toContain("unsafe");
+  });
+
+  it("allows eval only in development", () => {
+    const csp = contentSecurityPolicy(undefined, { nonce: "abc123", isDev: true });
+    expect(csp).toContain("'strict-dynamic' 'unsafe-eval'");
+  });
+
+  it("never restricts styles: Tailwind, Radix and dnd-kit use inline styles", () => {
+    const csp = contentSecurityPolicy(undefined, { nonce: "abc123", isDev: false });
+    expect(csp).not.toMatch(/style-src|default-src/);
+  });
+});
+
+describe("createNonce", () => {
+  it("returns 128 random bits as base64", () => {
+    const nonce = createNonce();
+    expect(nonce).toMatch(/^[A-Za-z0-9+/]{22}==$/);
+    expect(atob(nonce)).toHaveLength(16);
+  });
+
+  it("is different on every call", () => {
+    expect(createNonce()).not.toBe(createNonce());
   });
 });
 
