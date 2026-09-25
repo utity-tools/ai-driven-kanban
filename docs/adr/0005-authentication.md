@@ -23,7 +23,7 @@ not enough to rely on confirmation emails for sign-ups.
   SMTP provider is configured.
 - **Default board on sign-up:** a trigger on `auth.users` (`handle_new_user`) creates "My board"
   with To do / In progress / Done for every non-anonymous user. Anonymous users are left to demo
-  mode.
+  mode ([ADR 0009](0009-demo-mode-with-anonymous-users.md) seeds their demo board in the same trigger).
 - **Sessions:** `@supabase/ssr` with cookies.
   - `src/proxy.ts` (Next 16's replacement for `middleware.ts`) refreshes the session and
     redirects between public and protected routes.
