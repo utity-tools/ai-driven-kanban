@@ -8,8 +8,9 @@ a language model proposes technical subtasks, estimates and dependencies. You re
 proposal (accept, edit or reject) before anything is saved. Blocked tasks, dependency cycles and
 bottlenecks are detected with deterministic, tested logic and surfaced in real time.
 
-> **Status:** setup complete (tooling, CI/CD, environments). Next up: v0.1.
-> Live: [ai-driven-kanban.vercel.app](https://ai-driven-kanban.vercel.app)
+> **Status:** v0.1 is live: boards, auth, RLS, drag and drop and a one-click demo. Next up: v0.2
+> (AI task decomposition).
+> Live: [ai-driven-kanban.vercel.app](https://ai-driven-kanban.vercel.app) (try the demo, no sign-up needed)
 
 ## Stack
 
@@ -23,7 +24,7 @@ bottlenecks are detected with deterministic, tested logic and surfaced in real t
 
 ## Roadmap
 
-- [ ] **v0.1** Board, auth, RLS, drag and drop, demo mode, deploy
+- [x] **v0.1** Board, auth, RLS, drag and drop, demo mode, deploy
 - [ ] **v0.2** AI task decomposition with streaming and human review
 - [ ] **v0.3** Dependency graph, deterministic alerts, Realtime
 - [ ] **v0.4** AI evals and observability panel (cost, latency, acceptance rate)
