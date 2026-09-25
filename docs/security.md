@@ -46,6 +46,23 @@ reach the browser; the data is protected by Row Level Security, not by hiding th
 - **Dependabot alerts** for vulnerable dependencies.
 - **Vercel Authentication** keeps preview deployments private.
 
+## HTTP security headers
+
+Every route sends these headers, defined in `src/lib/security/headers.ts` and wired in
+`next.config.ts` ([ADR 0011](adr/0011-security-headers-and-partial-csp.md)):
+
+| Header                    | Value                                                                       |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `Content-Security-Policy` | `frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action …` |
+| `X-Frame-Options`         | `DENY`                                                                      |
+| `X-Content-Type-Options`  | `nosniff`                                                                   |
+| `Referrer-Policy`         | `strict-origin-when-cross-origin`                                           |
+| `Permissions-Policy`      | `camera=(), microphone=(), geolocation=(), browsing-topics=()`              |
+
+`form-action` allows `'self'`, the Supabase origin and `https://github.com`, because the GitHub
+sign-in form redirects through both. Vercel adds `Strict-Transport-Security` in production. The
+CSP does not restrict scripts or styles yet; a nonce-based `script-src` is planned for v0.2.
+
 ## If a secret leaks
 
 1. **Revoke or rotate it at the source first** (Supabase, Vercel, GitHub). Removing it from the
