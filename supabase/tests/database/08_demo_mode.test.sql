@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(32);
+select plan(35);
 
 -- ---------------------------------------------------------------------------
 -- Shape: functions, privileges, extension, cron job
@@ -265,6 +265,37 @@ insert into auth.users (id, is_anonymous, email, created_at) values
 create temp table expired_boards on commit drop as
 select id from public.boards where owner_id = '00000000-0000-4000-a000-000000000804';
 
+-- O adds a card through the API, as the UI does: created_by defaults to auth.uid().
+-- Limitation: pgTAP runs in one transaction, so here the user and the card are created in
+-- the same transaction as the cleanup, while in production the cleanup runs days later.
+-- That is the stricter case: Postgres re-checks the cards -> board_columns FK on the
+-- ON DELETE SET NULL of created_by only for rows inserted in the current transaction, which
+-- is exactly what made the previous one-step "delete from auth.users" fail.
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub": "00000000-0000-4000-a000-000000000804", "role": "authenticated", "is_anonymous": true}', true);
+
+select results_eq(
+  $$ insert into public.cards (id, board_id, column_id, title, position)
+     select '00000000-0000-4000-d000-000000000804', c.board_id, c.id, 'My own card', 'a2'
+     from public.board_columns c
+     join public.boards b on b.id = c.board_id
+     where b.owner_id = '00000000-0000-4000-a000-000000000804' and c.title = 'Backlog'
+     returning created_by $$,
+  $$ values ('00000000-0000-4000-a000-000000000804'::uuid) $$,
+  'the expired visitor adds a card of their own (created_by = their id)'
+);
+
+reset role;
+
+-- Documents why the cleanup deletes boards first: the one-step delete trips on that card.
+-- throws_ok runs it in a subtransaction, so nothing is deleted here.
+select throws_ok(
+  $$ delete from auth.users where id = '00000000-0000-4000-a000-000000000804' $$,
+  '23503', null,
+  'deleting only the auth user fails on a card the visitor created in this transaction'
+);
+
 select is(
   (select count(*)::int from expired_boards),
   1,
@@ -302,6 +333,13 @@ select is_empty(
      union all select 1 from public.card_labels where board_id in (select id from expired_boards)
      union all select 1 from public.card_assignees where board_id in (select id from expired_boards) $$,
   'the expired visitor''s demo board and everything on it are gone'
+);
+
+select is_empty(
+  $$ select 1 from public.cards
+     where id = '00000000-0000-4000-d000-000000000804'
+        or created_by = '00000000-0000-4000-a000-000000000804' $$,
+  'the card the expired visitor created is gone too'
 );
 
 select is(

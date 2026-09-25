@@ -9,9 +9,10 @@
 -- * public.handle_new_user(): unchanged for permanent users (profile + "My board").
 --   Anonymous users get a profile named "Demo visitor" (unless their metadata has a name)
 --   and the demo board instead of "My board".
--- * private.delete_expired_demo_users(): deletes anonymous users older than 7 days. FK
---   cascades from auth.users remove their profile, boards and everything on them.
---   Scheduled daily with pg_cron ('delete-expired-demo-users', 03:17 UTC).
+-- * private.delete_expired_demo_users(): deletes anonymous users older than 7 days: first
+--   the boards they own (and everything on them), then the users (FK cascades remove their
+--   profile and memberships). Scheduled daily with pg_cron ('delete-expired-demo-users',
+--   03:17 UTC).
 --
 -- Anonymous users are 'authenticated' in PostgREST, so the existing RLS (ADR 0004)
 -- applies unchanged: a visitor owns their demo board and sees nobody else's.
@@ -29,11 +30,8 @@
 -- boards_add_owner_member trigger then adds the user as owner member, which is what makes
 -- the card_assignees rows below valid.
 --
--- cards.created_by is null: the visitor did not write these cards, the system did. (It
--- also keeps account deletion to plain cascades: with created_by set, deleting the user
--- in the same transaction that created the cards fails, because Postgres re-checks the
--- cards -> board_columns FK on the ON DELETE SET NULL update of rows inserted in the
--- current transaction, after the column is already gone.)
+-- cards.created_by is null: the visitor did not write these cards, the system did. Cards
+-- the visitor adds later do carry their id; delete_expired_demo_users() handles both.
 create function private.seed_demo_board(p_user_id uuid)
 returns uuid
 language plpgsql
@@ -221,11 +219,20 @@ revoke execute on function public.handle_new_user() from public, anon, authentic
 -- Cleanup of expired demo users
 -- ---------------------------------------------------------------------------
 
--- Deleting the auth user cascades to auth.identities / sessions, public.profiles,
--- public.boards (owner_id) and, through them, columns, cards, labels, memberships and
--- assignments. protect_board_owners() allows owner removals caused by account deletion.
--- Permanent users (including converted anonymous users, whose is_anonymous is false)
--- are never touched.
+-- Two steps over one set of users, so the result does not depend on the order in which
+-- Postgres runs the FK cascades from auth.users:
+--   1. Delete the boards they own: columns, cards, labels, card labels, memberships and
+--      assignments go with them (cascades that only delete).
+--   2. Delete the users: auth.identities / sessions, public.profiles and any remaining
+--      memberships cascade; cards.created_by on other boards is set to null.
+-- Deleting the user in one step also cascades to the boards, but then the ON DELETE SET
+-- NULL on cards.created_by can run after the card's column is gone. Postgres re-checks the
+-- cards -> board_columns FK for rows inserted in the current transaction, so that order
+-- fails there; step 1 removes those cards before any SET NULL can touch them.
+--
+-- The users are captured once (row-locked) and both deletes use that set. Permanent users
+-- (including converted anonymous users, whose is_anonymous is false) are never touched.
+-- protect_board_owners() allows the owner removals caused by deleting the board.
 create function private.delete_expired_demo_users()
 returns integer
 language plpgsql
@@ -234,11 +241,24 @@ security definer
 set search_path = ''
 as $$
 declare
+  v_user_ids uuid[];
   v_deleted integer;
 begin
+  select coalesce(array_agg(u.id), '{}')
+  into v_user_ids
+  from (
+    select u.id
+    from auth.users u
+    where u.is_anonymous is true
+      and u.created_at < now() - interval '7 days'
+    for update
+  ) u;
+
+  delete from public.boards b
+  where b.owner_id = any (v_user_ids);
+
   delete from auth.users u
-  where u.is_anonymous is true
-    and u.created_at < now() - interval '7 days';
+  where u.id = any (v_user_ids);
 
   get diagnostics v_deleted = row_count;
   return v_deleted;
@@ -246,8 +266,9 @@ end;
 $$;
 
 comment on function private.delete_expired_demo_users() is
-  'Deletes anonymous (demo) users created more than 7 days ago, with everything they own '
-  '(FK cascades). Returns the number of users deleted. Run daily by pg_cron.';
+  'Deletes anonymous (demo) users created more than 7 days ago: first the boards they own, '
+  'then the users (FK cascades remove the rest). Returns the number of users deleted. '
+  'Run daily by pg_cron.';
 
 revoke execute on function private.delete_expired_demo_users() from public, anon, authenticated;
 
