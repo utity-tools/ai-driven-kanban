@@ -25,6 +25,7 @@ function card(
     archived_at: null,
     card_assignees: [],
     card_labels: [],
+    card_subtasks: [],
     ...overrides,
   };
 }
@@ -205,6 +206,37 @@ describe("buildCardDetails", () => {
     expect(details.map((d) => [d.id, d.columnId, d.columnTitle, d.archivedAt])).toEqual([
       ["c1", "col-todo", "To do", null],
       ["x1", "col-done", "Done", "2026-09-20T00:00:00Z"],
+    ]);
+  });
+});
+
+describe("subtasks", () => {
+  it("embeds each card's checklist, ordered, in the card and its details", () => {
+    const subtaskRow = (id: string, position: string) => ({
+      id,
+      title: id,
+      estimate: 3,
+      position,
+      completed_at: null,
+      source: "manual",
+    });
+    const view = assembleBoardView(
+      raw({
+        cards: [
+          card({
+            id: "c1",
+            column_id: "col-todo",
+            position: "a0",
+            card_subtasks: [subtaskRow("s2", "a1"), subtaskRow("s1", "a0")],
+          }),
+        ],
+      }),
+    );
+
+    expect(view.columns[0]?.cards[0]?.subtasks.map((s) => s.id)).toEqual(["s1", "s2"]);
+    expect(buildCardDetails(view)[0]?.subtasks.map((s) => [s.id, s.estimate])).toEqual([
+      ["s1", 3],
+      ["s2", 3],
     ]);
   });
 });

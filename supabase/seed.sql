@@ -196,3 +196,22 @@ from (
     ('ca4d0000-0000-4000-8000-000000000004', 'a11ce000-0000-4000-8000-000000000001'),
     ('ca4d0000-0000-4000-8000-000000000004', 'b0b00000-0000-4000-8000-000000000002')
 ) as a (card_id, user_id);
+
+-- Subtasks: a checklist on card 4 ("Drag and drop cards between columns"): two done, two
+-- open, estimates on most (Fibonacci story points), and one accepted AI proposal.
+insert into public.card_subtasks (
+  id, board_id, card_id, title, estimate, position, completed_at, source, created_by
+)
+values
+  ('5b700000-0000-4000-8000-000000000001', 'b0a4d000-0000-4000-8000-000000000001',
+   'ca4d0000-0000-4000-8000-000000000004', 'Set up dnd-kit sensors and drag overlay',
+   2, 'a0', now() - interval '2 days', 'manual', 'a11ce000-0000-4000-8000-000000000001'),
+  ('5b700000-0000-4000-8000-000000000002', 'b0a4d000-0000-4000-8000-000000000001',
+   'ca4d0000-0000-4000-8000-000000000004', 'Reorder cards within a column',
+   3, 'a1', now() - interval '1 day', 'manual', 'a11ce000-0000-4000-8000-000000000001'),
+  ('5b700000-0000-4000-8000-000000000003', 'b0a4d000-0000-4000-8000-000000000001',
+   'ca4d0000-0000-4000-8000-000000000004', 'Persist cross-column moves with fractional keys',
+   5, 'a2', null, 'ai', 'a11ce000-0000-4000-8000-000000000001'),
+  ('5b700000-0000-4000-8000-000000000004', 'b0a4d000-0000-4000-8000-000000000001',
+   'ca4d0000-0000-4000-8000-000000000004', 'Announce moves to screen readers',
+   null, 'a3', null, 'manual', 'b0b00000-0000-4000-8000-000000000002');

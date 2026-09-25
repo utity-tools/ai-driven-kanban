@@ -20,6 +20,7 @@ function card(id: string, columnId: string, title: string): CardSummary {
     completedAt: null,
     labels: [],
     assignees: [],
+    subtasks: [],
   };
 }
 

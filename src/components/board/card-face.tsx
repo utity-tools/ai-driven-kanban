@@ -9,6 +9,7 @@ import type { CardSummary } from "@/lib/boards/view-model";
 import { CardLink } from "./card-link";
 import { DueBadge } from "./due-badge";
 import { LabelList } from "./label-chip";
+import { SubtaskBadge } from "./subtask-badge";
 import { AvatarStack } from "./user-avatar";
 
 const MAX_CARD_ASSIGNEES = 3;
@@ -39,7 +40,8 @@ export function CardFace({
   preview = false,
 }: Props) {
   const hasDescription = Boolean(card.description?.trim());
-  const hasFooter = due !== null || hasDescription || card.assignees.length > 0;
+  const hasSubtasks = card.subtasks.length > 0;
+  const hasFooter = due !== null || hasDescription || hasSubtasks || card.assignees.length > 0;
 
   return (
     <article
@@ -75,6 +77,7 @@ export function CardFace({
                 <span className="sr-only">Has a description</span>
               </span>
             ) : null}
+            <SubtaskBadge subtasks={card.subtasks} />
           </div>
           <AvatarStack
             people={card.assignees}

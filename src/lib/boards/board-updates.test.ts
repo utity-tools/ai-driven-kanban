@@ -23,6 +23,7 @@ function card(id: string, columnId: string, position: string): CardSummary {
     completedAt: null,
     labels: [],
     assignees: [],
+    subtasks: [],
   };
 }
 
@@ -429,5 +430,46 @@ describe("labelCardCount", () => {
   it("counts active and archived cards carrying the label", () => {
     expect(labelCardCount(detailedView(), "l-bug")).toBe(2);
     expect(labelCardCount(detailedView(), "l-api")).toBe(0);
+  });
+});
+
+describe("applyBoardUpdate: subtasks", () => {
+  const subtask = {
+    id: "s1",
+    title: "Write tests",
+    estimate: null,
+    position: "a0",
+    completedAt: null,
+    source: "manual" as const,
+  };
+
+  it("applies checklist changes to the card, active or archived", () => {
+    let next = applyBoardUpdate(view(), { type: "addSubtask", cardId: "t2", subtask });
+    next = applyBoardUpdate(next, { type: "addSubtask", cardId: "x1", subtask });
+    next = applyBoardUpdate(next, {
+      type: "setSubtaskEstimate",
+      cardId: "t2",
+      subtaskId: "s1",
+      estimate: 5,
+    });
+    expect(next.columns[0]?.cards[1]?.subtasks).toEqual([{ ...subtask, estimate: 5 }]);
+    expect(next.archivedCards[0]?.subtasks).toEqual([subtask]);
+    expect(next.archivedCards[0]?.archivedAt).toBe("2026-09-20T00:00:00Z");
+    expect(next.columns[0]?.cards[0]?.subtasks).toEqual([]);
+
+    const deleted = applyBoardUpdate(next, {
+      type: "deleteSubtask",
+      cardId: "t2",
+      subtaskId: "s1",
+    });
+    expect(deleted.columns[0]?.cards[1]?.subtasks).toEqual([]);
+  });
+
+  it("starts new cards with an empty checklist", () => {
+    const next = applyBoardUpdate(view(), {
+      type: "addCard",
+      card: { id: "n", columnId: "done", title: "New", position: "a0" },
+    });
+    expect(next.columns[1]?.cards[0]?.subtasks).toEqual([]);
   });
 });

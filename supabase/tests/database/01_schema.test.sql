@@ -40,8 +40,8 @@ select is(
    from (select tablename from pg_policies where schemaname = 'public'
          group by tablename
          having array_agg(distinct cmd order by cmd) = array['DELETE', 'INSERT', 'SELECT', 'UPDATE']) t),
-  7,
-  'all 7 tables have select, insert, update and delete policies'
+  8,
+  'all 8 tables have select, insert, update and delete policies'
 );
 
 select is(

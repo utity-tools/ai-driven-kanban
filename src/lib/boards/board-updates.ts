@@ -1,3 +1,5 @@
+import { type SubtaskUpdate, applySubtaskUpdate } from "@/lib/subtasks/updates";
+
 import { compareByPosition } from "./ordering";
 import { positionAfterLast, positionForMove } from "./positions";
 import {
@@ -44,7 +46,9 @@ export type BoardUpdate =
   | { type: "attachLabel"; cardId: string; labelId: string }
   | { type: "detachLabel"; cardId: string; labelId: string }
   | { type: "assignMember"; cardId: string; userId: string }
-  | { type: "unassignMember"; cardId: string; userId: string };
+  | { type: "unassignMember"; cardId: string; userId: string }
+  /** A card's checklist (see subtasks/updates.ts). */
+  | SubtaskUpdate;
 
 /** Applies `fn` to every card, active and archived. */
 function mapAllCards(view: BoardView, fn: (card: CardSummary) => CardSummary): BoardView {
@@ -117,6 +121,7 @@ export function applyBoardUpdate(view: BoardView, update: BoardUpdate): BoardVie
           completedAt: null,
           labels: [],
           assignees: [],
+          subtasks: [],
         };
         return { ...column, cards: [...column.cards, added].sort(compareByPosition) };
       });
@@ -255,6 +260,17 @@ export function applyBoardUpdate(view: BoardView, update: BoardUpdate): BoardVie
       return mapCard(view, update.cardId, (card) => ({
         ...card,
         assignees: card.assignees.filter((p) => p.id !== update.userId),
+      }));
+
+    case "addSubtask":
+    case "renameSubtask":
+    case "setSubtaskEstimate":
+    case "setSubtaskCompleted":
+    case "moveSubtask":
+    case "deleteSubtask":
+      return mapCard(view, update.cardId, (card) => ({
+        ...card,
+        subtasks: applySubtaskUpdate(card.subtasks, update),
       }));
   }
 }

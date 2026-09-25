@@ -60,7 +60,9 @@ export const getBoard = cache(async (id: string): Promise<BoardSummary | null> =
 /**
  * Everything the board view needs: columns and cards (ordered by
  * fractional-indexing position, then id; archived cards are split out for the
- * Archived panel), labels and members. Returns `null` when the board is
+ * Archived panel), labels and members. Each card embeds its checklist
+ * (subtasks) in the same request: the card modal shows it and the card face
+ * counts it, with no query per card. Returns `null` when the board is
  * missing or not accessible.
  */
 export const getBoardView = cache(async (id: string): Promise<BoardView | null> => {
@@ -78,7 +80,7 @@ export const getBoardView = cache(async (id: string): Promise<BoardView | null> 
     supabase
       .from("cards")
       .select(
-        "id, title, description, position, due_on, completed_at, archived_at, column_id, card_assignees(profile:profiles(id, display_name, avatar_url)), card_labels(board_labels(id, name, color))",
+        "id, title, description, position, due_on, completed_at, archived_at, column_id, card_assignees(profile:profiles(id, display_name, avatar_url)), card_labels(board_labels(id, name, color)), card_subtasks(id, title, estimate, position, completed_at, source)",
       )
       .eq("board_id", board.id)
       .order("position", { ascending: true })

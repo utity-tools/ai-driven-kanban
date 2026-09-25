@@ -209,6 +209,56 @@ export type Database = {
           },
         ]
       }
+      card_subtasks: {
+        Row: {
+          board_id: string
+          card_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          estimate: number | null
+          id: string
+          position: string
+          source: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          board_id: string
+          card_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          estimate?: number | null
+          id?: string
+          position: string
+          source?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          board_id?: string
+          card_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          estimate?: number | null
+          id?: string
+          position?: string
+          source?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_subtasks_card_same_board_fkey"
+            columns: ["card_id", "board_id"]
+            isOneToOne: false
+            referencedRelation: "cards"
+            referencedColumns: ["id", "board_id"]
+          },
+        ]
+      }
       cards: {
         Row: {
           archived_at: string | null
