@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { type ActionResult, SIGNED_OUT_ERROR, failure, friendlyDbError } from "./action-result";
-import { affected, runBoardAction } from "./action-runner";
+import { affected, runBoardAction as run } from "./action-runner";
 import { positionAfterLast, positionForMove } from "./positions";
 import {
   cardAssigneeSchema,
@@ -31,8 +31,6 @@ import {
  * Board mutations. The shared rules (Zod validation, RLS, safe messages,
  * revalidation) are in action-runner.ts.
  */
-
-const run = runBoardAction;
 
 // ---------------------------------------------------------------------------
 // Boards

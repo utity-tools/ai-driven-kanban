@@ -26,7 +26,13 @@ export function SubtaskComposer({ count, onAdd }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const openerRef = useRef<HTMLButtonElement>(null);
   const refocusOpener = useRef(false);
+  const limitRef = useRef<HTMLParagraphElement>(null);
   const full = !canAddSubtask(count);
+
+  // Adding the last allowed subtask unmounts the focused field: keep focus in the checklist.
+  useEffect(() => {
+    if (full && open) limitRef.current?.focus();
+  }, [full, open]);
 
   useEffect(() => {
     if (!open && refocusOpener.current) {
@@ -66,7 +72,9 @@ export function SubtaskComposer({ count, onAdd }: Props) {
   return (
     <div className="grid">
       {full ? (
-        <p className="text-sm text-muted-foreground">{SUBTASK_LIMIT_ERROR}</p>
+        <p ref={limitRef} tabIndex={-1} className="text-sm text-muted-foreground outline-none">
+          {SUBTASK_LIMIT_ERROR}
+        </p>
       ) : open ? (
         <form
           onSubmit={(event) => {
