@@ -25,6 +25,9 @@ import { trackServerActions } from "./support/server-actions";
 // hand-off), combining steps with test.step instead of one demo per assertion.
 //
 // Not covered here:
+// - A "Continue the demo" whose anonymous user was already deleted by the
+//   cleanup job (it signs out and restarts): simulating it needs the service
+//   role; the decision logic is unit tested in src/lib/auth/demo.test.ts.
 // - The "Starting demo…" pending label: it is visible only while the action
 //   runs, so asserting it would be timing-dependent.
 // - The ?error=demo redirect when Auth rejects the anonymous sign-in (rate
@@ -49,7 +52,7 @@ function hero(page: Page) {
 }
 
 function demoBanner(page: Page) {
-  return page.getByRole("complementary", { name: BANNER_TEXT });
+  return page.getByRole("complementary", { name: "Demo mode" });
 }
 
 /** From the signed-out landing page, starts a demo and waits for the demo board. */
@@ -131,6 +134,7 @@ test.describe("demo session", () => {
       }
       const banner = demoBanner(page);
       await expect(banner).toBeVisible();
+      await expect(banner).toContainText(BANNER_TEXT);
       await expect(banner.getByRole("button", { name: "Create an account" })).toBeVisible();
       await expect(banner.getByRole("button", { name: "Exit demo" })).toBeVisible();
       const header = page.getByRole("banner");
@@ -156,6 +160,9 @@ test.describe("demo session", () => {
       await expect(cta.getByRole("button", { name: "Continue the demo" })).toBeVisible();
       await expect(cta.getByRole("button", { name: "Try the demo" })).toHaveCount(0);
       await expect(cta.getByRole("link", { name: "Create account" })).toHaveCount(0);
+      await expect(cta.getByRole("link", { name: "Sign in" })).toHaveCount(0);
+      // Sign-up from the landing page goes through a sign-out (a button, not a link).
+      await expect(cta.getByRole("button", { name: "Create an account" })).toBeVisible();
 
       await cta.getByRole("button", { name: "Continue the demo" }).click();
 

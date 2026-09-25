@@ -42,3 +42,66 @@ export function landingPageErrorMessage(code: unknown): string | undefined {
     ? LANDING_PAGE_ERRORS[code]
     : undefined;
 }
+
+/**
+ * What the `openDemo` Server Action tells the landing page: open a path, or
+ * restart with a fresh anonymous sign-in (no session, or an expired demo whose
+ * user was deleted while its JWT is still valid).
+ */
+export type OpenDemoResult = { status: "open"; path: string } | { status: "restart" };
+
+/**
+ * Decides `openDemo`'s answer. `signOut` is set when a demo session has no
+ * board left (its user was cleaned up), so the stale session is cleared before
+ * the browser signs in again.
+ */
+export function decideOpenDemo(
+  visitor: Visitor,
+  demoBoardId: string | null,
+): { result: OpenDemoResult; signOut: boolean } {
+  switch (visitor) {
+    case "member":
+      return { result: { status: "open", path: DEFAULT_AFTER_LOGIN_PATH }, signOut: false };
+    case "signed-out":
+      return { result: { status: "restart" }, signOut: false };
+    case "demo":
+      return demoBoardId
+        ? { result: { status: "open", path: demoBoardPath(demoBoardId) }, signOut: false }
+        : { result: { status: "restart" }, signOut: true };
+  }
+}
+
+export type LaunchDemoDeps = {
+  /** Anonymous sign-in, run in the browser so the Auth rate limit sees the visitor's IP. */
+  signInAnonymously: () => Promise<{ ok: boolean }>;
+  openDemo: () => Promise<OpenDemoResult>;
+};
+
+/**
+ * Client-side demo flow, returning the path to navigate to. Signed-out
+ * visitors sign in first; an existing demo session is reused and, if it turns
+ * out to be expired, replaced by one fresh sign-in. Never signs in more than
+ * once, so a misbehaving server can't make it loop. Any failure (rate limit,
+ * anonymous sign-ins disabled, network) ends at `DEMO_ERROR_PATH`.
+ */
+export async function launchDemo(
+  deps: LaunchDemoDeps,
+  options: { hasDemoSession: boolean },
+): Promise<string> {
+  try {
+    let signedIn = false;
+    if (!options.hasDemoSession) {
+      if (!(await deps.signInAnonymously()).ok) return DEMO_ERROR_PATH;
+      signedIn = true;
+    }
+
+    let result = await deps.openDemo();
+    if (result.status === "restart" && !signedIn) {
+      if (!(await deps.signInAnonymously()).ok) return DEMO_ERROR_PATH;
+      result = await deps.openDemo();
+    }
+    return result.status === "open" ? result.path : DEMO_ERROR_PATH;
+  } catch {
+    return DEMO_ERROR_PATH;
+  }
+}

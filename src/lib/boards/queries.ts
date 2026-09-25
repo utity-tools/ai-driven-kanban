@@ -23,13 +23,10 @@ export async function listBoards(): Promise<BoardSummary[]> {
 
 /**
  * The most recent board owned by `userId` (a demo user's pre-filled board), or
- * `null`. Takes the client explicitly so it can run on the same client that
- * just signed the user in, before the new session cookies reach the request.
+ * `null` when there is none, e.g. because the demo user was already cleaned up.
  */
-export async function getLatestOwnedBoardId(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-): Promise<string | null> {
+export async function getLatestOwnedBoardId(userId: string): Promise<string | null> {
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("boards")
     .select("id")
@@ -38,7 +35,7 @@ export async function getLatestOwnedBoardId(
     .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) return null;
+  if (error) throw new Error("Failed to load the demo board.", { cause: error });
   return data?.id ?? null;
 }
 

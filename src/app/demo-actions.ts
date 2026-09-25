@@ -1,32 +1,29 @@
 "use server";
 
-import { redirect } from "next/navigation";
-
-import { DEMO_ERROR_PATH, demoBoardPath, visitorKind } from "@/lib/auth/demo";
-import { DEFAULT_AFTER_LOGIN_PATH } from "@/lib/auth/redirect";
+import { decideOpenDemo, type OpenDemoResult, visitorKind } from "@/lib/auth/demo";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getLatestOwnedBoardId } from "@/lib/boards/queries";
 import { createClient } from "@/lib/db/server";
 
 /**
- * Starts (or resumes) demo mode. Permanent users go to their boards; everyone
- * else gets an anonymous session, whose pre-filled demo board is created by a
- * database trigger in the same transaction as the anonymous user.
+ * Finds where the demo should open for the current (cookie) session. The
+ * anonymous sign-in itself happens in the browser, so Supabase's per-IP
+ * anonymous rate limit counts each visitor, not this server.
+ *
+ * Returns a path instead of calling `redirect()`, so the client can tell a
+ * navigation from a failure. A demo session whose user was deleted by the
+ * cleanup job (its JWT stays valid until it expires) is signed out and
+ * answered with `restart`.
  */
-export async function startDemo(): Promise<void> {
+export async function openDemo(): Promise<OpenDemoResult> {
   const user = await getCurrentUser();
   const visitor = visitorKind(user);
-  if (visitor === "member") redirect(DEFAULT_AFTER_LOGIN_PATH);
+  const boardId = visitor === "demo" && user ? await getLatestOwnedBoardId(user.id) : null;
 
-  const supabase = await createClient();
-  let userId = user?.id;
-  if (visitor === "signed-out") {
-    const { data, error } = await supabase.auth.signInAnonymously();
-    // Rate limits (429) or anonymous sign-ins disabled: show a friendly alert.
-    if (error || !data.user) redirect(DEMO_ERROR_PATH);
-    userId = data.user.id;
+  const { result, signOut } = decideOpenDemo(visitor, boardId);
+  if (signOut) {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
   }
-  if (!userId) redirect(DEMO_ERROR_PATH);
-
-  redirect(demoBoardPath(await getLatestOwnedBoardId(supabase, userId)));
+  return result;
 }
