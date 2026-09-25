@@ -1,0 +1,113 @@
+name: Deploy production
+
+# Production is deployed from here, never by Vercel's Git integration (vercel.json turns it off
+# for main), so new code never reaches production before its migrations
+# (docs/adr/0013-deploy-production-after-migrations.md):
+#   1. CI passes on a push to main (or someone runs this workflow manually on main).
+#   2. plan: have migrations changed since the last successful production deploy?
+#   3. migrate: if so, db-migrations.yml migrates kanban-prod (waits for approval).
+#   4. deploy: Vercel builds and promotes the commit to production.
+# Comparing against the last deploy (not the previous commit) means a run superseded by a
+# newer merge cannot skip its migrations.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+# One production rollout at a time; a newer pending run replaces an older pending one.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  plan:
+    name: Plan
+    # Skip superseded runs: the newer run deploys everything, and GitHub records the
+    # deployment against github.sha (the tip of main), which must be the commit we ship.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.head_sha == github.sha)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      deployments: read
+    outputs:
+      migrations: ${{ steps.plan.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
+          fetch-depth: 0
+      - name: Migrations since the last production deploy
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The deploy job below records a GitHub deployment in this environment.
+          last=""
+          for deployment in $(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=production-deploy&per_page=30" --jq '.[] | "\(.id):\(.sha)"'); do
+            state="$(gh api "repos/$GITHUB_REPOSITORY/deployments/${deployment%%:*}/statuses?per_page=1" --jq '.[0].state // ""')"
+            if [ "$state" = "success" ]; then last="${deployment#*:}"; break; fi
+          done
+
+          if [ -z "$last" ] || ! git cat-file -e "$last^{commit}" 2>/dev/null; then
+            echo "No known production deploy: migrating to be safe (a no-op if the schema is current)."
+            migrations=true
+          elif git diff --quiet "$last" "$SHA" -- supabase/migrations; then
+            echo "No migration changes since $last."
+            migrations=false
+          else
+            echo "Migrations changed since $last:"
+            git diff --name-status "$last" "$SHA" -- supabase/migrations
+            migrations=true
+          fi
+          echo "migrations=$migrations" >> "$GITHUB_OUTPUT"
+
+  migrate:
+    name: Migrate
+    needs: plan
+    if: needs.plan.outputs.migrations == 'true'
+    uses: ./.github/workflows/db-migrations.yml
+    with:
+      target: production
+    secrets: inherit
+
+  deploy:
+    name: Deploy to Vercel
+    needs: [plan, migrate]
+    # Runs when migrations succeeded or were not needed; never after a failed or rejected one.
+    if: >-
+      always() && needs.plan.result == 'success' &&
+      (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production-deploy
+      url: https://ai-driven-kanban.vercel.app
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      # Not secret: they identify the project, the token authorises.
+      VERCEL_ORG_ID: team_Z8pipN2eRX46KoyC0HS72AQD
+      VERCEL_PROJECT_ID: prj_jAlb6kc45EuksRSV3WNK2ZpKUC5k
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
+      - name: Install the Vercel CLI
+        run: npm install --global vercel@60.0.1
+      # Vercel builds remotely with the Production environment variables, as the Git
+      # integration did.
+      - name: Deploy
+        run: vercel deploy --prod --yes --token="$VERCEL_TOKEN" --meta githubCommitSha="$SHA"

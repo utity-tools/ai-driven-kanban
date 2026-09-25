@@ -1,20 +1,27 @@
 name: Database migrations
 
 # Staging: migrations from a PR are applied so its Vercel preview has the new schema.
-# Production: applied after merge to main, only when enabled (repo variable
-# PRODUCTION_DB_ENABLED=true) and after manual approval (environment rule).
-# Manual runs (workflow_dispatch) pick the target. They bootstrap a new database with
-# every existing migration, because push runs only fire when a migration changes
-# (see docs/adr/0010-manual-production-migration-runs.md).
+# Production: applied by deploy-production.yml (which calls this workflow) before the new
+# code is deployed, only when enabled (repo variable PRODUCTION_DB_ENABLED=true) and after
+# manual approval (environment rule). See docs/adr/0013-deploy-production-after-migrations.md.
+# Manual runs (workflow_dispatch) pick the target. They bootstrap or recover a database with
+# every existing migration (see docs/adr/0010-manual-production-migration-runs.md).
 # Connection: direct Postgres connection through the session pooler, no Supabase
 # access token (see docs/adr/0002-migrations-via-direct-connection.md).
+# Conditions use `inputs.*`, not github.event_name: in a called workflow the event is the
+# caller's.
 on:
   pull_request:
     # Changes to this workflow are exercised against staging too (no-op without new migrations).
     paths: ["supabase/migrations/**", ".github/workflows/db-migrations.yml"]
-  push:
-    branches: [main]
-    paths: ["supabase/migrations/**"]
+  workflow_call:
+    inputs:
+      target:
+        type: string
+        required: true
+      dry_run:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       target:
@@ -28,7 +35,7 @@ on:
         default: true
 
 concurrency:
-  group: db-migrations-${{ (github.event_name == 'push' || inputs.target == 'production') && 'production' || 'staging' }}
+  group: db-migrations-${{ inputs.target == 'production' && 'production' || 'staging' }}
   cancel-in-progress: false
 
 permissions:
@@ -39,7 +46,7 @@ jobs:
     name: Migrate staging
     # Fork PRs have no access to secrets.
     if: >-
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'staging') ||
+      inputs.target == 'staging' ||
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -69,10 +76,7 @@ jobs:
 
   production:
     name: Migrate production
-    if: >-
-      vars.PRODUCTION_DB_ENABLED == 'true' &&
-      (github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'production'))
+    if: vars.PRODUCTION_DB_ENABLED == 'true' && inputs.target == 'production'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: production
@@ -96,5 +100,5 @@ jobs:
       - name: Pending migrations (dry run)
         run: pnpm exec supabase db push --db-url "$DB_URL" --dry-run
       - name: Apply migrations
-        if: github.event_name == 'push' || inputs.dry_run == false
+        if: inputs.dry_run == false
         run: pnpm exec supabase db push --db-url "$DB_URL"
