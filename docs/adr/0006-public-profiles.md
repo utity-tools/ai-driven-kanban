@@ -40,7 +40,8 @@ Names, emails and avatars live in `auth.users`, which the API must never expose.
 ## Consequences
 
 - Board co-members can see each other's email.
-- Anonymous (demo) users get a profile without an email; the UI falls back to initials.
+- Anonymous (demo) users get a profile without an email, named "Demo visitor" unless their
+  sign-in metadata has a name ([ADR 0009](0009-demo-mode-with-anonymous-users.md)).
 - Rendering GitHub avatars requires allowing `avatars.githubusercontent.com` in the Next image
   configuration.
 - [ADR 0005](0005-authentication.md) asked `handle_new_user()` to stay minimal because a failure

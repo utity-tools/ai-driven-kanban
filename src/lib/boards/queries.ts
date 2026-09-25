@@ -22,6 +22,24 @@ export async function listBoards(): Promise<BoardSummary[]> {
 }
 
 /**
+ * The most recent board owned by `userId` (a demo user's pre-filled board), or
+ * `null` when there is none, e.g. because the demo user was already cleaned up.
+ */
+export async function getLatestOwnedBoardId(userId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("boards")
+    .select("id")
+    .eq("owner_id", userId)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error("Failed to load the demo board.", { cause: error });
+  return data?.id ?? null;
+}
+
+/**
  * A single board, or `null` if the id is not a UUID, the board doesn't exist
  * or the user can't see it (RLS makes the last two indistinguishable, on
  * purpose). Memoised per request so metadata and page share one query.

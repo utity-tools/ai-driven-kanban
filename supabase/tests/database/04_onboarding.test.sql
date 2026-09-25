@@ -1,4 +1,5 @@
 -- Onboarding: every new non-anonymous user gets a default board on sign-up.
+-- (Anonymous users get the demo board instead: see 08_demo_mode.test.sql.)
 begin;
 create extension if not exists pgtap with schema extensions;
 
@@ -86,14 +87,16 @@ select lives_ok(
   'inserting an anonymous auth user succeeds'
 );
 
-select is_empty(
-  $$ select 1 from public.boards where owner_id = '00000000-0000-4000-a000-000000000002' $$,
-  'an anonymous user gets no board'
+select results_eq(
+  $$ select title from public.boards where owner_id = '00000000-0000-4000-a000-000000000002' $$,
+  $$ values ('Demo: Launch a landing page') $$,
+  'an anonymous user gets the demo board, not "My board"'
 );
 
-select is_empty(
-  $$ select 1 from public.board_members where user_id = '00000000-0000-4000-a000-000000000002' $$,
-  'an anonymous user gets no membership'
+select results_eq(
+  $$ select role from public.board_members where user_id = '00000000-0000-4000-a000-000000000002' $$,
+  $$ values ('owner'::public.board_role) $$,
+  'an anonymous user is owner of their demo board only'
 );
 
 select * from finish();

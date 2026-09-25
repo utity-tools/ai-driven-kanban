@@ -6,8 +6,9 @@ import { cache } from "react";
 import { createClient } from "@/lib/db/server";
 
 import { LOGIN_PATH } from "./routes";
+import { type CurrentUser, userFromClaims } from "./user";
 
-export type CurrentUser = { id: string; email: string | null };
+export type { CurrentUser };
 
 /**
  * The signed-in user, verified from the JWT with getClaims() (never
@@ -17,7 +18,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();
   if (error || !data) return null;
-  return { id: data.claims.sub, email: data.claims.email ?? null };
+  return userFromClaims(data.claims);
 });
 
 /** Like getCurrentUser, but redirects to the login page when signed out. */

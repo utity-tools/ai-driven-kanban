@@ -18,10 +18,12 @@ test.describe("signed out", () => {
     await expectLoginWithNext(page, "/boards");
   });
 
-  test("/ ends on /login with next=/boards", async ({ page }) => {
+  test("/ is the public landing page, not a redirect", async ({ page }) => {
+    // demo-mode.spec.ts covers the landing page's calls to action.
     await page.goto("/");
 
-    await expectLoginWithNext(page, "/boards");
+    await expect(page).toHaveURL("/");
+    await expect(page.getByRole("heading", { level: 1, name: "AI-Driven Kanban" })).toBeVisible();
   });
 
   test("login page offers GitHub sign-in", async ({ page }) => {

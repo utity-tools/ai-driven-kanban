@@ -94,6 +94,13 @@ Summary of [ADR 0003](adr/0003-defer-production-database.md):
 3. GitHub repo variable `PRODUCTION_DB_ENABLED=true`.
 4. Vercel **Production** env: `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` of `kanban-prod`.
 
+### Hosted Auth settings (every Supabase cloud project)
+
+Local projects read these from `supabase/config.toml`; hosted projects need them set in the dashboard:
+
+- **Authentication → Sign In / Providers → Allow anonymous sign-ins: on**. Demo mode depends on it ([ADR 0009](adr/0009-demo-mode-with-anonymous-users.md)).
+- GitHub provider and redirect URLs, as described in [ADR 0005](adr/0005-authentication.md).
+
 ## Known issues and fixes
 
 | Symptom                                                                               | Cause                                                                                       | Fix                                                                                                                               |
@@ -104,5 +111,6 @@ Summary of [ADR 0003](adr/0003-defer-production-database.md):
 | Pre-commit fails with "File ignored because of a matching ignore pattern"             | ESLint warning on ignored files plus `--max-warnings=0`                                     | Already fixed: lint-staged passes `--no-warn-ignored`                                                                             |
 | Migrations job cannot reach the database from CI                                      | GitHub runners are IPv4-only; the direct DB host is IPv6                                    | Use the **Session pooler** host (port 5432), never the direct or transaction pooler one                                           |
 | "Continue with GitHub" fails locally with "provider is not enabled"                   | GitHub OAuth is only configured on hosted projects ([ADR 0005](adr/0005-authentication.md)) | Use email + password locally (seeded `alice@example.com` / `password123`, or sign up)                                             |
+| "Try the demo" returns to the landing page with an error                              | Anonymous sign-ins are disabled on that Supabase project, or the per-IP rate limit was hit  | Enable anonymous sign-ins (see Hosted Auth settings); the rate limit is 30 per hour per IP                                        |
 | Preview URL answers 302 / asks to log in                                              | Vercel Authentication protects previews                                                     | Expected: previews are private, production is public                                                                              |
 | First deployment of a new Vercel project shows up as Production from a feature branch | Observed with a brand new project that had no production deployment yet                     | Resolves on the next merge to `main`                                                                                              |
