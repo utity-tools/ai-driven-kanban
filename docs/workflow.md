@@ -23,9 +23,10 @@ The rules are not only written down: each layer below enforces them.
 4. **Check:** GitHub runs CI, Vercel builds a preview of the PR and comments its URL, and if the PR
    has migrations, `db-migrations.yml` applies them to staging.
 5. **Merge:** you review the preview and click **Squash and merge**. The PR title becomes the
-   commit on `main`. The branch is deleted and Vercel deploys to production.
-   If the PR has migrations, `db-migrations.yml` waits for your approval of the `production`
-   environment and then applies them to `kanban-prod`.
+   commit on `main` and the branch is deleted. When CI passes on `main`, `deploy-production.yml`
+   migrates `kanban-prod` if the PR has migrations (it waits for your approval of the
+   `production` environment) and only then deploys to production
+   ([ADR 0013](adr/0013-deploy-production-after-migrations.md)).
 6. **Sync locally:**
    ```bash
    git switch main && git pull && git branch -d <branch>

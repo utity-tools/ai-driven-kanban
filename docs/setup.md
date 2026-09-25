@@ -63,12 +63,12 @@ Stop the database when you are not using it: `pnpm db:stop`.
  Supabase in Docker     ephemeral Postgres      Supabase kanban-staging   Supabase kanban-prod
 ```
 
-| Environment | App                                                            | Database                                                                        | Schema changes arrive via                                     |
-| ----------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Local       | `pnpm dev`                                                     | Supabase local (Docker)                                                         | `pnpm db:reset`                                               |
-| CI          | GitHub Actions                                                 | ephemeral local Supabase: Postgres for DB tests; Postgres + Auth + REST for E2E | migrations + seed on every run                                |
-| Preview     | Vercel, one deployment per PR, private (Vercel Authentication) | `kanban-staging` (eu-west-1)                                                    | `db-migrations.yml` on PRs that change `supabase/migrations/` |
-| Production  | Vercel, deployed on every merge to `main`                      | `kanban-prod` (eu-west-1)                                                       | `db-migrations.yml` after merge, with manual approval         |
+| Environment | App                                                            | Database                                                                        | Schema changes arrive via                                      |
+| ----------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Local       | `pnpm dev`                                                     | Supabase local (Docker)                                                         | `pnpm db:reset`                                                |
+| CI          | GitHub Actions                                                 | ephemeral local Supabase: Postgres for DB tests; Postgres + Auth + REST for E2E | migrations + seed on every run                                 |
+| Preview     | Vercel, one deployment per PR, private (Vercel Authentication) | `kanban-staging` (eu-west-1)                                                    | `db-migrations.yml` on PRs that change `supabase/migrations/`  |
+| Production  | Vercel, deployed by `deploy-production.yml` after CI           | `kanban-prod` (eu-west-1)                                                       | `deploy-production.yml` before deploying, with manual approval |
 
 ### Where each variable lives
 
@@ -81,6 +81,7 @@ Stop the database when you are not using it: `pnpm db:stop`.
 | `SUPABASE_DB_PASSWORD`                         | GitHub environments `staging`, `production`       | **secret**                | migrations workflow            |
 | `SUPABASE_PROJECT_REF`, `SUPABASE_POOLER_HOST` | GitHub environments `staging`, `production`       | variables                 | migrations workflow            |
 | `PRODUCTION_DB_ENABLED`                        | GitHub repo variable, `true` since v0.1           | variable                  | turns on production migrations |
+| `VERCEL_TOKEN`                                 | GitHub environment `production-deploy`            | **secret**                | production deploy workflow     |
 
 `.env.example` documents the app variables. Only that file is committed.
 
