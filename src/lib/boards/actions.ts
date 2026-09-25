@@ -14,7 +14,7 @@ import {
   failure,
   friendlyDbError,
 } from "./action-result";
-import { positionAfterLast } from "./positions";
+import { positionAfterLast, positionForMove } from "./positions";
 import {
   cardAssigneeSchema,
   cardLabelSchema,
@@ -27,6 +27,8 @@ import {
   deleteColumnSchema,
   deleteLabelSchema,
   firstIssueMessage,
+  moveCardSchema,
+  moveColumnSchema,
   renameBoardSchema,
   renameCardSchema,
   renameColumnSchema,
@@ -186,6 +188,31 @@ export async function deleteColumn(input: unknown): Promise<ActionResult> {
   });
 }
 
+/** Moves a column between two others (drag and drop). */
+export async function moveColumn(input: unknown): Promise<ActionResult> {
+  return run(
+    moveColumnSchema,
+    input,
+    async ({ boardId, columnId, previousId, nextId }, supabase) => {
+      const siblings = await supabase
+        .from("board_columns")
+        .select("id, position")
+        .eq("board_id", boardId)
+        .neq("id", columnId);
+      if (siblings.error) return failure(friendlyDbError(siblings.error));
+
+      const { data, error } = await supabase
+        .from("board_columns")
+        .update({ position: positionForMove(siblings.data, previousId, nextId) })
+        .eq("id", columnId)
+        .eq("board_id", boardId)
+        .select("id");
+      if (error) return failure(friendlyDbError(error));
+      return affected(data);
+    },
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Cards
 // ---------------------------------------------------------------------------
@@ -244,6 +271,42 @@ export async function updateCardDescription(input: unknown): Promise<ActionResul
         .eq("board_id", boardId)
         .select("id");
       if (error) return failure(friendlyDbError(error));
+      return affected(data);
+    },
+  );
+}
+
+/**
+ * Moves an active card to a column (the same one or another of the board),
+ * between two cards (drag and drop). Archived cards of the destination count
+ * as siblings, so a card restored later never collides with the moved one.
+ */
+export async function moveCard(input: unknown): Promise<ActionResult> {
+  return run(
+    moveCardSchema,
+    input,
+    async ({ boardId, cardId, columnId, previousId, nextId }, supabase) => {
+      const siblings = await supabase
+        .from("cards")
+        .select("id, position")
+        .eq("board_id", boardId)
+        .eq("column_id", columnId)
+        .neq("id", cardId);
+      if (siblings.error) return failure(friendlyDbError(siblings.error));
+
+      const { data, error } = await supabase
+        .from("cards")
+        .update({
+          column_id: columnId,
+          position: positionForMove(siblings.data, previousId, nextId),
+        })
+        .eq("id", cardId)
+        .eq("board_id", boardId)
+        .is("archived_at", null)
+        .select("id");
+      if (error) {
+        return failure(friendlyDbError(error, { "23503": "This column no longer exists." }));
+      }
       return affected(data);
     },
   );
