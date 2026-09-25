@@ -18,6 +18,8 @@ import {
   deleteLabelSchema,
   dueOnSchema,
   firstIssueMessage,
+  moveCardSchema,
+  moveColumnSchema,
   normalizeTitle,
   renameBoardSchema,
   renameCardSchema,
@@ -266,5 +268,46 @@ describe("cardAssigneeSchema", () => {
     expect(
       messageOf(cardAssigneeSchema.safeParse({ boardId: BOARD, cardId: CARD, userId: "bob" })),
     ).toBe("Invalid member.");
+  });
+});
+
+describe("move schemas", () => {
+  const OTHER = "6f1c2c1e-2a4b-4c7d-9e3f-0a1b2c3d4e5f";
+
+  it("accepts neighbour ids or null at either end", () => {
+    const move = { boardId: BOARD, cardId: CARD, columnId: COLUMN };
+    expect(moveCardSchema.safeParse({ ...move, previousId: null, nextId: OTHER }).success).toBe(
+      true,
+    );
+    expect(moveCardSchema.safeParse({ ...move, previousId: null, nextId: null }).success).toBe(
+      true,
+    );
+    expect(moveCardSchema.safeParse({ ...move, previousId: "x", nextId: null }).success).toBe(
+      false,
+    );
+  });
+
+  it("rejects moving an item next to itself", () => {
+    expect(
+      messageOf(
+        moveCardSchema.safeParse({
+          boardId: BOARD,
+          cardId: CARD,
+          columnId: COLUMN,
+          previousId: CARD,
+          nextId: null,
+        }),
+      ),
+    ).toBe("A card can't be moved next to itself.");
+    expect(
+      messageOf(
+        moveColumnSchema.safeParse({
+          boardId: BOARD,
+          columnId: COLUMN,
+          previousId: null,
+          nextId: COLUMN,
+        }),
+      ),
+    ).toBe("A column can't be moved next to itself.");
   });
 });

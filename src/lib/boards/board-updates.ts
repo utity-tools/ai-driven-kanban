@@ -1,5 +1,5 @@
 import { compareByPosition } from "./ordering";
-import { positionAfterLast } from "./positions";
+import { positionAfterLast, positionForMove } from "./positions";
 import {
   type BoardView,
   type CardSummary,
@@ -19,8 +19,18 @@ export type BoardUpdate =
   | { type: "renameBoard"; title: string }
   | { type: "addColumn"; column: { id: string; title: string; position: string } }
   | { type: "renameColumn"; columnId: string; title: string }
+  /** Drag and drop: same neighbour hints as the moveColumn action. */
+  | { type: "moveColumn"; columnId: string; previousId: string | null; nextId: string | null }
   | { type: "addCard"; card: { id: string; columnId: string; title: string; position: string } }
   | { type: "renameCard"; cardId: string; title: string }
+  /** Drag and drop: same neighbour hints as the moveCard action. */
+  | {
+      type: "moveCard";
+      cardId: string;
+      columnId: string;
+      previousId: string | null;
+      nextId: string | null;
+    }
   | { type: "setDescription"; cardId: string; description: string | null }
   | { type: "archiveCard"; cardId: string; archivedAt: string }
   | { type: "restoreCard"; cardId: string }
@@ -86,6 +96,14 @@ export function applyBoardUpdate(view: BoardView, update: BoardUpdate): BoardVie
         column.id === update.columnId ? { ...column, title: update.title } : column,
       );
 
+    case "moveColumn": {
+      const column = view.columns.find((c) => c.id === update.columnId);
+      if (!column) return view;
+      const others = view.columns.filter((c) => c.id !== column.id);
+      const position = positionForMove(others, update.previousId, update.nextId);
+      return { ...view, columns: [...others, { ...column, position }].sort(compareByPosition) };
+    }
+
     case "addCard": {
       const { card } = update;
       return mapColumns(view, (column) => {
@@ -101,6 +119,28 @@ export function applyBoardUpdate(view: BoardView, update: BoardUpdate): BoardVie
           assignees: [],
         };
         return { ...column, cards: [...column.cards, added].sort(compareByPosition) };
+      });
+    }
+
+    case "moveCard": {
+      const card = view.columns.flatMap((c) => c.cards).find((c) => c.id === update.cardId);
+      const target = view.columns.find((c) => c.id === update.columnId);
+      if (!card || !target) return view;
+      // Only the visible cards are known here: the server's key may differ, and
+      // the re-rendered board replaces this one when the action finishes.
+      const siblings = target.cards.filter((c) => c.id !== card.id);
+      const moved = {
+        ...card,
+        columnId: target.id,
+        position: positionForMove(siblings, update.previousId, update.nextId),
+      };
+      return mapColumns(view, (column) => {
+        const cards = column.cards.filter((c) => c.id !== card.id);
+        return column.id === target.id
+          ? { ...column, cards: [...cards, moved].sort(compareByPosition) }
+          : column.id === card.columnId
+            ? { ...column, cards }
+            : column;
       });
     }
 

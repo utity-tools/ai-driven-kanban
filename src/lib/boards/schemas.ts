@@ -140,6 +140,33 @@ export const cardLabelSchema = z.object({ boardId, cardId, labelId });
 /** Assign and unassign. */
 export const cardAssigneeSchema = z.object({ boardId, cardId, userId });
 
+/*
+ * Drag and drop. The client sends the neighbours it dropped the item between
+ * (`null` at either end), not a position: the server computes the key from the
+ * current rows (see positionForMove).
+ */
+export const moveCardSchema = z
+  .object({
+    boardId,
+    cardId,
+    columnId,
+    previousId: cardId.nullable(),
+    nextId: cardId.nullable(),
+  })
+  .refine((move) => move.previousId !== move.cardId && move.nextId !== move.cardId, {
+    error: "A card can't be moved next to itself.",
+  });
+export const moveColumnSchema = z
+  .object({
+    boardId,
+    columnId,
+    previousId: columnId.nullable(),
+    nextId: columnId.nullable(),
+  })
+  .refine((move) => move.previousId !== move.columnId && move.nextId !== move.columnId, {
+    error: "A column can't be moved next to itself.",
+  });
+
 export type CreateBoardInput = z.input<typeof createBoardSchema>;
 export type RenameBoardInput = z.input<typeof renameBoardSchema>;
 export type DeleteBoardInput = z.input<typeof deleteBoardSchema>;
@@ -162,3 +189,5 @@ export type CardAssigneeInput = z.input<typeof cardAssigneeSchema>;
 export function firstIssueMessage(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Invalid input.";
 }
+export type MoveCardInput = z.input<typeof moveCardSchema>;
+export type MoveColumnInput = z.input<typeof moveColumnSchema>;

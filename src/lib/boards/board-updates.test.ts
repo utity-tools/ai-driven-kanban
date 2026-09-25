@@ -140,6 +140,55 @@ describe("applyBoardUpdate", () => {
   });
 });
 
+describe("applyBoardUpdate: drag and drop", () => {
+  const move = (
+    cardId: string,
+    columnId: string,
+    previousId: string | null,
+    nextId: string | null,
+  ) => ({ type: "moveCard", cardId, columnId, previousId, nextId }) as const;
+
+  it("reorders a card within its column", () => {
+    expect(ids(applyBoardUpdate(view(), move("t3", "todo", null, "t1")))).toEqual([
+      ["todo", ["t3", "t1", "t2"]],
+      ["done", []],
+    ]);
+    expect(ids(applyBoardUpdate(view(), move("t1", "todo", "t2", "t3")))).toEqual([
+      ["todo", ["t2", "t1", "t3"]],
+      ["done", []],
+    ]);
+  });
+
+  it("moves a card to another column and updates its columnId", () => {
+    const next = applyBoardUpdate(view(), move("t2", "done", null, null));
+
+    expect(ids(next)).toEqual([
+      ["todo", ["t1", "t3"]],
+      ["done", ["t2"]],
+    ]);
+    expect(next.columns[1]?.cards[0]?.columnId).toBe("done");
+  });
+
+  it("ignores an unknown card or column, and archived cards", () => {
+    const before = view();
+
+    expect(applyBoardUpdate(before, move("missing", "done", null, null))).toBe(before);
+    expect(applyBoardUpdate(before, move("t1", "missing", null, null))).toBe(before);
+    expect(applyBoardUpdate(before, move("x1", "done", null, null))).toBe(before);
+  });
+
+  it("reorders columns", () => {
+    const next = applyBoardUpdate(view(), {
+      type: "moveColumn",
+      columnId: "done",
+      previousId: null,
+      nextId: "todo",
+    });
+
+    expect(next.columns.map((c) => c.id)).toEqual(["done", "todo"]);
+  });
+});
+
 describe("positions for new items", () => {
   it("appends a card after every card of the column, archived ones included", () => {
     const position = nextCardPosition(view(), "todo");
