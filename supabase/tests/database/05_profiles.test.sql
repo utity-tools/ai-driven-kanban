@@ -145,7 +145,7 @@ select is(
   'users with odd metadata still get their default board'
 );
 
--- Anonymous users get a profile but no board.
+-- Anonymous users get a "Demo visitor" profile and the demo board (08_demo_mode).
 select lives_ok(
   $$ insert into auth.users (id, is_anonymous) values ('00000000-0000-4000-a000-000000000508', true) $$,
   'anonymous sign-up succeeds'
@@ -153,13 +153,14 @@ select lives_ok(
 
 select results_eq(
   $$ select email, display_name, avatar_url from public.profiles where id = '00000000-0000-4000-a000-000000000508' $$,
-  $$ values (null::text, null::text, null::text) $$,
-  'an anonymous user gets an empty profile'
+  $$ values (null::text, 'Demo visitor'::text, null::text) $$,
+  'an anonymous user gets a profile named "Demo visitor", without email or avatar'
 );
 
-select is_empty(
-  $$ select 1 from public.boards where owner_id = '00000000-0000-4000-a000-000000000508' $$,
-  'an anonymous user still gets no board'
+select results_eq(
+  $$ select title from public.boards where owner_id = '00000000-0000-4000-a000-000000000508' $$,
+  $$ values ('Demo: Launch a landing page') $$,
+  'an anonymous user gets the demo board instead of "My board"'
 );
 
 -- ---------------------------------------------------------------------------
