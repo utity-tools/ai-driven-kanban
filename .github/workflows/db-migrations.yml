@@ -3,6 +3,9 @@ name: Database migrations
 # Staging: migrations from a PR are applied so its Vercel preview has the new schema.
 # Production: applied after merge to main, only when enabled (repo variable
 # PRODUCTION_DB_ENABLED=true) and after manual approval (environment rule).
+# Manual runs (workflow_dispatch) pick the target. They bootstrap a new database with
+# every existing migration, because push runs only fire when a migration changes
+# (see docs/adr/0010-manual-production-migration-runs.md).
 # Connection: direct Postgres connection through the session pooler, no Supabase
 # access token (see docs/adr/0002-migrations-via-direct-connection.md).
 on:
@@ -14,13 +17,18 @@ on:
     paths: ["supabase/migrations/**"]
   workflow_dispatch:
     inputs:
+      target:
+        description: "Database to migrate"
+        type: choice
+        options: [staging, production]
+        default: staging
       dry_run:
-        description: "Only show the migrations that would be applied to staging"
+        description: "Only show the migrations that would be applied"
         type: boolean
         default: true
 
 concurrency:
-  group: db-migrations-${{ github.event_name == 'push' && 'production' || 'staging' }}
+  group: db-migrations-${{ (github.event_name == 'push' || inputs.target == 'production') && 'production' || 'staging' }}
   cancel-in-progress: false
 
 permissions:
@@ -31,7 +39,7 @@ jobs:
     name: Migrate staging
     # Fork PRs have no access to secrets.
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'staging') ||
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -61,7 +69,10 @@ jobs:
 
   production:
     name: Migrate production
-    if: github.event_name == 'push' && vars.PRODUCTION_DB_ENABLED == 'true'
+    if: >-
+      vars.PRODUCTION_DB_ENABLED == 'true' &&
+      (github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'production'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: production
@@ -85,4 +96,5 @@ jobs:
       - name: Pending migrations (dry run)
         run: pnpm exec supabase db push --db-url "$DB_URL" --dry-run
       - name: Apply migrations
+        if: github.event_name == 'push' || inputs.dry_run == false
         run: pnpm exec supabase db push --db-url "$DB_URL"
