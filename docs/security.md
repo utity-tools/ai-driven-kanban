@@ -49,19 +49,22 @@ reach the browser; the data is protected by Row Level Security, not by hiding th
 ## HTTP security headers
 
 Every route sends these headers, defined in `src/lib/security/headers.ts` and wired in
-`next.config.ts` ([ADR 0011](adr/0011-security-headers-and-partial-csp.md)):
+`next.config.ts` ([ADR 0011](adr/0011-security-headers-and-partial-csp.md)). On rendered pages the
+proxy adds a per-request nonce to the CSP ([ADR 0012](adr/0012-nonce-based-script-csp.md)):
 
 | Header                    | Value                                                                       |
 | ------------------------- | --------------------------------------------------------------------------- |
 | `Content-Security-Policy` | `frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action …` |
+| (rendered pages)          | `…; script-src 'self' 'nonce-…' 'strict-dynamic'`                           |
 | `X-Frame-Options`         | `DENY`                                                                      |
 | `X-Content-Type-Options`  | `nosniff`                                                                   |
 | `Referrer-Policy`         | `strict-origin-when-cross-origin`                                           |
 | `Permissions-Policy`      | `camera=(), microphone=(), geolocation=(), browsing-topics=()`              |
 
 `form-action` allows `'self'`, the Supabase origin and `https://github.com`, because the GitHub
-sign-in form redirects through both. Vercel adds `Strict-Transport-Security` in production. The
-CSP does not restrict scripts or styles yet; a nonce-based `script-src` is planned for v0.2.
+sign-in form redirects through both. Vercel adds `Strict-Transport-Security` in production.
+Styles are not restricted (Tailwind, Radix and dnd-kit use inline styles). A new third-party
+script must receive the nonce from the `x-nonce` request header, or the CSP blocks it.
 
 ## If a secret leaks
 

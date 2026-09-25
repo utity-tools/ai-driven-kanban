@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 
 import { ThemeProvider } from "@/components/theme-provider";
@@ -19,7 +20,11 @@ export const metadata: Metadata = {
   description: "Kanban board where AI proposes subtasks and a human reviews every proposal.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Set by the proxy (ADR 0012). Reading headers also makes every page dynamic, which a
+  // per-request nonce requires.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     // next-themes sets the `dark` class on <html> before hydration: suppress that one mismatch.
     <html
@@ -34,6 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
+          nonce={nonce}
         >
           {children}
         </ThemeProvider>

@@ -1,6 +1,6 @@
 # 0011. Security headers and a partial CSP
 
-- **Status:** accepted
+- **Status:** accepted; `script-src` added by [0012](0012-nonce-based-script-csp.md)
 - **Date:** 2026-09-25
 
 ## Context
