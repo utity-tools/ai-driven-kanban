@@ -1,10 +1,17 @@
 "use client";
 
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent, ReactNode, Ref } from "react";
 
 import { OPENED_FROM_BOARD_KEY, cardHref } from "@/lib/boards/card-url";
 
-type Props = { boardPath: string; cardId: string; className?: string; children: ReactNode };
+type Props = {
+  boardPath: string;
+  cardId: string;
+  className?: string;
+  children: ReactNode;
+  ref?: Ref<HTMLAnchorElement>;
+  "aria-describedby"?: string;
+};
 
 /**
  * Link that opens the card modal. It is a real link to `?card=<id>` (works
@@ -13,7 +20,7 @@ type Props = { boardPath: string; cardId: string; className?: string; children: 
  * opens instantly without re-rendering the board on the server. The entry is
  * marked so closing the modal can go Back instead of adding another entry.
  */
-export function CardLink({ boardPath, cardId, className, children }: Props) {
+export function CardLink({ boardPath, cardId, className, children, ...props }: Props) {
   const href = cardHref(boardPath, "", cardId);
 
   function handleClick(event: MouseEvent<HTMLAnchorElement>) {
@@ -33,7 +40,7 @@ export function CardLink({ boardPath, cardId, className, children }: Props) {
   }
 
   return (
-    <a href={href} onClick={handleClick} className={className}>
+    <a {...props} href={href} onClick={handleClick} className={className}>
       {children}
     </a>
   );
