@@ -41,8 +41,13 @@ after **7 days**.
   scheduling by name makes re-running the migration idempotent.
 - **The UI flags demo sessions.** A banner explains that the data is temporary and offers two
   actions: "Create an account" (signs out and goes to sign-up) and "Exit demo".
-- **Abuse control:** Supabase's per-IP rate limit on anonymous sign-ins (30 per hour) plus the
-  7-day expiry.
+- **Anonymous sign-in runs in the browser.** Supabase rate-limits anonymous sign-ins per
+  client IP (30 per hour). From a Server Action, every visitor would share the IP of the server,
+  so a traffic spike or a script could switch the demo off for everyone. The landing page signs
+  in with the browser client. Then a Server Action only finds the visitor's board and redirects.
+  If the visitor's demo user has already been deleted (their token can outlive the user for up
+  to an hour), the action signs them out and the browser starts a fresh demo.
+- **Abuse control:** the per-IP rate limit plus the 7-day expiry.
 
 ## Alternatives considered
 
