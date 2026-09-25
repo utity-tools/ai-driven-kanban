@@ -52,12 +52,12 @@ history matter as much as features.
 
 ## Environments
 
-| Environment      | Database                   | Deployed by                |
-| ---------------- | -------------------------- | -------------------------- |
-| Local dev        | Supabase local (Docker)    | `pnpm dev`                 |
-| CI               | Ephemeral Supabase local   | GitHub Actions             |
-| Preview (per PR) | Supabase `staging` project | Vercel preview             |
-| Production       | Supabase `prod` project    | Vercel, on merge to `main` |
+| Environment      | Database                   | Deployed by                             |
+| ---------------- | -------------------------- | --------------------------------------- |
+| Local dev        | Supabase local (Docker)    | `pnpm dev`                              |
+| CI               | Ephemeral Supabase local   | GitHub Actions                          |
+| Preview (per PR) | Supabase `staging` project | Vercel preview                          |
+| Production       | Supabase `prod` project    | GitHub Actions, after CI and migrations |
 
 Migrations reach staging/prod only through the deploy pipeline, never from a local machine.
 
