@@ -55,15 +55,20 @@ describe("drag announcements", () => {
 
   it("describes the projected place while moving and after dropping", () => {
     const moved = moveInLayout(LAYOUT, "c2", "doing");
-    expect(movedMessage(VIEW, moved, "c2")).toBe(
+    expect(movedMessage(VIEW, LAYOUT, moved, "c2")).toBe(
       "Card Fix login is now in column Doing, position 1 of 1.",
     );
     expect(droppedMessage(VIEW, moved, "c2")).toBe(
       "Dropped card Fix login. Card is in column Doing, position 1 of 1.",
     );
-    expect(movedMessage(VIEW, moveInLayout(LAYOUT, "doing", "todo"), "doing")).toBe(
+    expect(movedMessage(VIEW, LAYOUT, moveInLayout(LAYOUT, "doing", "todo"), "doing")).toBe(
       "Column Doing is now in position 1 of 2.",
     );
+  });
+
+  it("says nothing while the item is over its own place", () => {
+    // Right after a drag starts dnd-kit reports the item over itself.
+    expect(movedMessage(VIEW, LAYOUT, moveInLayout(LAYOUT, "c1", "c1"), "c1")).toBe("");
   });
 
   it("says where the item went back to after a cancel", () => {
@@ -74,7 +79,7 @@ describe("drag announcements", () => {
 
   it("falls back to generic messages for unknown ids", () => {
     expect(pickedUpMessage(VIEW, LAYOUT, "zz")).toBe("Picked up an item.");
-    expect(movedMessage(VIEW, LAYOUT, "zz")).toBe("");
+    expect(movedMessage(VIEW, LAYOUT, LAYOUT, "zz")).toBe("");
     expect(droppedMessage(VIEW, LAYOUT, "zz")).toBe("Dropped the item.");
     expect(cancelledMessage(VIEW, LAYOUT, "zz")).toBe("Movement cancelled.");
   });

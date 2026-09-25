@@ -63,6 +63,8 @@ type DragSession = {
   initial: BoardLayout;
   /** Current order, including cards moved to another column while dragging. */
   layout: BoardLayout;
+  /** Order of the last "is now in …" announcement: only real moves are announced. */
+  announced: BoardLayout;
 };
 
 const [keyboardActivator] = KeyboardSensor.activators;
@@ -120,7 +122,7 @@ export function SortableBoard({ onDeleteColumn }: { onDeleteColumn: (columnId: s
 
   function handleDragStart({ active }: DragStartEvent) {
     const initial = layoutOf(view);
-    session.current = { view, initial, layout: initial };
+    session.current = { view, initial, layout: initial, announced: initial };
     setLayout(initial);
     setActiveId(String(active.id));
   }
@@ -179,7 +181,10 @@ export function SortableBoard({ onDeleteColumn }: { onDeleteColumn: (columnId: s
       if (!current || !over) return undefined;
       const id = String(active.id);
       const projected = moveInLayout(current.layout, id, String(over.id));
-      return movedMessage(current.view, projected, id) || undefined;
+      const message = movedMessage(current.view, current.announced, projected, id);
+      if (!message) return undefined;
+      current.announced = projected;
+      return message;
     },
     onDragEnd({ active }) {
       const current = session.current;

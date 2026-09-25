@@ -47,7 +47,22 @@ export function pickedUpMessage(view: BoardView, layout: BoardLayout, id: string
   return `Picked up ${kind} ${titleOf(view, id)}. ${capitalize(kind)} is in ${where}.`;
 }
 
-export function movedMessage(view: BoardView, layout: BoardLayout, id: string): string {
+/**
+ * "Is now in …" for a move from `from` to `layout`, or "" when the item has
+ * not changed place: dnd-kit reports the item over itself right after a drag
+ * starts, and a message then would replace the "Picked up" one.
+ */
+export function movedMessage(
+  view: BoardView,
+  from: BoardLayout,
+  layout: BoardLayout,
+  id: string,
+): string {
+  const before = placeOf(from, id);
+  const after = placeOf(layout, id);
+  if (before && after && before.columnId === after.columnId && before.index === after.index) {
+    return "";
+  }
   const kind = kindOf(layout, id);
   const where = whereIs(view, layout, id);
   if (!kind || !where) return "";
