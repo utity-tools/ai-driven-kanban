@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parsePublicEnv } from "./env";
+import { DEFAULT_AI_MODEL, parsePublicEnv, parseServerEnv } from "./env";
 
 describe("parsePublicEnv", () => {
   it("accepts valid values", () => {
@@ -26,5 +26,21 @@ describe("parsePublicEnv", () => {
 
   it("rejects missing values", () => {
     expect(() => parsePublicEnv({})).toThrowError(/Invalid public environment variables/);
+  });
+});
+
+describe("parseServerEnv", () => {
+  it("defaults AI_MODEL when unset", () => {
+    expect(parseServerEnv({ AI_MODEL: undefined })).toEqual({ AI_MODEL: DEFAULT_AI_MODEL });
+  });
+
+  it("accepts an override", () => {
+    expect(parseServerEnv({ AI_MODEL: "openai/gpt-5" })).toEqual({ AI_MODEL: "openai/gpt-5" });
+  });
+
+  it("rejects a blank override", () => {
+    expect(() => parseServerEnv({ AI_MODEL: "   " })).toThrowError(
+      /Invalid server environment variables/,
+    );
   });
 });
