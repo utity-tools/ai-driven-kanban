@@ -3,10 +3,15 @@ import { describe, expect, it } from "vitest";
 import { getAuthRedirect, isAuthPage, isPublicPath, loginPathWithNext } from "./routes";
 
 describe("isPublicPath", () => {
-  it.each(["/", "/login", "/signup", "/login/", "/auth/callback", "/auth/anything/else"])(
-    "treats %s as public",
-    (path) => expect(isPublicPath(path)).toBe(true),
-  );
+  it.each([
+    "/",
+    "/login",
+    "/signup",
+    "/login/",
+    "/auth/callback",
+    "/auth/anything/else",
+    "/api/cards/1/decompose",
+  ])("treats %s as public", (path) => expect(isPublicPath(path)).toBe(true));
 
   it.each(["/boards", "/boards/1", "/authx", "/loginx", "/settings"])(
     "treats %s as protected",

@@ -5,7 +5,9 @@ export const SIGNUP_PATH = "/signup";
 
 const AUTH_PAGES = new Set([LOGIN_PATH, SIGNUP_PATH]);
 const PUBLIC_PATHS = new Set(["/", LOGIN_PATH, SIGNUP_PATH]);
-const PUBLIC_PREFIXES = ["/auth/"];
+// API routes authenticate themselves and return a JSON 401/403: redirecting
+// them to /login here would turn a fetch() call into an HTML page.
+const PUBLIC_PREFIXES = ["/auth/", "/api/"];
 
 function normalise(pathname: string): string {
   return pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;

@@ -42,3 +42,51 @@ export function getPublicEnv(): PublicEnv {
   });
   return cached;
 }
+
+/** AI Gateway model string (`provider/model`) used when no override is given. */
+export const DEFAULT_AI_MODEL = "anthropic/claude-haiku-4.5";
+
+export const serverEnvSchema = z.object({
+  // AI Gateway model id ("provider/model"). AI_GATEWAY_API_KEY (local only; Vercel
+  // deployments authenticate via OIDC) is read directly by the AI SDK, not here.
+  AI_MODEL: z
+    .string({ error: "AI_MODEL must be a non-empty string." })
+    .trim()
+    .min(1, { error: "AI_MODEL must be a non-empty string." })
+    .optional()
+    .default(DEFAULT_AI_MODEL),
+  // Kill switch for the paid AI routes: off unless explicitly "true", so a new
+  // environment never spends Gateway credits by accident.
+  AI_DECOMPOSITION_ENABLED: z
+    .enum(["true", "false"], { error: 'AI_DECOMPOSITION_ENABLED must be "true" or "false".' })
+    .optional()
+    .default("false")
+    .transform((value) => value === "true"),
+});
+
+export type ServerEnv = z.infer<typeof serverEnvSchema>;
+
+/** Validates raw values and throws one readable error listing every problem. */
+export function parseServerEnv(raw: Record<string, string | undefined>): ServerEnv {
+  const result = serverEnvSchema.safeParse(raw);
+  if (!result.success) {
+    const problems = result.error.issues.map((issue) => `  - ${issue.message}`).join("\n");
+    throw new Error(`Invalid server environment variables:\n${problems}`);
+  }
+  return result.data;
+}
+
+let cachedServerEnv: ServerEnv | undefined;
+
+/**
+ * Server-only env vars, validated on first use and memoised. Not imported by
+ * client code: only server modules (e.g. src/lib/ai) call this.
+ */
+export function getServerEnv(): ServerEnv {
+  // `||` so a blank line copied from .env.example (`AI_MODEL=`) reads as unset.
+  cachedServerEnv ??= parseServerEnv({
+    AI_MODEL: process.env.AI_MODEL || undefined,
+    AI_DECOMPOSITION_ENABLED: process.env.AI_DECOMPOSITION_ENABLED || undefined,
+  });
+  return cachedServerEnv;
+}
