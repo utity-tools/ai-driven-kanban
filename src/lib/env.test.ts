@@ -31,11 +31,27 @@ describe("parsePublicEnv", () => {
 
 describe("parseServerEnv", () => {
   it("defaults AI_MODEL when unset", () => {
-    expect(parseServerEnv({ AI_MODEL: undefined })).toEqual({ AI_MODEL: DEFAULT_AI_MODEL });
+    expect(parseServerEnv({ AI_MODEL: undefined }).AI_MODEL).toBe(DEFAULT_AI_MODEL);
   });
 
   it("accepts an override", () => {
-    expect(parseServerEnv({ AI_MODEL: "openai/gpt-5" })).toEqual({ AI_MODEL: "openai/gpt-5" });
+    expect(parseServerEnv({ AI_MODEL: "openai/gpt-5" }).AI_MODEL).toBe("openai/gpt-5");
+  });
+
+  it("keeps AI decomposition disabled unless explicitly enabled", () => {
+    expect(parseServerEnv({}).AI_DECOMPOSITION_ENABLED).toBe(false);
+    expect(parseServerEnv({ AI_DECOMPOSITION_ENABLED: "false" }).AI_DECOMPOSITION_ENABLED).toBe(
+      false,
+    );
+    expect(parseServerEnv({ AI_DECOMPOSITION_ENABLED: "true" }).AI_DECOMPOSITION_ENABLED).toBe(
+      true,
+    );
+  });
+
+  it("rejects an ambiguous AI_DECOMPOSITION_ENABLED value", () => {
+    expect(() => parseServerEnv({ AI_DECOMPOSITION_ENABLED: "yes" })).toThrowError(
+      /AI_DECOMPOSITION_ENABLED must be "true" or "false"/,
+    );
   });
 
   it("rejects a blank override", () => {

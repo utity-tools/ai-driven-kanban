@@ -15,6 +15,12 @@ import {
 } from "./prompts/decompose-v1";
 import { decompositionProposalSchema } from "./schemas";
 
+/**
+ * Upper bound on generated tokens per call: eight short subtasks fit in a few
+ * hundred, so this only bites if the model runs away, capping the cost of one call.
+ */
+export const MAX_DECOMPOSITION_OUTPUT_TOKENS = 1024;
+
 export type CardForDecomposition = {
   title: string;
   description: string | null;
@@ -47,6 +53,7 @@ export function streamDecomposition({
     system: DECOMPOSE_SYSTEM_PROMPT,
     prompt: buildDecomposeUserMessage(card),
     output: Output.object({ schema: decompositionProposalSchema }),
+    maxOutputTokens: MAX_DECOMPOSITION_OUTPUT_TOKENS,
     abortSignal,
     onFinish({ usage, response }) {
       // Observability: model, latency, tokens and (when available) cost per call.

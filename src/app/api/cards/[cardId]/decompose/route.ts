@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDecompositionModel, streamDecomposition } from "@/lib/ai/decompose";
 import { createClient } from "@/lib/db/server";
+import { getServerEnv } from "@/lib/env";
 
 const cardIdSchema = z.uuid();
 
@@ -15,6 +16,11 @@ export async function POST(
   request: Request,
   context: RouteContext<"/api/cards/[cardId]/decompose">,
 ) {
+  // Disabled environments behave as if the route didn't exist, before any other work.
+  if (!getServerEnv().AI_DECOMPOSITION_ENABLED) {
+    return Response.json({ error: "Not found." }, { status: 404 });
+  }
+
   const { cardId } = await context.params;
   const parsedCardId = cardIdSchema.safeParse(cardId);
   if (!parsedCardId.success) {

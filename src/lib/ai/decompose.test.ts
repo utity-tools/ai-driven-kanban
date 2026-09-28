@@ -2,7 +2,7 @@ import { simulateReadableStream } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
 import { describe, expect, it } from "vitest";
 
-import { streamDecomposition } from "./decompose";
+import { MAX_DECOMPOSITION_OUTPUT_TOKENS, streamDecomposition } from "./decompose";
 
 const usage = {
   inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
@@ -61,5 +61,14 @@ describe("streamDecomposition", () => {
     });
 
     await expect(result.output).rejects.toThrow();
+  });
+
+  it("caps the output tokens of every call", async () => {
+    const model = mockModel(JSON.stringify({ subtasks: [{ title: "Only one", estimate: 1 }] }));
+
+    const result = streamDecomposition({ model, card: { title: "Cap", description: null } });
+    await result.output;
+
+    expect(model.doStreamCalls[0]?.maxOutputTokens).toBe(MAX_DECOMPOSITION_OUTPUT_TOKENS);
   });
 });
