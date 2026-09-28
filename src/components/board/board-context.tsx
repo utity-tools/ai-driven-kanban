@@ -25,8 +25,6 @@ export type BoardContextValue = {
   permissions: BoardPermissions;
   /** Whether AI subtask suggestions are switched on for this deployment. */
   aiDecompositionEnabled: boolean;
-  /** The viewer is an anonymous demo user (AI suggestions are shown but disabled). */
-  isDemoUser: boolean;
   /** Request time, from the server. */
   now: Date;
   /**

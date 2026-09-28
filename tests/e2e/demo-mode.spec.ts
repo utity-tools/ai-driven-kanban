@@ -4,6 +4,7 @@ import { ALICE_STORAGE_STATE, expectLoginWithNext } from "./support/auth";
 import {
   addCards,
   boardHeading,
+  cardLink,
   cardTitles,
   columnHeadings,
   expect,
@@ -152,6 +153,41 @@ test.describe("demo session", () => {
 
       await page.reload();
       await expect(cardTitles(page, "Backlog")).toHaveText([...DEMO_BACKLOG, title]);
+    });
+
+    await test.step("the visitor can add AI-suggested subtasks (within the demo quota)", async () => {
+      // The model is mocked (see ai-subtasks.spec.ts); saving through the RPC is real,
+      // which is what matters here: demo users were refused before ADR 0016.
+      await page.route("**/api/cards/*/decompose", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "text/plain; charset=utf-8",
+          headers: { "X-Quota-Remaining": "2" },
+          body: JSON.stringify({
+            subtasks: [{ title: "Pick an analytics provider", estimate: 2 }],
+          }),
+        }),
+      );
+      const card = "Set up analytics events";
+      await cardLink(page, card).click();
+      const dialog = page.getByRole("dialog", { name: card, exact: true });
+      await expect(dialog).toBeVisible();
+
+      const actions = trackServerActions(page);
+      await dialog.getByRole("button", { name: "Suggest with AI" }).click();
+      await dialog.getByRole("button", { name: "Add 1 subtask" }).click();
+      await actions.settled(1);
+      await expect(dialog.getByText("2 AI suggestions left today.")).toBeVisible();
+
+      // The modal lives in the URL (?card=), so a reload reopens it with what was saved.
+      await page.reload();
+      const saved = page
+        .getByRole("dialog", { name: card, exact: true })
+        .getByRole("list", { name: "Subtasks", exact: true });
+      await expect(
+        saved.getByRole("checkbox", { name: "Pick an analytics provider", exact: true }),
+      ).toBeVisible();
+      await page.unroute("**/api/cards/*/decompose");
     });
 
     await test.step("back on the landing page, Continue the demo reopens the same board", async () => {

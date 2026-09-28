@@ -8,11 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { QUOTA_REMAINING_HEADER, parseQuotaRemaining, quotaRemainingMessage } from "@/lib/ai/quota";
 import {
-  DEMO_UNAVAILABLE_MESSAGE,
   EMPTY_PROPOSAL_ERROR,
   type ReviewItem,
-  type SuggestAvailability,
   addSubtasksLabel,
   decompositionErrorMessage,
   optimisticAiSubtasks,
@@ -36,7 +35,6 @@ type Props = {
   cardId: string;
   /** The card's current checklist: new rows go after it, and it caps the selection. */
   subtasks: readonly Subtask[];
-  availability: Exclude<SuggestAvailability, "hidden">;
 };
 
 type Phase = "idle" | "streaming" | "review" | "error";
@@ -51,7 +49,7 @@ type Phase = "idle" | "streaming" | "review" | "error";
  * that had focus goes away (Stop, Retry) it returns there; closing the review
  * returns it to "Suggest with AI".
  */
-export function AiSubtaskSuggestions({ cardId, subtasks, availability }: Props) {
+export function AiSubtaskSuggestions({ cardId, subtasks }: Props) {
   const { boardId, mutate } = useBoard();
   const [phase, setPhase] = useState<Phase>("idle");
   const [items, setItems] = useState<ReviewItem[]>([]);
@@ -61,7 +59,9 @@ export function AiSubtaskSuggestions({ cardId, subtasks, availability }: Props) 
   const [announcement, setAnnouncement] = useState("");
 
   const headingId = useId();
-  const demoHintId = useId();
+  // Daily suggestions left, known after the first request (ADR 0016); null until then.
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const quotaHintId = useId();
   const panelRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const openerRef = useRef<HTMLButtonElement>(null);
@@ -70,6 +70,16 @@ export function AiSubtaskSuggestions({ cardId, subtasks, availability }: Props) 
   const { object, submit, stop, clear } = useObject({
     api: `/api/cards/${cardId}/decompose`,
     schema: decompositionProposalSchema,
+    async fetch(input, init) {
+      const response = await fetch(input, init);
+      // 429: the daily quota (the caller's or the global one) is spent until midnight UTC.
+      const left =
+        response.status === 429
+          ? 0
+          : parseQuotaRemaining(response.headers.get(QUOTA_REMAINING_HEADER));
+      if (left !== null) setRemaining(left);
+      return response;
+    },
     onFinish({ object: proposal }) {
       // An empty body (the model failed mid-stream) or an invalid object both end here.
       const streamed = proposal ? streamedSubtasks(proposal) : [];
@@ -179,7 +189,7 @@ export function AiSubtaskSuggestions({ cardId, subtasks, availability }: Props) 
   const streaming = phase === "streaming";
   const streamed = streaming ? streamedSubtasks(object) : [];
 
-  const demo = availability === "demo";
+  const exhausted = remaining === 0;
 
   return (
     <div className="grid gap-1">
@@ -189,16 +199,18 @@ export function AiSubtaskSuggestions({ cardId, subtasks, availability }: Props) 
             ref={openerRef}
             variant="outline"
             size="sm"
-            disabled={demo}
-            aria-describedby={demo ? demoHintId : undefined}
-            onClick={start}
+            // aria-disabled, not disabled: closing the review returns focus here.
+            aria-disabled={exhausted || undefined}
+            aria-describedby={remaining !== null ? quotaHintId : undefined}
+            className={cn(exhausted && "cursor-not-allowed opacity-50")}
+            onClick={exhausted ? undefined : start}
           >
             <SparklesIcon aria-hidden />
             Suggest with AI
           </Button>
-          {demo ? (
-            <p id={demoHintId} className="text-xs text-muted-foreground">
-              {DEMO_UNAVAILABLE_MESSAGE}
+          {remaining !== null ? (
+            <p id={quotaHintId} className="text-xs text-muted-foreground">
+              {quotaRemainingMessage(remaining)}
             </p>
           ) : null}
         </div>
@@ -256,9 +268,11 @@ export function AiSubtaskSuggestions({ cardId, subtasks, availability }: Props) 
             <>
               <p className="text-sm text-destructive">{error}</p>
               <div className="flex gap-2">
-                <Button size="sm" onClick={start}>
-                  Retry
-                </Button>
+                {exhausted ? null : (
+                  <Button size="sm" onClick={start}>
+                    Retry
+                  </Button>
+                )}
                 <Button variant="ghost" size="sm" onClick={() => close("Suggestions discarded.")}>
                   Discard
                 </Button>

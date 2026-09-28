@@ -4,7 +4,7 @@ import { ALICE_STORAGE_STATE } from "./support/auth";
 import { addCards, cardLink, test, expect } from "./support/boards";
 import { trackServerActions } from "./support/server-actions";
 
-// AI subtask proposals (v0.2 delivery 4): "Suggest with AI" in the card modal
+// AI subtask proposals (v0.2 deliveries 4 and 5): "Suggest with AI" in the card modal
 // streams a proposal, the user reviews it, and only what they keep is saved.
 //
 // The model is never reached: the decompose route is mocked in the browser
@@ -83,10 +83,11 @@ async function createAndOpenCard(page: Page, title: string): Promise<Locator> {
 }
 
 /** Answers like the real route's successful text stream (the whole body at once). */
-function fulfillStream(route: Route, body: string): Promise<void> {
+function fulfillStream(route: Route, body: string, quotaRemaining?: number): Promise<void> {
   return route.fulfill({
     status: 200,
     contentType: "text/plain; charset=utf-8",
+    headers: quotaRemaining === undefined ? {} : { "X-Quota-Remaining": String(quotaRemaining) },
     body,
   });
 }
@@ -252,4 +253,48 @@ test("a refused request shows the route's own error message", async ({ boardPage
   await expect(panel.getByRole("button", { name: "Retry" })).toBeVisible();
   await expect(panel.getByRole("list", { name: "Suggested subtasks" })).toHaveCount(0);
   await expect.poll(() => subtaskTitles(dialog)).toEqual([]);
+});
+
+test("the daily quota: what's left is shown, and a spent quota can't be retried", async ({
+  boardPage: page,
+}) => {
+  let calls = 0;
+  await page.route(DECOMPOSE_ROUTE, async (route) => {
+    calls += 1;
+    if (calls === 1) {
+      await fulfillStream(route, JSON.stringify(PROPOSAL), 1);
+      return;
+    }
+    await route.fulfill({
+      status: 429,
+      headers: { "Retry-After": "3600" },
+      json: {
+        error: "You've used all your AI suggestions for today. They reset at midnight UTC.",
+      },
+    });
+  });
+
+  const dialog = await createAndOpenCard(page, "Card near the AI quota");
+  const panel = suggestions(dialog);
+
+  // First request: a proposal, then back to the button with the count left.
+  await suggestButton(dialog).click();
+  await expect(suggestedList(dialog).getByRole("listitem")).toHaveCount(3);
+  await panel.getByRole("button", { name: "Discard" }).click();
+  await expect(suggestButton(dialog)).toBeEnabled();
+  await expect(dialog.getByText("1 AI suggestion left today.", { exact: true })).toBeVisible();
+
+  // Second request: refused by the quota, with no Retry.
+  await suggestButton(dialog).click();
+  const refused = "You've used all your AI suggestions for today. They reset at midnight UTC.";
+  await expect(panel.getByText(refused, { exact: true })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Retry" })).toHaveCount(0);
+
+  // Discarding leaves the button disabled, explained by its description.
+  await panel.getByRole("button", { name: "Discard" }).click();
+  await expect(suggestButton(dialog)).toBeDisabled();
+  await expect(suggestButton(dialog)).toHaveAccessibleDescription(
+    "No AI suggestions left today. They reset at midnight UTC.",
+  );
+  expect(calls).toBe(2);
 });

@@ -31,7 +31,6 @@ export default async function BoardPage({ params }: PageProps<"/boards/[id]">) {
       permissions={permissions}
       // Only a boolean reaches the client: the env itself stays on the server.
       aiDecompositionEnabled={getServerEnv().AI_DECOMPOSITION_ENABLED}
-      isDemoUser={user.isAnonymous}
     />
   );
 }

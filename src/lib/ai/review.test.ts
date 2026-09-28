@@ -25,7 +25,7 @@ function item(overrides: Partial<ReviewItem> = {}): ReviewItem {
 }
 
 describe("suggestAvailability", () => {
-  const base = { featureEnabled: true, editable: true, isDemoUser: false, subtaskCount: 0 };
+  const base = { featureEnabled: true, editable: true, subtaskCount: 0 };
 
   it("is enabled for owners and editors on an active card", () => {
     expect(suggestAvailability(base)).toBe("enabled");
@@ -33,14 +33,10 @@ describe("suggestAvailability", () => {
 
   it("is hidden when the feature flag is off", () => {
     expect(suggestAvailability({ ...base, featureEnabled: false })).toBe("hidden");
-    expect(suggestAvailability({ ...base, featureEnabled: false, isDemoUser: true })).toBe(
-      "hidden",
-    );
   });
 
   it("is hidden for viewers and archived cards (not editable)", () => {
     expect(suggestAvailability({ ...base, editable: false })).toBe("hidden");
-    expect(suggestAvailability({ ...base, editable: false, isDemoUser: true })).toBe("hidden");
   });
 
   it("is hidden when the checklist is full", () => {
@@ -48,10 +44,6 @@ describe("suggestAvailability", () => {
     expect(suggestAvailability({ ...base, subtaskCount: SUBTASKS_PER_CARD_MAX - 1 })).toBe(
       "enabled",
     );
-  });
-
-  it("is shown disabled for demo users", () => {
-    expect(suggestAvailability({ ...base, isDemoUser: true })).toBe("demo");
   });
 });
 

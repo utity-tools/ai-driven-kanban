@@ -32,13 +32,12 @@ type Props = {
  * optimistic; the fresh board from the Server Action replaces it.
  */
 export function CardSubtasks({ card, editable }: Props) {
-  const { boardId, mutate, aiDecompositionEnabled, isDemoUser } = useBoard();
+  const { boardId, mutate, aiDecompositionEnabled } = useBoard();
   const cardId = card.id;
   const { subtasks } = card;
   const ai = suggestAvailability({
     featureEnabled: aiDecompositionEnabled,
     editable,
-    isDemoUser,
     subtaskCount: subtasks.length,
   });
 
@@ -116,9 +115,7 @@ export function CardSubtasks({ card, editable }: Props) {
         </ul>
       ) : null}
       {editable ? <SubtaskComposer count={subtasks.length} onAdd={add} /> : null}
-      {ai !== "hidden" ? (
-        <AiSubtaskSuggestions cardId={cardId} subtasks={subtasks} availability={ai} />
-      ) : null}
+      {ai !== "hidden" ? <AiSubtaskSuggestions cardId={cardId} subtasks={subtasks} /> : null}
     </div>
   );
 }
