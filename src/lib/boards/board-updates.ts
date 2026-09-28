@@ -263,6 +263,7 @@ export function applyBoardUpdate(view: BoardView, update: BoardUpdate): BoardVie
       }));
 
     case "addSubtask":
+    case "addSubtasks":
     case "renameSubtask":
     case "setSubtaskEstimate":
     case "setSubtaskCompleted":

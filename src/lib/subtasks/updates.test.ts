@@ -35,6 +35,16 @@ describe("applySubtaskUpdate", () => {
     expect(ids(again)).toEqual(["s1", "new", "s2", "s3"]);
   });
 
+  it("appends a batch of subtasks in position order, skipping known ids", () => {
+    const added = applySubtaskUpdate(list(), {
+      ...base,
+      type: "addSubtasks",
+      subtasks: [subtask("a2", "a4", { source: "ai" }), subtask("a1", "a3"), subtask("s1", "a9")],
+    });
+    expect(ids(added)).toEqual(["s1", "s2", "s3", "a1", "a2"]);
+    expect(added[0]?.position).toBe("a0");
+  });
+
   it("renames, estimates and completes one subtask only", () => {
     let next = applySubtaskUpdate(list(), {
       ...base,

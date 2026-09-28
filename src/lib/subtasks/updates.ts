@@ -10,6 +10,8 @@ import type { Subtask } from "./subtask";
  */
 export type SubtaskUpdate =
   | { type: "addSubtask"; cardId: string; subtask: Subtask }
+  /** Accepted AI proposals, appended in one go (positions already after the last). */
+  | { type: "addSubtasks"; cardId: string; subtasks: Subtask[] }
   | { type: "renameSubtask"; cardId: string; subtaskId: string; title: string }
   | { type: "setSubtaskEstimate"; cardId: string; subtaskId: string; estimate: Estimate | null }
   | { type: "setSubtaskCompleted"; cardId: string; subtaskId: string; completedAt: string | null }
@@ -33,6 +35,12 @@ export function applySubtaskUpdate(subtasks: readonly Subtask[], update: Subtask
     case "addSubtask":
       if (subtasks.some((s) => s.id === update.subtask.id)) return [...subtasks];
       return [...subtasks, update.subtask].sort(compareByPosition);
+
+    case "addSubtasks": {
+      const known = new Set(subtasks.map((s) => s.id));
+      const added = update.subtasks.filter((s) => !known.has(s.id));
+      return [...subtasks, ...added].sort(compareByPosition);
+    }
 
     case "renameSubtask":
       return patch(subtasks, update.subtaskId, { title: update.title });

@@ -33,3 +33,16 @@ export const decompositionProposalSchema = z.object({
 });
 
 export type DecompositionProposal = z.infer<typeof decompositionProposalSchema>;
+
+/**
+ * What the review screen sends to save the subtasks the user kept (and may
+ * have edited): the same limits as a proposal. `boardId` only tells the action
+ * which board to revalidate; the database derives the board from the card.
+ */
+export const acceptProposalSchema = z.object({
+  boardId: z.uuid({ error: "Invalid board." }),
+  cardId: z.uuid({ error: "Invalid card." }),
+  subtasks: decompositionProposalSchema.shape.subtasks,
+});
+
+export type AcceptProposalInput = z.input<typeof acceptProposalSchema>;

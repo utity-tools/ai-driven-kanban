@@ -1,10 +1,17 @@
 "use server";
 
-import { type ActionResult, failure, friendlyDbError } from "@/lib/boards/action-result";
+import { acceptProposalSchema } from "@/lib/ai/schemas";
+import {
+  type ActionResult,
+  NOT_FOUND_ERROR,
+  failure,
+  friendlyDbError,
+} from "@/lib/boards/action-result";
 import { affected, runBoardAction as run } from "@/lib/boards/action-runner";
 import { positionAfterLast, positionForMove } from "@/lib/boards/positions";
 
 import {
+  SUBTASKS_PER_CARD_MAX,
   SUBTASK_LIMIT_ERROR,
   createSubtaskSchema,
   deleteSubtaskSchema,
@@ -159,5 +166,31 @@ export async function deleteSubtask(input: unknown): Promise<ActionResult> {
       .select("id");
     if (error) return failure(friendlyDbError(error));
     return affected(data);
+  });
+}
+
+/**
+ * Saves the AI-proposed subtasks the user reviewed and kept, appended to the
+ * card's checklist with `source: 'ai'`. Goes through the accept_ai_subtasks
+ * RPC, the only path that may write that source (see its migration); the RPC
+ * repeats every check (owner/editor, not a demo user, active card, shape).
+ */
+export async function acceptAiSubtasks(input: unknown): Promise<ActionResult> {
+  return run(acceptProposalSchema, input, async ({ cardId, subtasks }, supabase) => {
+    const { error } = await supabase.rpc("accept_ai_subtasks", {
+      p_card_id: cardId,
+      p_subtasks: subtasks,
+    });
+    if (error) {
+      return failure(
+        friendlyDbError(error, {
+          // Missing card, not an owner/editor, or a demo user: kept indistinguishable.
+          "42501": NOT_FOUND_ERROR,
+          // The shape is validated above, so this is an archived card or the 100 limit.
+          "23514": `These subtasks can't be added: the card is archived or already has ${SUBTASKS_PER_CARD_MAX} subtasks.`,
+        }),
+      );
+    }
+    return { ok: true };
   });
 }

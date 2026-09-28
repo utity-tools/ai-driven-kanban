@@ -344,6 +344,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_ai_subtasks: {
+        Args: { p_card_id: string; p_subtasks: Json }
+        Returns: {
+          board_id: string
+          card_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          estimate: number | null
+          id: string
+          position: string
+          source: string
+          title: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "card_subtasks"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       create_board: { Args: { p_title: string }; Returns: string }
       has_board_role: {
         Args: {
