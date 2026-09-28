@@ -41,7 +41,7 @@ export async function POST(
   const supabase = await createClient();
   const { data: card, error } = await supabase
     .from("cards")
-    .select("title, description")
+    .select("board_id, title, description")
     .eq("id", parsedCardId.data)
     .maybeSingle();
   if (error) {
@@ -51,9 +51,26 @@ export async function POST(
   // RLS makes "doesn't exist" and "not visible to this user" indistinguishable, on purpose.
   if (!card) return Response.json({ error: "Card not found." }, { status: 404 });
 
+  // Seeing a card isn't enough: only those who can save the proposal (owners and
+  // editors) may spend model tokens on it. Viewers already know the card exists.
+  const { data: canEdit, error: roleError } = await supabase.rpc("has_board_role", {
+    p_board_id: card.board_id,
+    p_roles: ["owner", "editor"],
+  });
+  if (roleError) {
+    console.error("ai.decompose.role_check_failed", { error: roleError });
+    return Response.json({ error: "Something went wrong." }, { status: 500 });
+  }
+  if (!canEdit) {
+    return Response.json(
+      { error: "Only owners and editors can use AI decomposition." },
+      { status: 403 },
+    );
+  }
+
   const result = streamDecomposition({
     model: getDecompositionModel(),
-    card,
+    card: { title: card.title, description: card.description },
     // Closing the review stops generation, so an abandoned request stops costing tokens.
     abortSignal: request.signal,
   });
