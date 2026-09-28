@@ -2,6 +2,12 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDecompositionModel, streamDecomposition } from "@/lib/ai/decompose";
+import {
+  QUOTA_EXCEEDED_MESSAGES,
+  QUOTA_REMAINING_HEADER,
+  quotaExceededKind,
+  secondsUntilQuotaReset,
+} from "@/lib/ai/quota";
 import { createClient } from "@/lib/db/server";
 import { getServerEnv } from "@/lib/env";
 
@@ -9,8 +15,9 @@ const cardIdSchema = z.uuid();
 
 /**
  * Streams an AI subtask decomposition proposal for a card. Nothing is
- * persisted here: the client reviews the streamed proposal and a later,
- * separate confirmation step (delivery 4) saves what the user keeps.
+ * persisted here: the client reviews the streamed proposal and a separate
+ * confirmation step (acceptAiSubtasks) saves what the user keeps. Every call
+ * first reserves one unit of the caller's daily quota (ADR 0016).
  */
 export async function POST(
   request: Request,
@@ -29,14 +36,6 @@ export async function POST(
 
   const user = await getCurrentUser();
   if (!user) return Response.json({ error: "Sign in required." }, { status: 401 });
-  // Demo (anonymous) users get a decomposition quota in delivery 5; for now they
-  // are denied outright so the AI Gateway is never called on their behalf.
-  if (user.isAnonymous) {
-    return Response.json(
-      { error: "AI decomposition isn't available for demo users." },
-      { status: 403 },
-    );
-  }
 
   const supabase = await createClient();
   const { data: card, error } = await supabase
@@ -68,11 +67,31 @@ export async function POST(
     );
   }
 
+  // Charged before the model is called, so failed or stopped calls count too: the
+  // database enforces the per-user daily limit (smaller for demo users) and the
+  // global daily cost cap, atomically.
+  const { data: quota, error: quotaError } = await supabase
+    .rpc("reserve_ai_decomposition")
+    .single();
+  if (quotaError) {
+    const exceeded = quotaExceededKind(quotaError.code);
+    if (exceeded) {
+      return Response.json(
+        { error: QUOTA_EXCEEDED_MESSAGES[exceeded] },
+        { status: 429, headers: { "Retry-After": String(secondsUntilQuotaReset(new Date())) } },
+      );
+    }
+    console.error("ai.decompose.quota_failed", { error: quotaError });
+    return Response.json({ error: "Something went wrong." }, { status: 500 });
+  }
+
   const result = streamDecomposition({
     model: getDecompositionModel(),
     card: { title: card.title, description: card.description },
     // Closing the review stops generation, so an abandoned request stops costing tokens.
     abortSignal: request.signal,
   });
-  return result.toTextStreamResponse();
+  return result.toTextStreamResponse({
+    headers: { [QUOTA_REMAINING_HEADER]: String(quota.remaining) },
+  });
 }
