@@ -85,9 +85,25 @@ export async function POST(
     return Response.json({ error: "Something went wrong." }, { status: 500 });
   }
 
+  // Existing subtasks go in the prompt so a second run proposes the remaining work. All of
+  // them (at most 100 per card): the prompt caps how many it shows and counts the rest.
+  const { data: subtasks, error: subtasksError } = await supabase
+    .from("card_subtasks")
+    .select("title")
+    .eq("card_id", parsedCardId.data)
+    .order("position");
+  if (subtasksError) {
+    console.error("ai.decompose.subtasks_fetch_failed", { error: subtasksError });
+    return Response.json({ error: "Something went wrong." }, { status: 500 });
+  }
+
   const result = streamDecomposition({
     model: getDecompositionModel(),
-    card: { title: card.title, description: card.description },
+    card: {
+      title: card.title,
+      description: card.description,
+      existingSubtasks: subtasks.map((subtask) => subtask.title),
+    },
     // Closing the review stops generation, so an abandoned request stops costing tokens.
     abortSignal: request.signal,
   });

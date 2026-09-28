@@ -12,7 +12,7 @@ import {
   buildDecomposeUserMessage,
   DECOMPOSE_SYSTEM_PROMPT,
   PROMPT_VERSION,
-} from "./prompts/decompose-v1";
+} from "./prompts/decompose-v2";
 import { decompositionProposalSchema } from "./schemas";
 
 /**
@@ -24,6 +24,8 @@ export const MAX_DECOMPOSITION_OUTPUT_TOKENS = 1024;
 export type CardForDecomposition = {
   title: string;
   description: string | null;
+  /** Titles of the card's current subtasks, in checklist order. */
+  existingSubtasks: readonly string[];
 };
 
 /** The AI Gateway model string used when the caller doesn't inject one (e.g. in tests). */
