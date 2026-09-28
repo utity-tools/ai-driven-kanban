@@ -22,8 +22,6 @@ type Props = {
   permissions: BoardPermissions;
   /** Whether AI subtask suggestions are switched on (AI_DECOMPOSITION_ENABLED). */
   aiDecompositionEnabled: boolean;
-  /** The viewer is an anonymous demo user. */
-  isDemoUser: boolean;
 };
 
 /**
@@ -31,13 +29,7 @@ type Props = {
  * permissions); this component layers optimistic updates on top so edits show
  * up instantly, and every Server Action response brings the fresh board back.
  */
-export function BoardWorkspace({
-  view,
-  now,
-  permissions,
-  aiDecompositionEnabled,
-  isDemoUser,
-}: Props) {
+export function BoardWorkspace({ view, now, permissions, aiDecompositionEnabled }: Props) {
   const [optimisticView, applyOptimistic] = useOptimistic(view, applyBoardUpdate);
   const today = useToday();
 
@@ -67,7 +59,6 @@ export function BoardWorkspace({
     boardPath: `/boards/${view.board.id}`,
     permissions,
     aiDecompositionEnabled,
-    isDemoUser,
     now: new Date(now),
     today,
     serverToday: toUtcDateOnly(new Date(now)),

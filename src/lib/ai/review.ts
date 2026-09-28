@@ -24,26 +24,23 @@ import {
 
 /**
  * - `hidden`: no button (feature off, not an owner/editor, archived card, full checklist).
- * - `demo`: shown disabled with an explanation (demo users can't use AI yet).
- * - `enabled`: the button works.
+ * - `enabled`: the button works. Demo users too: their smaller daily quota is
+ *   enforced server-side (ADR 0016).
  */
-export type SuggestAvailability = "hidden" | "demo" | "enabled";
-
-export const DEMO_UNAVAILABLE_MESSAGE =
-  "AI suggestions aren't available in the demo. Create a free account to use them.";
+export type SuggestAvailability = "hidden" | "enabled";
 
 export function suggestAvailability(input: {
   /** AI_DECOMPOSITION_ENABLED, passed down from the server as a boolean. */
   featureEnabled: boolean;
   /** Owner or editor on an active (not archived) card. */
   editable: boolean;
-  isDemoUser: boolean;
   /** Subtasks the card already has. */
   subtaskCount: number;
 }): SuggestAvailability {
-  const { featureEnabled, editable, isDemoUser, subtaskCount } = input;
-  if (!featureEnabled || !editable || subtaskCount >= SUBTASKS_PER_CARD_MAX) return "hidden";
-  return isDemoUser ? "demo" : "enabled";
+  const { featureEnabled, editable, subtaskCount } = input;
+  return !featureEnabled || !editable || subtaskCount >= SUBTASKS_PER_CARD_MAX
+    ? "hidden"
+    : "enabled";
 }
 
 /** A proposed subtask as far as it has streamed: the title may be cut short. */
