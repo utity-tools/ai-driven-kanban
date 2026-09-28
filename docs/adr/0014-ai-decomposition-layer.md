@@ -43,6 +43,12 @@ Use the Vercel AI SDK v6 (`ai@^6`) via the AI Gateway, called from a Next.js Rou
   Supabase client so RLS decides visibility (a missing/invisible card is a 404, indistinguishable
   on purpose, matching `getBoard`'s existing convention). The request's abort signal is passed
   to the model call, so closing the stream stops generation (and token spend).
+- **Cost controls:** `AI_DECOMPOSITION_ENABLED` is a kill switch, off unless set to `"true"`;
+  when off the route answers 404 before doing anything else. It is enabled on Vercel Preview
+  only; Production stays off until delivery 5 ships per-user quotas, because sign-ups are open
+  and nothing else bounds how often a signed-in user can call the route. Each call is also
+  capped at `MAX_DECOMPOSITION_OUTPUT_TOKENS` (1024), well above what eight short subtasks
+  need, so a runaway generation can't make a single call expensive.
 - **Nothing persisted:** `streamDecomposition` only returns a stream; no write path exists yet.
   Saving accepted subtasks is delivery 4's job, with explicit user confirmation. Because the
   `card_subtasks` INSERT policy forces `source = 'manual'`, rows with `source = 'ai'` must be
@@ -83,5 +89,8 @@ Use the Vercel AI SDK v6 (`ai@^6`) via the AI Gateway, called from a Next.js Rou
   provider outage, invalid output) reaches the client as a `200` with an empty or truncated
   body, and the cause is only in the server log (`ai.decompose.error`). The review UI must treat
   an empty or schema-invalid final object as a failure, not as "no subtasks".
+- Privacy: a card's title and description are sent to the model provider (Anthropic, through
+  the AI Gateway) when a user asks for a decomposition; nothing else from the board is. The
+  user-facing docs must say so before the feature is enabled in production (delivery 5).
 - **Revisit:** delivery 4 adds the review UI and the confirm-to-save Server Action; delivery 5
   adds a decomposition quota for anonymous demo users (today they get a flat 403).
