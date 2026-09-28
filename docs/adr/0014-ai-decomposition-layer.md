@@ -22,8 +22,8 @@ Use the Vercel AI SDK v6 (`ai@^6`) via the AI Gateway, called from a Next.js Rou
   provider package is installed: the string resolves through `ai`'s default global Gateway
   provider. `AI_GATEWAY_API_KEY` authenticates locally; Vercel deployments use OIDC and need no
   key.
-- **Streaming structured output:** `streamText({ model, system, prompt, output:
-Output.object({ schema }) })` from `ai`, returned to the client with
+- **Streaming structured output:** `streamText` with `output: Output.object({ schema })` from
+  `ai`, returned to the client with
   `result.toTextStreamResponse()` — the format `experimental_useObject` (delivery 4's UI) reads
   chunked JSON text from.
 - **Schema:** `src/lib/ai/schemas.ts` exports `decompositionProposalSchema`
@@ -75,5 +75,13 @@ Output.object({ schema }) })` from `ai`, returned to the client with
 - CSP is unaffected: the client calls `/api/cards/[id]/decompose` same-origin (no `connect-src`
   exists or is needed today), and the model call itself happens server-side, not from the
   browser.
+- The AI Gateway's free monthly credit does not cover Anthropic models ("Free tier users do not
+  have access to this model"): every environment that calls the default model needs paid
+  Gateway credits. We keep auto-reload off and a Gateway spend budget as a hard cap until
+  delivery 5 adds per-user quotas and a global daily cost cap.
+- Errors after the stream starts can't change the HTTP status: a model failure (no credits,
+  provider outage, invalid output) reaches the client as a `200` with an empty or truncated
+  body, and the cause is only in the server log (`ai.decompose.error`). The review UI must treat
+  an empty or schema-invalid final object as a failure, not as "no subtasks".
 - **Revisit:** delivery 4 adds the review UI and the confirm-to-save Server Action; delivery 5
   adds a decomposition quota for anonymous demo users (today they get a flat 403).
