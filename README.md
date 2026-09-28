@@ -29,6 +29,18 @@ bottlenecks are detected with deterministic, tested logic and surfaced in real t
 - [ ] **v0.3** Dependency graph, deterministic alerts, Realtime
 - [ ] **v0.4** AI evals and observability panel (cost, latency, acceptance rate)
 
+## AI: privacy and limits
+
+- **What is sent:** when you click **Suggest with AI**, the card's title and description, and
+  nothing else, are sent through [Vercel AI Gateway](https://vercel.com/ai-gateway) to the model
+  provider (Anthropic, Claude Haiku 4.5 by default). Don't put secrets or personal data in cards
+  you ask the AI about.
+- **What is stored:** nothing from the model until you accept it. Accepted subtasks are saved
+  like any other subtask. For quotas, the app records that a call happened (who and when),
+  never the card text or the response.
+- **Limits:** 20 suggestions a day per account and 3 per demo session, plus a global daily
+  budget. All reset at midnight UTC ([ADR 0016](docs/adr/0016-daily-ai-quotas-and-cost-cap.md)).
+
 ## Getting started
 
 Requirements: Node 24, pnpm, Docker (e.g. [OrbStack](https://orbstack.dev)).
