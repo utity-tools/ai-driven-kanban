@@ -374,6 +374,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      reserve_ai_decomposition: {
+        Args: never
+        Returns: {
+          daily_limit: number
+          remaining: number
+          resets_at: string
+        }[]
+      }
       shares_board_with: { Args: { p_user_id: string }; Returns: boolean }
     }
     Enums: {

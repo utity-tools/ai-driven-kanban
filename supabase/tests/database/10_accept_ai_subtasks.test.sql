@@ -152,12 +152,18 @@ select throws_ok(
   'an outsider cannot accept AI subtasks'
 );
 
+-- Demo (anonymous) users can accept AI subtasks since v0.2 delivery 5 (ai_quotas): they can
+-- now reserve AI decomposition calls too. See 20260928152546_ai_quotas.sql.
 select set_config('request.jwt.claims',
   '{"sub": "00000000-0000-4000-a000-000000001005", "role": "authenticated", "is_anonymous": true}', true);
-select throws_ok(
-  $$ select public.accept_ai_subtasks('00000000-0000-4000-d000-000000001010', '[{"title": "Nope", "estimate": null}]'::jsonb) $$,
-  '42501', 'You must be signed in with a permanent account to accept AI subtasks',
-  'an anonymous (demo) editor cannot accept AI subtasks, even as a board editor'
+select results_eq(
+  $$
+    select title, source, created_by from public.accept_ai_subtasks(
+      '00000000-0000-4000-d000-000000001010', '[{"title": "Demo accepts too", "estimate": null}]'::jsonb
+    )
+  $$,
+  $$ values ('Demo accepts too'::text, 'ai'::text, '00000000-0000-4000-a000-000000001005'::uuid) $$,
+  'an anonymous (demo) editor can accept AI subtasks as a board editor'
 );
 
 select set_config('request.jwt.claims', '{"role": "anon"}', true);
@@ -232,8 +238,8 @@ select throws_ok(
 );
 select results_eq(
   $$ select count(*)::int from public.card_subtasks where card_id = '00000000-0000-4000-d000-000000001010' $$,
-  $$ values (4) $$,
-  'the rejected proposal left no rows behind (still 1 manual + 3 ai from before)'
+  $$ values (5) $$,
+  'the rejected proposal left no rows behind (still 1 manual + 4 ai from before, including the demo editor''s)'
 );
 
 -- Integral JSON numbers written with a fraction (1.0) are valid estimates; real fractions are not.
