@@ -27,5 +27,9 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !isCI,
     timeout: 120_000,
+    // Merged over process.env. Turns on "Suggest with AI" (read at runtime, so the CI
+    // build needs no rebuild); the decompose route is mocked in the browser by the
+    // specs, so the model is never called and no AI Gateway key is needed.
+    env: { AI_DECOMPOSITION_ENABLED: "true" },
   },
 });
