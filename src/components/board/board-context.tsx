@@ -10,6 +10,11 @@ import type { BoardView } from "@/lib/boards/view-model";
 export type MutateOptions = {
   /** Runs after the server confirmed the change (e.g. an "Undo" toast). */
   onSuccess?: () => void;
+  /**
+   * Runs with the safe error message when the action fails, instead of the
+   * default error toast (for UIs that show the error in place).
+   */
+  onError?: (error: string) => void;
 };
 
 export type BoardContextValue = {
@@ -18,6 +23,10 @@ export type BoardContextValue = {
   boardId: string;
   boardPath: string;
   permissions: BoardPermissions;
+  /** Whether AI subtask suggestions are switched on for this deployment. */
+  aiDecompositionEnabled: boolean;
+  /** The viewer is an anonymous demo user (AI suggestions are shown but disabled). */
+  isDemoUser: boolean;
   /** Request time, from the server. */
   now: Date;
   /**

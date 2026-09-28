@@ -1,5 +1,6 @@
 "use client";
 
+import { suggestAvailability } from "@/lib/ai/review";
 import type { CardDetail } from "@/lib/boards/view-model";
 import {
   createSubtask,
@@ -11,6 +12,7 @@ import {
 import { subtaskProgress } from "@/lib/subtasks/progress";
 import { neighborSubtaskId, nextSubtaskPosition } from "@/lib/subtasks/reorder";
 
+import { AiSubtaskSuggestions } from "./ai-subtask-suggestions";
 import { useBoard } from "./board-context";
 import { SortableSubtaskList } from "./sortable-subtask-list";
 import { SubtaskComposer } from "./subtask-composer";
@@ -25,13 +27,20 @@ type Props = {
 
 /**
  * The card modal's checklist: progress, the subtasks (check, rename,
- * estimate, delete and reorder for editors) and the composer. Every change is
+ * estimate, delete and reorder for editors), the composer and "Suggest with
+ * AI" (see AiSubtaskSuggestions). Every change is
  * optimistic; the fresh board from the Server Action replaces it.
  */
 export function CardSubtasks({ card, editable }: Props) {
-  const { boardId, mutate } = useBoard();
+  const { boardId, mutate, aiDecompositionEnabled, isDemoUser } = useBoard();
   const cardId = card.id;
   const { subtasks } = card;
+  const ai = suggestAvailability({
+    featureEnabled: aiDecompositionEnabled,
+    editable,
+    isDemoUser,
+    subtaskCount: subtasks.length,
+  });
 
   const handlers: SubtaskHandlers = {
     onToggle(subtask, completed) {
@@ -107,6 +116,9 @@ export function CardSubtasks({ card, editable }: Props) {
         </ul>
       ) : null}
       {editable ? <SubtaskComposer count={subtasks.length} onAdd={add} /> : null}
+      {ai !== "hidden" ? (
+        <AiSubtaskSuggestions cardId={cardId} subtasks={subtasks} availability={ai} />
+      ) : null}
     </div>
   );
 }
