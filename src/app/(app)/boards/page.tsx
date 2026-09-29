@@ -21,7 +21,7 @@ export default async function BoardsPage({ searchParams }: PageProps<"/boards">)
       aria-labelledby="boards-heading"
       className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8"
     >
-      {lostAccess ? <AccessLostNotice /> : null}
+      <AccessLostNotice flagged={lostAccess} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 id="boards-heading" className="text-2xl font-semibold tracking-tight">
           Your boards

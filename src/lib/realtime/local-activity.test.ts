@@ -6,6 +6,8 @@ import {
   mutationSettled,
   mutationStarted,
   OWN_CHANGE_WINDOW_MS,
+  trackMutation,
+  type LocalActivity,
 } from "./local-activity";
 
 const ME = "00000000-0000-4000-a000-000000000001";
@@ -42,5 +44,36 @@ describe("isOwnChange", () => {
 
   it("never goes below zero in flight", () => {
     expect(mutationSettled(idleActivity, 1).inFlight).toBe(0);
+  });
+});
+
+describe("trackMutation", () => {
+  it("is in flight during the call and settled after, also on failure", async () => {
+    let activity: LocalActivity = idleActivity;
+    const read = () => activity;
+    const write = (next: LocalActivity) => {
+      activity = next;
+    };
+    let during = -1;
+    await trackMutation(
+      read,
+      write,
+      async () => {
+        during = activity.inFlight;
+      },
+      () => 42,
+    );
+    expect(during).toBe(1);
+    expect(activity).toEqual({ inFlight: 0, lastSettledAt: 42 });
+
+    await expect(
+      trackMutation(
+        read,
+        write,
+        () => Promise.reject(new Error("boom")),
+        () => 50,
+      ),
+    ).rejects.toThrow("boom");
+    expect(activity).toEqual({ inFlight: 0, lastSettledAt: 50 });
   });
 });

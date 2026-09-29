@@ -28,7 +28,7 @@ type Props = { columnId: string | null; onClose: () => void };
  * a neighbouring column instead of losing it.
  */
 export function DeleteColumnDialog({ columnId, onClose }: Props) {
-  const { view, boardId } = useBoard();
+  const { view, boardId, trackLocalMutation } = useBoard();
   const column = view.columns.find((c) => c.id === columnId) ?? null;
 
   // Keep showing the last column while the dialog animates closed.
@@ -46,7 +46,9 @@ export function DeleteColumnDialog({ columnId, onClose }: Props) {
     startTransition(async () => {
       let result;
       try {
-        result = await deleteColumn({ boardId, columnId: target.columnId });
+        result = await trackLocalMutation(() =>
+          deleteColumn({ boardId, columnId: target.columnId }),
+        );
       } catch {
         result = { ok: false as const, error: GENERIC_ERROR };
       }

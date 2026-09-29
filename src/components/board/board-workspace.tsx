@@ -10,12 +10,7 @@ import { unresolvedBlockerCounts } from "@/lib/boards/dependencies";
 import { toUtcDateOnly } from "@/lib/boards/due-date";
 import type { BoardPermissions } from "@/lib/boards/permissions";
 import type { BoardView } from "@/lib/boards/view-model";
-import {
-  type LocalActivity,
-  idleActivity,
-  mutationSettled,
-  mutationStarted,
-} from "@/lib/realtime/local-activity";
+import { type LocalActivity, idleActivity, trackMutation } from "@/lib/realtime/local-activity";
 
 import { BoardColumns } from "./board-columns";
 import {
@@ -63,22 +58,30 @@ export function BoardWorkspace({
   });
   const blockerCounts = useMemo(() => unresolvedBlockerCounts(optimisticView), [optimisticView]);
 
+  function trackLocalMutation<T>(fn: () => Promise<T>): Promise<T> {
+    return trackMutation(
+      () => localActivity.current,
+      (next) => {
+        localActivity.current = next;
+      },
+      fn,
+    );
+  }
+
   function mutate(
     update: BoardUpdate | null,
     action: () => Promise<ActionResult>,
     options?: MutateOptions,
   ) {
-    localActivity.current = mutationStarted(localActivity.current);
     startTransition(async () => {
       if (update) applyOptimistic(update);
       let result: ActionResult;
       try {
-        result = await action();
+        result = await trackLocalMutation(action);
       } catch {
         // Network failure or a new deployment: same message, the UI reverts.
         result = { ok: false, error: GENERIC_ERROR };
       }
-      localActivity.current = mutationSettled(localActivity.current, Date.now());
       if (result.ok) options?.onSuccess?.();
       else if (options?.onError) options.onError(result.error);
       else toast.error(result.error);
@@ -99,6 +102,7 @@ export function BoardWorkspace({
     today,
     serverToday: toUtcDateOnly(new Date(now)),
     mutate,
+    trackLocalMutation,
   };
 
   return (

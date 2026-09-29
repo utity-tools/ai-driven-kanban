@@ -5,6 +5,7 @@ import { type RefObject, useEffect, useMemo, useRef, useState, useTransition } f
 
 import { createClient } from "@/lib/db/client";
 import type { BoardMember, Person } from "@/lib/boards/view-model";
+import { accessAction, membershipStatus } from "@/lib/realtime/access-check";
 import { ACCESS_LOST_HREF, rememberAccessLost } from "@/lib/realtime/access-lost";
 import { mayAffectAccess, parseChangeNotice } from "@/lib/realtime/change-notice";
 import { type LocalActivity, isOwnChange } from "@/lib/realtime/local-activity";
@@ -75,8 +76,8 @@ export function useBoardRealtime({
     const supabase = createClient();
     let disposed = false;
     let pausedTimer: ReturnType<typeof setTimeout> | null = null;
-    let hadConnection = false;
     let checkedAfterError = false;
+    let hadConnection = false;
 
     const refresher = createRefreshScheduler({
       run: () =>
@@ -86,26 +87,43 @@ export function useBoardRealtime({
     });
     scheduler.current = refresher;
 
-    /** Leaves for /boards when the viewer was removed; otherwise refreshes. */
-    async function refreshIfStillMember() {
+    const isOnline = () => typeof navigator === "undefined" || navigator.onLine !== false;
+
+    /** Requests a coalesced refresh, never while offline (Next would hard-navigate). */
+    function requestRefresh() {
+      if (!disposed && isOnline()) refresher.request();
+    }
+
+    /**
+     * Leaves for /boards when the viewer was removed, refreshes when they are
+     * still a member (unless `allowRefresh` is off), and does nothing when the
+     * check could not be made: the next join or visibility change catches up.
+     */
+    async function checkAccess(allowRefresh: boolean) {
+      let result: Awaited<ReturnType<typeof queryMembership>> | null = null;
       try {
-        const { data, error } = await supabase
-          .from("board_members")
-          .select("user_id")
-          .eq("board_id", boardId)
-          .eq("user_id", userId)
-          .maybeSingle();
-        if (disposed) return;
-        if (!error && data === null) {
-          refresher.cancel();
-          rememberAccessLost(titleRef.current);
-          router.replace(ACCESS_LOST_HREF);
-          return;
-        }
+        result = await queryMembership();
       } catch {
-        // Could not check: fall through and let the refresh decide.
+        // Could not check: treated as unknown.
       }
-      if (!disposed) refresher.request();
+      if (disposed) return;
+      const action = accessAction(membershipStatus(result, isOnline()), allowRefresh);
+      if (action === "redirect") {
+        refresher.cancel();
+        rememberAccessLost(titleRef.current);
+        router.replace(ACCESS_LOST_HREF);
+      } else if (action === "refresh") {
+        refresher.request();
+      }
+    }
+
+    function queryMembership() {
+      return supabase
+        .from("board_members")
+        .select("user_id")
+        .eq("board_id", boardId)
+        .eq("user_id", userId)
+        .maybeSingle();
     }
 
     const channel = supabase.channel(`board:${boardId}`, {
@@ -115,13 +133,17 @@ export function useBoardRealtime({
     channel
       .on("broadcast", { event: "change" }, ({ payload }) => {
         const notice = parseChangeNotice(payload);
+        const own = isOwnChange(notice, userId, localActivity.current, Date.now());
         // Membership changes or a deleted board may have removed the viewer: check first.
-        if (mayAffectAccess(notice)) void refreshIfStillMember();
+        // Our own leave/delete/remove navigates by itself: no access check.
+        if (mayAffectAccess(notice)) {
+          if (!own) void checkAccess(true);
+        }
         // A change made by this tab: the Server Action already brought the fresh board
         // back, and a second refresh would re-render mid-interaction. The same user's
         // other tabs and devices have no local mutation, so they do refresh.
-        else if (!isOwnChange(notice, userId, localActivity.current, Date.now())) {
-          refresher.request();
+        else if (!own) {
+          requestRefresh();
         }
       })
       .on("presence", { event: "sync" }, () => {
@@ -137,16 +159,19 @@ export function useBoardRealtime({
           pausedTimer = null;
           setPaused(false);
           checkedAfterError = false;
-          // Catch up on anything missed while the channel was down.
-          if (hadConnection) void refreshIfStillMember();
+          // Every join checks access, so a board deleted or left before the join redirects.
+          // Only a rejoin refreshes: on the first join the board was just rendered, and a
+          // refresh then would re-render under a dialog the viewer is opening.
+          void checkAccess(hadConnection);
           hadConnection = true;
           const payload: PresencePayload = { user_id: userId };
           void channel.track(payload);
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          // A rejected join may mean the viewer was removed: check once per outage.
+          // A rejected join may mean the viewer was removed: check once per outage,
+          // redirect only (a refresh here would hard-navigate when the network is gone).
           if (status === "CHANNEL_ERROR" && !checkedAfterError) {
             checkedAfterError = true;
-            void refreshIfStillMember();
+            void checkAccess(false);
           }
           pausedTimer ??= setTimeout(() => setPaused(true), PAUSED_AFTER_MS);
         }
@@ -155,7 +180,7 @@ export function useBoardRealtime({
 
     // Events can be missed while the tab is hidden (throttled sockets, sleep).
     function onVisibility() {
-      if (document.visibilityState === "visible") void refreshIfStillMember();
+      if (document.visibilityState === "visible") void checkAccess(true);
     }
     document.addEventListener("visibilitychange", onVisibility);
 

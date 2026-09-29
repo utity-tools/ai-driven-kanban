@@ -63,6 +63,12 @@ export type BoardContextValue = {
     action: () => Promise<ActionResult>,
     options?: MutateOptions,
   ) => void;
+  /**
+   * Runs a board-changing Server Action that does not go through `mutate`
+   * (delete/leave board, delete column...), so the realtime echo of our own
+   * change is recognised. Settles when the action does, also on failure.
+   */
+  trackLocalMutation: <T>(fn: () => Promise<T>) => Promise<T>;
 };
 
 export const BoardContext = createContext<BoardContextValue | null>(null);

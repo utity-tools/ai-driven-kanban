@@ -45,7 +45,8 @@ export function CardDialog() {
     shownId === null ? null : (buildCardDetails(view).find((c) => c.id === shownId) ?? null);
 
   // A card that was open and then vanished (deleted elsewhere, seen after a
-  // live refresh, or an optimistic add that was rolled back): close the modal instead of leaving "Card not found".
+  // live refresh, or an optimistic add that was rolled back): close the modal
+  // instead of leaving "Card not found".
   const wasFound = useRef<string | null>(null);
   useEffect(() => {
     if (card) {

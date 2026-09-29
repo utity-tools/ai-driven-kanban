@@ -30,7 +30,7 @@ import { useBoard } from "./board-context";
 
 /** Board-level actions. Only rendered for owners (the only ones who can delete a board). */
 export function BoardMenu() {
-  const { view, boardId } = useBoard();
+  const { view, boardId, trackLocalMutation } = useBoard();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -38,7 +38,7 @@ export function BoardMenu() {
   function handleDelete() {
     startTransition(async () => {
       try {
-        const result = await deleteBoard({ boardId });
+        const result = await trackLocalMutation(() => deleteBoard({ boardId }));
         if (!result.ok) {
           toast.error(result.error);
           return;

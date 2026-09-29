@@ -32,3 +32,21 @@ export function isOwnChange(
   if (activity.inFlight > 0) return true;
   return activity.lastSettledAt !== null && now - activity.lastSettledAt <= windowMs;
 }
+
+/**
+ * Runs a local mutation and records it as in flight until it settles (also when
+ * it throws), so its own broadcast echo is recognised. `now` is injectable.
+ */
+export async function trackMutation<T>(
+  read: () => LocalActivity,
+  write: (activity: LocalActivity) => void,
+  fn: () => Promise<T>,
+  now: () => number = Date.now,
+): Promise<T> {
+  write(mutationStarted(read()));
+  try {
+    return await fn();
+  } finally {
+    write(mutationSettled(read(), now()));
+  }
+}
