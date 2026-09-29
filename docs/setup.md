@@ -116,6 +116,12 @@ Local projects read these from `supabase/config.toml`; hosted projects need them
   `https://<project-ref>.supabase.co/auth/v1/callback`; paste its client ID and secret in
   **Authentication → Sign In / Providers → GitHub**.
 
+### Hosted Realtime settings (every Supabase cloud project)
+
+- **Realtime → Settings → Allow public access: off**. Only private channels, authorized by the
+  policies on `realtime.messages`, may exist ([ADR 0019](adr/0019-realtime-board-updates.md)).
+  Check it on `kanban-staging` and `kanban-prod` whenever a project is created or restored.
+
 ## Known issues and fixes
 
 | Symptom                                                                               | Cause                                                                                       | Fix                                                                                                                                                    |
