@@ -1,4 +1,4 @@
-import type { Browser, BrowserContext, Locator, Page } from "@playwright/test";
+import type { BrowserContext, Locator, Page } from "@playwright/test";
 
 import {
   ALICE_STORAGE_STATE,
@@ -8,7 +8,7 @@ import {
   expectLoginWithNext,
   signIn,
 } from "./support/auth";
-import { boardHeading, cardLink, column, expect, test } from "./support/boards";
+import { boardHeading, cardLink, column, expect, test as boardsTest } from "./support/boards";
 
 // Members and invitations (v0.3): the Members dialog, single-use invite links
 // and the /invite/<token> page.
@@ -24,23 +24,28 @@ import { boardHeading, cardLink, column, expect, test } from "./support/boards";
 // change in the database), the 20-pending-invites cap (pgTAP covers it) and
 // the race of two people joining with one link (pgTAP covers it).
 
-test.use({ storageState: ALICE_STORAGE_STATE });
-
 const ALICE_NAME = "Alice Martin";
 const BOB_NAME = "Bob Chen";
 const TOKEN = /\/invite\/[A-Za-z0-9_-]{43}$/;
 
 // --- Helpers ----------------------------------------------------------------
 
-/** A page in a browser context of its own, signed in with `storageState` (or signed out). */
-async function openSession(
-  browser: Browser,
-  baseURL: string | undefined,
-  storageState?: string,
-): Promise<{ context: BrowserContext; page: Page }> {
-  const context = await browser.newContext({ baseURL, storageState });
-  return { context, page: await context.newPage() };
-}
+type OpenSession = (storageState?: string) => Promise<Page>;
+
+/** `session` opens a page in a browser context of its own (signed in with `storageState`, or signed out); all are closed after the test. */
+const test = boardsTest.extend<{ session: OpenSession }>({
+  session: async ({ browser, baseURL }, provide) => {
+    const contexts: BrowserContext[] = [];
+    await provide(async (storageState) => {
+      const context = await browser.newContext({ baseURL, storageState });
+      contexts.push(context);
+      return context.newPage();
+    });
+    await Promise.all(contexts.map((context) => context.close()));
+  },
+});
+
+test.use({ storageState: ALICE_STORAGE_STATE });
 
 function membersDialog(page: Page): Locator {
   return page.getByRole("dialog", { name: "Board members" });
@@ -78,12 +83,11 @@ function memberRow(dialog: Locator, name: string): Locator {
 
 /** Opens the invite link as Bob, joins, and ends on the board. Returns Bob's page. */
 async function joinAsBob(
-  browser: Browser,
-  baseURL: string | undefined,
+  session: OpenSession,
   link: string,
   board: { title: string; path: string },
 ): Promise<Page> {
-  const { page } = await openSession(browser, baseURL, BOB_STORAGE_STATE);
+  const page = await session(BOB_STORAGE_STATE);
   await page.goto(link);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     `invited you to join ${board.title} as`,
@@ -99,15 +103,14 @@ async function joinAsBob(
 test("an invite is accepted once: the member can edit and the link is spent", async ({
   page,
   board,
-  browser,
-  baseURL,
+  session,
 }) => {
   const dialog = await openMembers(page);
   const link = await createInviteLink(dialog, "Editor");
   await expect(pendingInvites(dialog).getByText("Editor link")).toBeVisible();
 
   const bob = await test.step("Bob opens the link and joins", async () => {
-    const { page: bobPage } = await openSession(browser, baseURL, BOB_STORAGE_STATE);
+    const bobPage = await session(BOB_STORAGE_STATE);
     await bobPage.goto(link);
     const heading = bobPage.getByRole("heading", { level: 1 });
     await expect(heading).toContainText(`invited you to join ${board.title} as Editor`);
@@ -127,7 +130,7 @@ test("an invite is accepted once: the member can edit and the link is spent", as
   });
 
   await test.step("the link now shows as used to a third person", async () => {
-    const { page: carol } = await openSession(browser, baseURL, CAROL_STORAGE_STATE);
+    const carol = await session(CAROL_STORAGE_STATE);
     await carol.goto(link);
     await expect(
       carol.getByRole("heading", { level: 1, name: "This invite has already been used" }),
@@ -149,13 +152,12 @@ test("an invite is accepted once: the member can edit and the link is spent", as
 test("a signed-out visitor signs in and comes back to the invite", async ({
   board,
   boardPage,
-  browser,
-  baseURL,
+  session,
 }) => {
   const link = await createInviteLink(await openMembers(boardPage), "Viewer");
   const path = new URL(link).pathname;
 
-  const { page: visitor } = await openSession(browser, baseURL);
+  const visitor = await session();
   await visitor.goto(link);
   await expectLoginWithNext(visitor, path);
 
@@ -185,11 +187,10 @@ test("malformed and unknown tokens show the invalid page", async ({ page }) => {
 test("an owner changes a role, removes a member and revokes an invite", async ({
   page,
   board,
-  browser,
-  baseURL,
+  session,
 }) => {
   const first = await createInviteLink(await openMembers(page));
-  const bob = await joinAsBob(browser, baseURL, first, board);
+  const bob = await joinAsBob(session, first, board);
   await page.reload();
   const dialog = await openMembers(page);
   const second = await createInviteLink(dialog);
@@ -202,9 +203,13 @@ test("an owner changes a role, removes a member and revokes an invite", async ({
     );
 
     // Owner controls show up once Bob's board reloads with the new role.
+    // Alice's change is optimistic, so reload until it has committed: only owners get
+    // the "Board actions" menu.
     await expect(async () => {
       await bob.reload();
-      await expect(bob.getByRole("button", { name: "Members", exact: true })).toBeVisible();
+      await expect(bob.getByRole("button", { name: "Board actions" })).toBeVisible({
+        timeout: 2_000,
+      });
     }).toPass();
     const bobDialog = await openMembers(bob);
     await expect(
@@ -244,7 +249,7 @@ test("an owner changes a role, removes a member and revokes an invite", async ({
   });
 
   await test.step("the revoked link is no longer valid", async () => {
-    const { page: bob } = await openSession(browser, baseURL, BOB_STORAGE_STATE);
+    const bob = await session(BOB_STORAGE_STATE);
     await bob.goto(second);
     await expect(
       bob.getByRole("heading", { level: 1, name: "This invite link is not valid" }),
@@ -252,9 +257,9 @@ test("an owner changes a role, removes a member and revokes an invite", async ({
   });
 });
 
-test("a member leaves the board; the creator cannot", async ({ page, board, browser, baseURL }) => {
+test("a member leaves the board; the creator cannot", async ({ page, board, session }) => {
   const link = await createInviteLink(await openMembers(page));
-  const bob = await joinAsBob(browser, baseURL, link, board);
+  const bob = await joinAsBob(session, link, board);
 
   const dialog = await openMembers(bob);
   await expect(dialog.getByText("Only owners can change roles or invite people.")).toBeVisible();
@@ -278,8 +283,8 @@ test("a member leaves the board; the creator cannot", async ({ page, board, brow
 });
 
 test.describe("viewer", () => {
-  test("Carol sees the Demo board read-only", async ({ browser, baseURL }) => {
-    const { page } = await openSession(browser, baseURL, CAROL_STORAGE_STATE);
+  test("Carol sees the Demo board read-only", async ({ session }) => {
+    const page = await session(CAROL_STORAGE_STATE);
     await page.goto("/boards");
     await page.getByRole("main").getByRole("link", { name: "Demo board" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Demo board" })).toBeVisible();
@@ -306,15 +311,11 @@ test.describe("viewer", () => {
   });
 });
 
-test("a demo visitor is asked to create an account to join", async ({
-  boardPage,
-  browser,
-  baseURL,
-}) => {
+test("a demo visitor is asked to create an account to join", async ({ boardPage, session }) => {
   const link = await createInviteLink(await openMembers(boardPage));
   const path = new URL(link).pathname;
 
-  const { page: demo } = await openSession(browser, baseURL);
+  const demo = await session();
   await demo.goto("/");
   await demo
     .getByRole("main")
@@ -328,7 +329,7 @@ test("a demo visitor is asked to create an account to join", async ({
     demo.getByRole("heading", { level: 1, name: "Create an account to join" }),
   ).toBeVisible();
   await expect(demo.getByRole("button", { name: "Join board" })).toHaveCount(0);
-  await expect(
-    demo.getByRole("main").getByRole("button", { name: "Create an account" }),
-  ).toBeVisible();
+  await demo.getByRole("main").getByRole("button", { name: "Create an account" }).click();
+  // The demo user is signed out first, then sign-up keeps the invite as `next`.
+  await expect(demo).toHaveURL(`/signup?next=${encodeURIComponent(path)}`);
 });
