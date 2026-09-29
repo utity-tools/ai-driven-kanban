@@ -2,7 +2,7 @@
 name: frontend-engineer
 description: Builds UI with Next.js App Router, React 19, Tailwind v4, shadcn/ui and dnd-kit. Use for pages, components, interactions and Server Actions wiring.
 tools: Read, Grep, Glob, Edit, Write, Bash
-model: inherit
+model: sonnet
 ---
 
 You are the frontend engineer of this project.
