@@ -2,6 +2,7 @@ import type { Locator, Page } from "@playwright/test";
 
 import { ALICE_STORAGE_STATE } from "./support/auth";
 import { addCards, cardLink, column, expect, test } from "./support/boards";
+import { pickUpWithKeyboard } from "./support/dnd";
 import { trackServerActions } from "./support/server-actions";
 
 // Card dependencies (v0.3): the modal's "Blocked by" / "Blocks" lists, the
@@ -93,11 +94,11 @@ async function seedDependency(page: Page, blocker: string, blocked: string): Pro
   await closeCard(dialog);
 }
 
-/** The blocker row is resolved: no "Pending", and its status reads "Done". */
-async function expectResolved(dialog: Locator): Promise<void> {
+/** The blocker row is resolved: no "Pending", and its status reads `status`. */
+async function expectResolved(dialog: Locator, status = "Done"): Promise<void> {
   const row = depList(dialog, "Blocked by").getByRole("listitem");
   await expect(row.getByText("Pending", { exact: true })).toHaveCount(0);
-  await expect(row.locator("[data-resolved=true]")).toHaveText("Done");
+  await expect(row.locator("[data-resolved=true]")).toHaveText(status);
 }
 
 // --- Tests --------------------------------------------------------------------
@@ -201,6 +202,7 @@ test("a blocker in a done column no longer blocks; unmarking the column restores
   await column(page, "To do").getByRole("button", { name: "Actions for column To do" }).click();
   await page.getByRole("menuitem", { name: "Mark as done column" }).click();
   await expect(column(page, "To do").getByText("Done column")).toBeAttached();
+  await actions.settled(1);
   await expect(blockedByBadge(page, blocked, "Blocked by 1 card")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Bottlenecks" })).toHaveCount(0);
 
@@ -225,11 +227,7 @@ test("moving the blocker into the Done column resolves the dependency", async ({
   await seedDependency(page, blocker, blocked);
   const actions = trackServerActions(page);
 
-  await cardLink(page, blocker).focus();
-  await page.keyboard.press("Space");
-  await expect(page.locator("[id^=DndLiveRegion]")).toContainText("Picked up card");
-  // dnd-kit registers its keydown listener in a timeout after activation.
-  await page.waitForTimeout(100);
+  await pickUpWithKeyboard(page, cardLink(page, blocker));
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowRight");
   await expect(page.locator("[id^=DndLiveRegion]")).toContainText(
@@ -267,4 +265,36 @@ test("removing a dependency clears both lists and the badge, saved after a reloa
   await expect(blockedByBadge(page, blocked, "Blocked by 1 card")).toHaveCount(0);
   const reopened = await openCard(page, blocker);
   await expect(reopened.getByText("This card doesn't block any other card.")).toBeVisible();
+});
+
+test("archiving the blocker resolves the dependency, saved after a reload", async ({
+  boardPage: page,
+}) => {
+  const blocker = "Retire the old API";
+  const blocked = "Cut over the clients";
+  await seedDependency(page, blocker, blocked);
+  await expect(blockedByBadge(page, blocked, "Blocked by 1 card")).toBeAttached();
+  await expect(page.getByRole("button", { name: "Bottlenecks" })).toBeVisible();
+
+  const actions = trackServerActions(page);
+  const blockerDialog = await openCard(page, blocker);
+  await blockerDialog.getByRole("button", { name: "Archive", exact: true }).click();
+  await expect(blockerDialog).toBeHidden();
+  await expect(cardLink(page, blocker)).toHaveCount(0);
+  await actions.settled(1);
+
+  async function expectArchivedBlocker(): Promise<void> {
+    await expect(blockedByBadge(page, blocked, "Blocked by 1 card")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Bottlenecks" })).toHaveCount(0);
+    const dialog = await openCard(page, blocked);
+    await expectResolved(dialog, "Archived");
+    await expect(
+      depList(dialog, "Blocked by").getByRole("listitem").locator("[data-state=archived]"),
+    ).toHaveCount(1);
+    await closeCard(dialog);
+  }
+
+  await expectArchivedBlocker();
+  await page.reload();
+  await expectArchivedBlocker();
 });
