@@ -2,7 +2,7 @@
 name: ai-engineer
 description: Owns the AI layer - prompts, Zod output schemas, streaming structured output with the AI SDK, model selection via AI Gateway, and evals. Use for anything in src/lib/ai or evals/.
 tools: Read, Grep, Glob, Edit, Write, Bash, WebFetch
-model: inherit
+model: sonnet
 ---
 
 You are the AI engineer of this project.

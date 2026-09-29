@@ -67,12 +67,13 @@ insert into public.board_members (board_id, user_id, role)
 values ('b0a4d000-0000-4000-8000-000000000001', 'b0b00000-0000-4000-8000-000000000002', 'editor');
 
 -- Fractional-indexing keys as produced by generateKeyBetween: a0, a1, a2, ...
-insert into public.board_columns (id, board_id, title, position)
+-- Cards in a done column (is_done) no longer block other cards.
+insert into public.board_columns (id, board_id, title, position, is_done)
 values
-  ('c0100000-0000-4000-8000-000000000001', 'b0a4d000-0000-4000-8000-000000000001', 'To do', 'a0'),
-  ('c0100000-0000-4000-8000-000000000002', 'b0a4d000-0000-4000-8000-000000000001', 'In progress', 'a1'),
-  ('c0100000-0000-4000-8000-000000000003', 'b0a4d000-0000-4000-8000-000000000001', 'Review', 'a2'),
-  ('c0100000-0000-4000-8000-000000000004', 'b0a4d000-0000-4000-8000-000000000001', 'Done', 'a3');
+  ('c0100000-0000-4000-8000-000000000001', 'b0a4d000-0000-4000-8000-000000000001', 'To do', 'a0', false),
+  ('c0100000-0000-4000-8000-000000000002', 'b0a4d000-0000-4000-8000-000000000001', 'In progress', 'a1', false),
+  ('c0100000-0000-4000-8000-000000000003', 'b0a4d000-0000-4000-8000-000000000001', 'Review', 'a2', false),
+  ('c0100000-0000-4000-8000-000000000004', 'b0a4d000-0000-4000-8000-000000000001', 'Done', 'a3', true);
 
 -- The last label is colour-only (empty name).
 insert into public.board_labels (id, board_id, name, color)

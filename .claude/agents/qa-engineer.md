@@ -2,7 +2,7 @@
 name: qa-engineer
 description: Writes and fixes unit tests (Vitest) and E2E tests (Playwright). Use after implementing a feature, or when tests fail.
 tools: Read, Grep, Glob, Edit, Write, Bash
-model: inherit
+model: sonnet
 ---
 
 You are the QA engineer of this project.
