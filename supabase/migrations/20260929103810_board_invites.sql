@@ -60,6 +60,12 @@
 --   invites on that board are deleted (trigger below), so a link cannot outlive the
 --   inviter's authority. Used invites are kept as the record of who invited whom.
 --
+-- * Removed members can rejoin through a still-pending invite (conscious choice): an invite
+--   is a bearer link, not bound to a person, so whoever holds a pending link can join,
+--   including someone an owner removed earlier. Owners who remove someone should also revoke
+--   the invites that person could hold. Binding invites to an email was considered and
+--   deferred (the app has no outgoing email). Pinned by a pgTAP test.
+--
 -- * Member management needed no new policies: 20260924153052_board_data_model.sql already
 --   lets owners change roles (column-level UPDATE grant on role only) and remove members,
 --   lets any member delete their own membership (leave), protects the creator and the last
@@ -142,6 +148,9 @@ comment on function private.revoke_invites_of_former_owner() is
 
 revoke execute on function private.revoke_invites_of_former_owner() from public, anon, authenticated;
 
+-- "update of role" on purpose: board_id and user_id are not client-updatable (the only
+-- column-level UPDATE grant on board_members is role), so a role change is the only way an
+-- existing row can stop being an owner.
 create trigger board_members_revoke_invites_of_former_owner
   after update of role or delete on public.board_members
   for each row
@@ -228,8 +237,24 @@ begin
       using errcode = 'INV04';
   end if;
 
+  -- Ownership is checked with a row lock, not public.has_board_role(): a plain read would
+  -- race with a concurrent demotion/removal of the caller. That transaction's trigger
+  -- (revoke_invites_of_former_owner) deletes the pending invites it can see, then it
+  -- commits, and an invite created here in the meantime would survive as a live link from a
+  -- former owner. FOR SHARE conflicts with the UPDATE/DELETE of the membership row:
+  --   * if the demotion came first, we wait for it and then (READ COMMITTED re-checks the
+  --     locked row) no longer find an owner row -> 'Board not found';
+  --   * if we came first, the demotion waits for this transaction and its trigger then
+  --     sees and deletes the new invite.
   -- "doesn't exist" and "not an owner" stay indistinguishable on purpose.
-  if p_board_id is null or not public.has_board_role(p_board_id, '{owner}') then
+  perform 1
+  from public.board_members m
+  where m.board_id = p_board_id
+    and m.user_id = v_uid
+    and m.role = 'owner'
+  for share;
+
+  if not found then
     raise exception 'Board not found'
       using errcode = 'insufficient_privilege';
   end if;
@@ -300,6 +325,14 @@ grant execute on function public.create_board_invite(uuid, public.board_role) to
 -- a caller who is already a member of the board. Someone holding an old (used or expired)
 -- link learns only that it is used or expired, not which board it was for.
 -- Unknown, malformed or revoked tokens return no row (not an error).
+--
+-- Result contract (generated TypeScript types say `string` for all text columns and do not
+-- mark any as nullable; the app should Zod-parse the row):
+--   status        'pending' | 'expired' | 'accepted' (never null)
+--   role          'editor' | 'viewer'; expires_at, is_member: never null
+--   board_id      uuid | null   (null unless the caller is a member)
+--   board_title   text | null   (null unless pending or the caller is a member)
+--   inviter_name  text | null   (also null when the inviter has no display name)
 create function private.get_board_invite(p_token text)
 returns table(
   status text,

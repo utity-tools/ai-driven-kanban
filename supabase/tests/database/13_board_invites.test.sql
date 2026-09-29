@@ -10,7 +10,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(121);
+select plan(123);
 
 -- ---------------------------------------------------------------------------
 -- Schema
@@ -114,7 +114,7 @@ select has_trigger('public', 'board_members', 'board_members_revoke_invites_of_f
 
 -- ---------------------------------------------------------------------------
 -- Fixtures: O = creator/owner, P = second owner, E = editor, V = viewer, X = outsider,
--- J / K = people who will join, D = demo (anonymous) user.
+-- J / K / Y = people who will join, D = demo (anonymous) user.
 -- Board 1 "Invites" (O; P owner, E editor, V viewer). Board 2 "Other" (O only).
 -- ---------------------------------------------------------------------------
 
@@ -125,7 +125,8 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-4000-a000-000000001304', 'v13@test.local', '{}'),
   ('00000000-0000-4000-a000-000000001305', 'x13@test.local', '{}'),
   ('00000000-0000-4000-a000-000000001306', 'j13@test.local', '{}'),
-  ('00000000-0000-4000-a000-000000001307', 'k13@test.local', '{}');
+  ('00000000-0000-4000-a000-000000001307', 'k13@test.local', '{}'),
+  ('00000000-0000-4000-a000-000000001309', 'y13@test.local', '{}');
 insert into auth.users (id, is_anonymous) values ('00000000-0000-4000-a000-000000001308', true);
 
 grant usage on schema extensions to anon, authenticated;
@@ -219,11 +220,6 @@ select ok(
   (select token_hash = sha256(convert_to(current_setting('test.t_editor'), 'UTF8'))
    from public.board_invites where id = (current_setting('test.inv_editor')::json ->> 'invite_id')::uuid),
   'only the sha256 of the token is stored'
-);
-select is_empty(
-  $$ select 1 from public.board_invites
-     where position(convert_to(current_setting('test.t_editor'), 'UTF8') in token_hash) > 0 $$,
-  'the plaintext token is not stored'
 );
 set local role authenticated;
 
@@ -583,9 +579,18 @@ select throws_ok(
 -- ---------------------------------------------------------------------------
 
 select set_config('request.jwt.claims', '{"sub": "00000000-0000-4000-a000-000000001302", "role": "authenticated"}', true);
+select set_config('test.t_by_p',
+  (select token from public.create_board_invite(current_setting('test.board1')::uuid, 'viewer')), true);
+select set_config('request.jwt.claims', '{"sub": "00000000-0000-4000-a000-000000001309", "role": "authenticated"}', true);
+select is(
+  public.accept_board_invite(current_setting('test.t_by_p')),
+  current_setting('test.board1')::uuid,
+  'Y joins through an invite created by the second owner'
+);
+select set_config('request.jwt.claims', '{"sub": "00000000-0000-4000-a000-000000001302", "role": "authenticated"}', true);
 select lives_ok(
   $$ select public.create_board_invite(current_setting('test.board1')::uuid, 'viewer') $$,
-  'a second owner creates an invite'
+  'the second owner creates another (pending) invite'
 );
 
 select set_config('request.jwt.claims', '{"sub": "00000000-0000-4000-a000-000000001301", "role": "authenticated"}', true);
@@ -597,15 +602,16 @@ select results_eq(
   $$ values ('editor'::public.board_role) $$,
   'the creator demotes the second owner'
 );
-select is_empty(
-  $$ select 1 from public.board_invites where created_by = '00000000-0000-4000-a000-000000001302' $$,
-  'a demoted owner''s pending invites are revoked'
+select results_eq(
+  $$ select accepted_by from public.board_invites where created_by = '00000000-0000-4000-a000-000000001302' $$,
+  $$ values ('00000000-0000-4000-a000-000000001309'::uuid) $$,
+  'a demoted owner''s pending invites are revoked; the one Y used is kept'
 );
 select is(
   (select count(*)::int from public.board_invites
    where board_id = current_setting('test.board1')::uuid and accepted_at is not null),
-  2,
-  'used invites are kept'
+  3,
+  'all used invites of the board are kept'
 );
 
 select lives_ok(
@@ -628,15 +634,16 @@ select results_eq(
   'a non-creator owner can leave the board'
 );
 reset role;
-select is_empty(
-  $$ select 1 from public.board_invites where created_by = '00000000-0000-4000-a000-000000001302' $$,
-  'an owner who leaves has their pending invites revoked'
+select results_eq(
+  $$ select accepted_by from public.board_invites where created_by = '00000000-0000-4000-a000-000000001302' $$,
+  $$ values ('00000000-0000-4000-a000-000000001309'::uuid) $$,
+  'an owner who leaves has their pending invites revoked; the used one is kept'
 );
 set local role authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Member management
--- Board 1 now: O owner (creator), E editor, V viewer, J editor, K viewer.
+-- Board 1 now: O owner (creator), E editor, V viewer, J editor, K viewer, Y viewer.
 -- ---------------------------------------------------------------------------
 
 select set_config('request.jwt.claims', '{"sub": "00000000-0000-4000-a000-000000001301", "role": "authenticated"}', true);
@@ -692,6 +699,9 @@ select throws_ok(
   '23001', 'The board creator cannot be removed or demoted',
   'the creator cannot leave their board'
 );
+-- A pending invite exists while K is still a member (e.g. the link K was sent was reused).
+select set_config('test.t_rejoin',
+  (select token from public.create_board_invite(current_setting('test.board1')::uuid, 'viewer')), true);
 select results_eq(
   $$ delete from public.board_members
      where board_id = current_setting('test.board1')::uuid
@@ -802,9 +812,28 @@ select results_eq(
   $$ select user_id, role from public.board_members
      where board_id = current_setting('test.board1')::uuid order by user_id $$,
   $$ values ('00000000-0000-4000-a000-000000001301'::uuid, 'owner'::public.board_role),
-            ('00000000-0000-4000-a000-000000001303'::uuid, 'editor'::public.board_role) $$,
-  'final membership: the creator (owner) and E (editor)'
+            ('00000000-0000-4000-a000-000000001303'::uuid, 'editor'::public.board_role),
+            ('00000000-0000-4000-a000-000000001309'::uuid, 'viewer'::public.board_role) $$,
+  'membership: the creator (owner), E (editor) and Y (viewer)'
 );
+
+-- Known, deliberate behaviour (see migration header): invites are bearer links, so a
+-- removed member holding a still-pending invite can rejoin with it.
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub": "00000000-0000-4000-a000-000000001307", "role": "authenticated"}', true);
+select is(
+  public.accept_board_invite(current_setting('test.t_rejoin')),
+  current_setting('test.board1')::uuid,
+  'a removed member can rejoin through a still-pending invite'
+);
+select results_eq(
+  $$ select role from public.board_members
+     where board_id = current_setting('test.board1')::uuid
+       and user_id = '00000000-0000-4000-a000-000000001307' $$,
+  $$ values ('viewer'::public.board_role) $$,
+  'they are back with the invite''s role'
+);
+reset role;
 
 -- ---------------------------------------------------------------------------
 -- Cascades
