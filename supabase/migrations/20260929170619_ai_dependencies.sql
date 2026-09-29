@@ -65,11 +65,31 @@
 -- a 21st blocker (DEP02); either error aborts the whole statement, so no edge of the
 -- proposal is kept.
 --
--- Concurrency: after authorization, the function takes the same per-board advisory lock as
--- the trigger (84200002, hashtext(board_id)) before validating, so its "already a blocker"
--- check and the insert see a stable set of edges on this board (advisory locks are
--- re-entrant, so the trigger taking it again is free). The card row is locked FOR KEY SHARE,
--- the lock the FK check takes anyway, so it cannot be deleted mid-call.
+-- Concurrency. Lock order, the same as internal.check_card_dependency (row lock on the
+-- blocked card, then the board advisory lock), so the two cannot deadlock on each other:
+--   1. the card row, FOR NO KEY UPDATE (like accept_ai_subtasks), before reading
+--      archived_at: a concurrent archive is a no-key UPDATE, which conflicts with it, so
+--      the card cannot be archived (or deleted) between the check and the INSERT. It still
+--      does not conflict with FOR KEY SHARE, the lock the trigger and the FK checks take, so
+--      manual dependency inserts that reference the card are not blocked by it.
+--   2. the blocker rows of this board, FOR SHARE, in id order (deterministic, so two calls
+--      locking overlapping blockers take them in the same order), before checking whether
+--      any is archived. FOR SHARE is the lightest mode that conflicts with a no-key UPDATE
+--      (FOR KEY SHARE does not), so no blocker can be archived before the INSERT. It is
+--      preferred over FOR NO KEY UPDATE because share locks do not conflict with each
+--      other: concurrent accepts that propose the same blocker for different cards do not
+--      queue on it, and it does not conflict with the FOR KEY SHARE taken by the FK check.
+--      Ids of other boards are not locked (they are rejected right after).
+--   3. the per-board advisory lock (84200002, hashtext(board_id)), the one the trigger
+--      takes, before the "already a blocker" check, so that check and the INSERT see a
+--      stable set of edges on this board. When the trigger then runs for each row it finds
+--      the card row lock already held by this transaction (FOR NO KEY UPDATE covers its
+--      FOR KEY SHARE) and the advisory lock is re-entrant, so it waits on nothing new.
+-- The only lock-wait cycle left is between concurrent accepts whose card of one is a
+-- blocker of another (step 1 vs step 2) all around a cycle; those proposals together would
+-- form a dependency cycle, so one of them must fail anyway: Postgres aborts one with
+-- 40P01 (deadlock_detected) instead of DEP01. Archive UPDATEs lock a single card row and
+-- take no advisory lock, so they cannot be part of a cycle.
 
 -- ---------------------------------------------------------------------------
 -- card_dependencies.source
@@ -124,7 +144,7 @@ begin
   into v_board_id, v_archived_at
   from public.cards c
   where c.id = p_card_id
-  for key share;
+  for no key update;
 
   if not found then
     raise exception 'Card not found'
@@ -141,9 +161,6 @@ begin
     raise exception 'Cannot add AI dependencies to an archived card'
       using errcode = 'check_violation';
   end if;
-
-  -- Same lock as internal.check_card_dependency (see the migration header).
-  perform pg_advisory_xact_lock(84200002, hashtext(v_board_id::text));
 
   v_count := coalesce(cardinality(p_blocker_ids), 0);
   if v_count < 1 or v_count > 10 or array_ndims(p_blocker_ids) <> 1 then
@@ -166,6 +183,15 @@ begin
       using errcode = 'check_violation';
   end if;
 
+  -- Lock order: card row, blocker rows (id order), advisory lock -- see the migration
+  -- header. FOR SHARE blocks a concurrent archive until this transaction ends.
+  perform 1
+  from public.cards c
+  where c.id = any (p_blocker_ids)
+    and c.board_id = v_board_id
+  order by c.id
+  for share;
+
   if exists (
     select 1
     from unnest(p_blocker_ids) as b (id)
@@ -186,6 +212,9 @@ begin
     raise exception 'An archived card cannot be proposed as a blocker'
       using errcode = 'check_violation';
   end if;
+
+  -- Same lock as internal.check_card_dependency, taken after the row locks like it does.
+  perform pg_advisory_xact_lock(84200002, hashtext(v_board_id::text));
 
   if exists (
     select 1

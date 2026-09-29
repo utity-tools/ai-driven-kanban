@@ -6,7 +6,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(45);
+select plan(46);
 
 -- ---------------------------------------------------------------------------
 -- Shape: source column, policies, privileges, functions
@@ -53,6 +53,18 @@ select ok(
   (select p.prosecdef and p.proconfig @> array['search_path=""']
    from pg_proc p where p.oid = 'public.accept_ai_dependencies(uuid, uuid[])'::regprocedure),
   'public.accept_ai_dependencies is security definer with empty search_path'
+);
+-- Concurrency (see the migration header): the card and the blockers are locked against a
+-- concurrent archive, in the same order as internal.check_card_dependency (row locks, then
+-- the board advisory lock). Checked on the source: a real race needs two sessions.
+select ok(
+  (select p.prosrc ~ 'where c\.id = p_card_id\s+for no key update;'
+      and p.prosrc ~ 'order by c\.id\s+for share;'
+      and strpos(p.prosrc, 'for no key update;') < strpos(p.prosrc, 'for share;')
+      and strpos(p.prosrc, 'for share;') < strpos(p.prosrc, 'pg_advisory_xact_lock(84200002')
+      and strpos(p.prosrc, 'pg_advisory_xact_lock(84200002') < strpos(p.prosrc, 'from public.card_dependencies d')
+   from pg_proc p where p.oid = 'private.accept_ai_dependencies(uuid, uuid[])'::regprocedure),
+  'accept_ai_dependencies locks the card (no key update), then the blockers (share, id order), then the board'
 );
 select ok(
   has_function_privilege('authenticated', 'public.accept_ai_dependencies(uuid, uuid[])', 'EXECUTE')
