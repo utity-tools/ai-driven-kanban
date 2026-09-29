@@ -5,7 +5,7 @@ import { createContext, use } from "react";
 import type { ActionResult } from "@/lib/boards/action-result";
 import type { BoardUpdate } from "@/lib/boards/board-updates";
 import type { BoardPermissions } from "@/lib/boards/permissions";
-import type { BoardView } from "@/lib/boards/view-model";
+import type { BoardView, Person } from "@/lib/boards/view-model";
 import type { PendingInvite } from "@/lib/invites/pending";
 
 /** Who is looking at the board, for the Members dialog. */
@@ -40,6 +40,10 @@ export type BoardContextValue = {
   membership: Membership;
   /** Whether AI subtask suggestions are switched on for this deployment. */
   aiDecompositionEnabled: boolean;
+  /** Other members viewing the board right now (realtime presence). */
+  viewers: Person[];
+  /** Live updates are down for now; the board still works but won't auto-refresh. */
+  realtimePaused: boolean;
   /** Request time, from the server. */
   now: Date;
   /**
@@ -59,6 +63,13 @@ export type BoardContextValue = {
     action: () => Promise<ActionResult>,
     options?: MutateOptions,
   ) => void;
+  /**
+   * Runs a board-changing Server Action that does not go through `mutate`
+   * (delete/leave board, delete column...), so the realtime echo of our own
+   * change is recognised. Settles when the action does, also on failure. `exits`: the
+   * action takes the viewer off the board (leave, delete), which navigates by itself.
+   */
+  trackLocalMutation: <T>(fn: () => Promise<T>, options?: { exits?: boolean }) => Promise<T>;
 };
 
 export const BoardContext = createContext<BoardContextValue | null>(null);

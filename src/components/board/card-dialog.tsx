@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -43,6 +43,24 @@ export function CardDialog() {
   const shownId = cardId ?? lastId;
   const card =
     shownId === null ? null : (buildCardDetails(view).find((c) => c.id === shownId) ?? null);
+
+  // A card that was open and then vanished (deleted elsewhere, seen after a
+  // live refresh, or an optimistic add that was rolled back): close the modal
+  // instead of leaving "Card not found".
+  const wasFound = useRef<string | null>(null);
+  useEffect(() => {
+    if (card) {
+      wasFound.current = card.id;
+    } else if (cardId !== null && wasFound.current === cardId) {
+      wasFound.current = null;
+      toast.info("That card no longer exists.");
+      window.history.replaceState(
+        null,
+        "",
+        hrefWithoutCard(window.location.pathname, window.location.search),
+      );
+    }
+  }, [card, cardId]);
 
   // Where focus goes when the modal closes after archiving (the card is gone).
   const focusAfterArchive = useRef<{ columnId: string; neighbor: string | null } | null>(null);

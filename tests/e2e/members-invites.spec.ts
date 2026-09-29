@@ -1,4 +1,4 @@
-import type { BrowserContext, Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 
 import {
   ALICE_STORAGE_STATE,
@@ -8,7 +8,8 @@ import {
   expectLoginWithNext,
   signIn,
 } from "./support/auth";
-import { boardHeading, cardLink, column, expect, test as boardsTest } from "./support/boards";
+import { boardHeading, cardLink, column, expect } from "./support/boards";
+import { createInviteLink, joinAsBob, memberRow, openMembers, test } from "./support/members";
 
 // Members and invitations (v0.3): the Members dialog, single-use invite links
 // and the /invite/<token> page.
@@ -26,76 +27,13 @@ import { boardHeading, cardLink, column, expect, test as boardsTest } from "./su
 
 const ALICE_NAME = "Alice Martin";
 const BOB_NAME = "Bob Chen";
-const TOKEN = /\/invite\/[A-Za-z0-9_-]{43}$/;
 
 // --- Helpers ----------------------------------------------------------------
 
-type OpenSession = (storageState?: string) => Promise<Page>;
-
-/** `session` opens a page in a browser context of its own (signed in with `storageState`, or signed out); all are closed after the test. */
-const test = boardsTest.extend<{ session: OpenSession }>({
-  session: async ({ browser, baseURL }, provide) => {
-    const contexts: BrowserContext[] = [];
-    await provide(async (storageState) => {
-      const context = await browser.newContext({ baseURL, storageState });
-      contexts.push(context);
-      return context.newPage();
-    });
-    await Promise.all(contexts.map((context) => context.close()));
-  },
-});
-
 test.use({ storageState: ALICE_STORAGE_STATE });
-
-function membersDialog(page: Page): Locator {
-  return page.getByRole("dialog", { name: "Board members" });
-}
-
-async function openMembers(page: Page): Promise<Locator> {
-  await page.getByRole("button", { name: "Members", exact: true }).click();
-  const dialog = membersDialog(page);
-  await expect(dialog).toBeVisible();
-  return dialog;
-}
-
-/** Creates an invite link in the open Members dialog and returns its URL. */
-async function createInviteLink(dialog: Locator, role?: "Editor" | "Viewer"): Promise<string> {
-  if (role && role !== "Editor") {
-    await dialog.getByRole("combobox", { name: "Invite role" }).click();
-    await dialog.page().getByRole("option", { name: role }).click();
-  }
-  await dialog.getByRole("button", { name: "Create invite link" }).click();
-  const input = dialog.getByLabel("Invite link");
-  await expect(input).toHaveValue(TOKEN);
-  return input.inputValue();
-}
 
 function pendingInvites(dialog: Locator): Locator {
   return dialog.getByRole("list", { name: "Pending invites" });
-}
-
-function memberRow(dialog: Locator, name: string): Locator {
-  return dialog
-    .getByRole("list", { name: "People with access" })
-    .getByRole("listitem")
-    .filter({ hasText: name });
-}
-
-/** Opens the invite link as Bob, joins, and ends on the board. Returns Bob's page. */
-async function joinAsBob(
-  session: OpenSession,
-  link: string,
-  board: { title: string; path: string },
-): Promise<Page> {
-  const page = await session(BOB_STORAGE_STATE);
-  await page.goto(link);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    `invited you to join ${board.title} as`,
-  );
-  await page.getByRole("button", { name: "Join board" }).click();
-  await expect(page).toHaveURL(board.path);
-  await expect(boardHeading(page)).toHaveText(board.title);
-  return page;
 }
 
 // --- Tests ------------------------------------------------------------------

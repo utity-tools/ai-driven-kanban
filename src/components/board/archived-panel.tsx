@@ -34,7 +34,7 @@ import { useBoard } from "./board-context";
  * card or delete it permanently (the only way to delete a card).
  */
 export function ArchivedPanel() {
-  const { view, boardId, permissions, now, mutate } = useBoard();
+  const { view, boardId, permissions, now, mutate, trackLocalMutation } = useBoard();
   const cards = view.archivedCards;
   const columnTitles = new Map(view.columns.map((c) => [c.id, c.title]));
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -69,7 +69,7 @@ export function ArchivedPanel() {
     startDelete(async () => {
       let result;
       try {
-        result = await deleteCard({ boardId, cardId: card.id });
+        result = await trackLocalMutation(() => deleteCard({ boardId, cardId: card.id }));
       } catch {
         result = { ok: false as const, error: GENERIC_ERROR };
       }

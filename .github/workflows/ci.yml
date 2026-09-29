@@ -67,12 +67,13 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Only what the app uses: Postgres, Auth (gotrue), REST (postgrest) and the API gateway (kong).
+      # Only what the app uses: Postgres, Auth (gotrue), REST (postgrest), Realtime (live board
+      # updates and presence) and the API gateway (kong).
       # Retries registry throttling and leftover containers (scripts/ci/supabase-start.sh).
-      - name: Start Supabase (auth stack)
+      - name: Start Supabase (auth, REST, Realtime)
         run: >-
           scripts/ci/supabase-start.sh start
-          -x realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+          -x storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
       # NEXT_PUBLIC_* values are inlined at build time, so .env.local must exist before the build.
       - run: pnpm env:local
       - run: pnpm build

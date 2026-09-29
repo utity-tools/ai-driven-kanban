@@ -28,7 +28,7 @@ type Created = { url: string; expiresAt: string };
  * when the dialog closes: only its hash is stored. Pending links can be revoked.
  */
 export function InviteSection() {
-  const { boardId, membership } = useBoard();
+  const { boardId, membership, trackLocalMutation } = useBoard();
   const headingId = useId();
   const roleLabelId = useId();
   const linkId = useId();
@@ -45,7 +45,7 @@ export function InviteSection() {
     setCopyStatus(null);
     startCreating(async () => {
       try {
-        const result = await createInvite({ boardId, role });
+        const result = await trackLocalMutation(() => createInvite({ boardId, role }));
         if (!result.ok) {
           setCreated(null);
           setError(result.error);
@@ -152,6 +152,7 @@ export function InviteSection() {
 }
 
 function PendingInvites({ invites, boardId }: { invites: PendingInvite[]; boardId: string }) {
+  const { trackLocalMutation } = useBoard();
   const headingId = useId();
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -160,7 +161,9 @@ function PendingInvites({ invites, boardId }: { invites: PendingInvite[]; boardI
     setRevokingId(invite.id);
     startTransition(async () => {
       try {
-        const result = await revokeInvite({ boardId, inviteId: invite.id });
+        const result = await trackLocalMutation(() =>
+          revokeInvite({ boardId, inviteId: invite.id }),
+        );
         if (result.ok) toast.success("Invite revoked");
         else toast.error(result.error);
       } catch {

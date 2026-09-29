@@ -42,7 +42,7 @@ import { personName } from "./user-avatar";
  * what Row Level Security would reject anyway.
  */
 export function MembersDialog() {
-  const { view, boardId, membership, mutate } = useBoard();
+  const { view, boardId, membership, mutate, trackLocalMutation } = useBoard();
   const router = useRouter();
   const viewerRole = roleOf(view.members, membership.userId);
   const viewer = { id: membership.userId, role: viewerRole, creatorId: membership.creatorId };
@@ -81,7 +81,7 @@ export function MembersDialog() {
   function handleLeave() {
     startLeaving(async () => {
       try {
-        const result = await leaveBoard({ boardId });
+        const result = await trackLocalMutation(() => leaveBoard({ boardId }), { exits: true });
         if (!result.ok) {
           toast.error(result.error);
           return;

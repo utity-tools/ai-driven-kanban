@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, startTransition, useMemo, useOptimistic } from "react";
+import { Suspense, startTransition, useMemo, useOptimistic, useRef } from "react";
 import { toast } from "sonner";
 
 import { useToday } from "@/hooks/use-today";
@@ -10,6 +10,7 @@ import { unresolvedBlockerCounts } from "@/lib/boards/dependencies";
 import { toUtcDateOnly } from "@/lib/boards/due-date";
 import type { BoardPermissions } from "@/lib/boards/permissions";
 import type { BoardView } from "@/lib/boards/view-model";
+import { type LocalActivity, idleActivity, trackMutation } from "@/lib/realtime/local-activity";
 
 import { BoardColumns } from "./board-columns";
 import {
@@ -20,6 +21,7 @@ import {
 } from "./board-context";
 import { BoardHeader } from "./board-header";
 import { CardDialog } from "./card-dialog";
+import { useBoardRealtime } from "./use-board-realtime";
 
 type Props = {
   view: BoardView;
@@ -45,7 +47,38 @@ export function BoardWorkspace({
 }: Props) {
   const [optimisticView, applyOptimistic] = useOptimistic(view, applyBoardUpdate);
   const today = useToday();
+  const localActivity = useRef<LocalActivity>(idleActivity);
+  const exitActivity = useRef<LocalActivity>(idleActivity);
+  // Server state (not the optimistic copy): what other people have actually saved.
+  const { viewers, paused: realtimePaused } = useBoardRealtime({
+    localActivity,
+    exitActivity,
+    boardId: view.board.id,
+    boardTitle: view.board.title,
+    userId: membership.userId,
+    members: view.members,
+  });
   const blockerCounts = useMemo(() => unresolvedBlockerCounts(optimisticView), [optimisticView]);
+
+  function trackLocalMutation<T>(fn: () => Promise<T>, options?: { exits?: boolean }): Promise<T> {
+    const tracked = options?.exits
+      ? () =>
+          trackMutation(
+            () => exitActivity.current,
+            (next) => {
+              exitActivity.current = next;
+            },
+            fn,
+          )
+      : fn;
+    return trackMutation(
+      () => localActivity.current,
+      (next) => {
+        localActivity.current = next;
+      },
+      tracked,
+    );
+  }
 
   function mutate(
     update: BoardUpdate | null,
@@ -56,7 +89,7 @@ export function BoardWorkspace({
       if (update) applyOptimistic(update);
       let result: ActionResult;
       try {
-        result = await action();
+        result = await trackLocalMutation(action);
       } catch {
         // Network failure or a new deployment: same message, the UI reverts.
         result = { ok: false, error: GENERIC_ERROR };
@@ -75,10 +108,13 @@ export function BoardWorkspace({
     permissions,
     membership,
     aiDecompositionEnabled,
+    viewers,
+    realtimePaused,
     now: new Date(now),
     today,
     serverToday: toUtcDateOnly(new Date(now)),
     mutate,
+    trackLocalMutation,
   };
 
   return (
