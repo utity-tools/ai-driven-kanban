@@ -14,6 +14,7 @@ export type Database = {
           board_id: string
           created_at: string
           id: string
+          is_done: boolean
           position: string
           title: string
           updated_at: string
@@ -22,6 +23,7 @@ export type Database = {
           board_id: string
           created_at?: string
           id?: string
+          is_done?: boolean
           position: string
           title: string
           updated_at?: string
@@ -30,6 +32,7 @@ export type Database = {
           board_id?: string
           created_at?: string
           id?: string
+          is_done?: boolean
           position?: string
           title?: string
           updated_at?: string
@@ -173,6 +176,45 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_dependencies: {
+        Row: {
+          blocked_card_id: string
+          blocker_card_id: string
+          board_id: string
+          created_at: string
+          created_by: string | null
+        }
+        Insert: {
+          blocked_card_id: string
+          blocker_card_id: string
+          board_id: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          blocked_card_id?: string
+          blocker_card_id?: string
+          board_id?: string
+          created_at?: string
+          created_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_dependencies_blocked_same_board_fkey"
+            columns: ["blocked_card_id", "board_id"]
+            isOneToOne: false
+            referencedRelation: "cards"
+            referencedColumns: ["id", "board_id"]
+          },
+          {
+            foreignKeyName: "card_dependencies_blocker_same_board_fkey"
+            columns: ["blocker_card_id", "board_id"]
+            isOneToOne: false
+            referencedRelation: "cards"
+            referencedColumns: ["id", "board_id"]
           },
         ]
       }
