@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { sanitizeNextPath } from "./redirect";
 import { getAuthRedirect, isAuthPage, isPublicPath, loginPathWithNext } from "./routes";
 
 describe("isPublicPath", () => {
@@ -40,6 +41,15 @@ describe("getAuthRedirect", () => {
   it("sends signed-out users on protected routes to login with next", () => {
     expect(getAuthRedirect({ pathname: "/boards/1", search: "?tab=a", isSignedIn: false })).toBe(
       "/login?next=%2Fboards%2F1%3Ftab%3Da",
+    );
+  });
+
+  it("sends signed-out invitees to login and back to the invite", () => {
+    const token = "A".repeat(43);
+    const target = getAuthRedirect({ pathname: `/invite/${token}`, search: "", isSignedIn: false });
+    expect(target).toBe(`/login?next=%2Finvite%2F${token}`);
+    expect(sanitizeNextPath(new URLSearchParams(target?.split("?")[1]).get("next"))).toBe(
+      `/invite/${token}`,
     );
   });
 

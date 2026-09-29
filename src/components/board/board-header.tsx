@@ -10,6 +10,7 @@ import { ArchivedPanel } from "./archived-panel";
 import { BottlenecksPanel } from "./bottlenecks-panel";
 import { useBoard } from "./board-context";
 import { BoardMenu } from "./board-menu";
+import { MembersDialog } from "./members-dialog";
 import { InlineEdit } from "./inline-edit";
 import { AvatarStack } from "./user-avatar";
 
@@ -49,6 +50,7 @@ export function BoardHeader() {
       </div>
       <div className="flex items-center gap-3">
         <AvatarStack people={view.members} max={MAX_HEADER_MEMBERS} label="Board members" />
+        <MembersDialog />
         <BottlenecksPanel />
         <ArchivedPanel />
         {permissions.canDeleteBoard ? <BoardMenu /> : null}

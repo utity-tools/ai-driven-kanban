@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { DEFAULT_AFTER_LOGIN_PATH, sanitizeNextPath } from "@/lib/auth/redirect";
 import { LOGIN_PATH, SIGNUP_PATH } from "@/lib/auth/routes";
 import { createClient } from "@/lib/db/server";
 
@@ -25,7 +26,13 @@ export async function exitDemo(): Promise<void> {
 /**
  * Leaves demo mode and opens sign-up. Signing out first is required: the proxy
  * sends any signed-in user (anonymous included) away from the auth pages.
+ * An optional same-origin `next` field (e.g. an invite page) is kept through sign-up.
  */
-export async function createAccountFromDemo(): Promise<void> {
-  await signOutAndRedirect(SIGNUP_PATH);
+export async function createAccountFromDemo(formData?: FormData): Promise<void> {
+  const next = sanitizeNextPath(formData?.get("next"));
+  await signOutAndRedirect(
+    next === DEFAULT_AFTER_LOGIN_PATH
+      ? SIGNUP_PATH
+      : `${SIGNUP_PATH}?${new URLSearchParams({ next }).toString()}`,
+  );
 }

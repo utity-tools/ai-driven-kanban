@@ -12,7 +12,12 @@ import type { BoardPermissions } from "@/lib/boards/permissions";
 import type { BoardView } from "@/lib/boards/view-model";
 
 import { BoardColumns } from "./board-columns";
-import { BoardContext, type BoardContextValue, type MutateOptions } from "./board-context";
+import {
+  BoardContext,
+  type BoardContextValue,
+  type Membership,
+  type MutateOptions,
+} from "./board-context";
 import { BoardHeader } from "./board-header";
 import { CardDialog } from "./card-dialog";
 
@@ -21,6 +26,7 @@ type Props = {
   /** ISO timestamp of the request. */
   now: string;
   permissions: BoardPermissions;
+  membership: Membership;
   /** Whether AI subtask suggestions are switched on (AI_DECOMPOSITION_ENABLED). */
   aiDecompositionEnabled: boolean;
 };
@@ -30,7 +36,13 @@ type Props = {
  * permissions); this component layers optimistic updates on top so edits show
  * up instantly, and every Server Action response brings the fresh board back.
  */
-export function BoardWorkspace({ view, now, permissions, aiDecompositionEnabled }: Props) {
+export function BoardWorkspace({
+  view,
+  now,
+  permissions,
+  membership,
+  aiDecompositionEnabled,
+}: Props) {
   const [optimisticView, applyOptimistic] = useOptimistic(view, applyBoardUpdate);
   const today = useToday();
   const blockerCounts = useMemo(() => unresolvedBlockerCounts(optimisticView), [optimisticView]);
@@ -61,6 +73,7 @@ export function BoardWorkspace({ view, now, permissions, aiDecompositionEnabled 
     boardId: view.board.id,
     boardPath: `/boards/${view.board.id}`,
     permissions,
+    membership,
     aiDecompositionEnabled,
     now: new Date(now),
     today,
