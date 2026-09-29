@@ -47,6 +47,50 @@ export type Database = {
           },
         ]
       }
+      board_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          board_id: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          role: Database["public"]["Enums"]["board_role"]
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          board_id: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["board_role"]
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          board_id?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["board_role"]
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_invites_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       board_labels: {
         Row: {
           board_id: string
@@ -408,7 +452,31 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      accept_board_invite: { Args: { p_token: string }; Returns: string }
       create_board: { Args: { p_title: string }; Returns: string }
+      create_board_invite: {
+        Args: {
+          p_board_id: string
+          p_role: Database["public"]["Enums"]["board_role"]
+        }
+        Returns: {
+          expires_at: string
+          invite_id: string
+          token: string
+        }[]
+      }
+      get_board_invite: {
+        Args: { p_token: string }
+        Returns: {
+          board_id: string
+          board_title: string
+          expires_at: string
+          inviter_name: string
+          is_member: boolean
+          role: Database["public"]["Enums"]["board_role"]
+          status: string
+        }[]
+      }
       has_board_role: {
         Args: {
           p_board_id: string

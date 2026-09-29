@@ -4,8 +4,9 @@
 -- Demo accounts (password: password123, emails confirmed):
 --   alice@example.com  "Alice Martin", owner of "Demo board"
 --   bob@example.com    "Bob Chen", editor on "Demo board"
+--   carol@example.com  "Carol Diaz", viewer on "Demo board" (read-only)
 --
--- Like any real sign-up, inserting Alice and Bob into auth.users runs the
+-- Like any real sign-up, inserting Alice, Bob and Carol into auth.users runs the
 -- on_auth_user_created trigger, which:
 --   * creates their public.profiles row (display_name comes from full_name in the
 --     metadata below; no avatar_url, so the UI falls back to initials), and
@@ -37,7 +38,8 @@ select
 from (
   values
     ('a11ce000-0000-4000-8000-000000000001'::uuid, 'alice@example.com', 'Alice Martin'),
-    ('b0b00000-0000-4000-8000-000000000002'::uuid, 'bob@example.com', 'Bob Chen')
+    ('b0b00000-0000-4000-8000-000000000002'::uuid, 'bob@example.com', 'Bob Chen'),
+    ('ca201000-0000-4000-8000-000000000003'::uuid, 'carol@example.com', 'Carol Diaz')
 ) as u (id, email, full_name);
 
 insert into auth.identities (
@@ -53,18 +55,20 @@ select
   now(),
   now()
 from auth.users u
-where u.email in ('alice@example.com', 'bob@example.com');
+where u.email in ('alice@example.com', 'bob@example.com', 'carol@example.com');
 
 -- ---------------------------------------------------------------------------
 -- Demo board (the AFTER INSERT trigger makes Alice its owner member)
 -- ---------------------------------------------------------------------------
--- Alice = a11ce000-...-001, Bob = b0b00000-...-002
+-- Alice = a11ce000-...-001, Bob = b0b00000-...-002, Carol = ca201000-...-003
 
 insert into public.boards (id, title, owner_id)
 values ('b0a4d000-0000-4000-8000-000000000001', 'Demo board', 'a11ce000-0000-4000-8000-000000000001');
 
 insert into public.board_members (board_id, user_id, role)
-values ('b0a4d000-0000-4000-8000-000000000001', 'b0b00000-0000-4000-8000-000000000002', 'editor');
+values
+  ('b0a4d000-0000-4000-8000-000000000001', 'b0b00000-0000-4000-8000-000000000002', 'editor'),
+  ('b0a4d000-0000-4000-8000-000000000001', 'ca201000-0000-4000-8000-000000000003', 'viewer');
 
 -- Fractional-indexing keys as produced by generateKeyBetween: a0, a1, a2, ...
 -- Cards in a done column (is_done) no longer block other cards.
