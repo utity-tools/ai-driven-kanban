@@ -15,9 +15,10 @@ import { InlineEdit } from "./inline-edit";
 import { AvatarStack } from "./user-avatar";
 
 const MAX_HEADER_MEMBERS = 5;
+const MAX_HEADER_VIEWERS = 4;
 
 export function BoardHeader() {
-  const { view, boardId, permissions, mutate } = useBoard();
+  const { view, boardId, permissions, viewers, realtimePaused, mutate } = useBoard();
   const { title } = view.board;
 
   return (
@@ -49,6 +50,19 @@ export function BoardHeader() {
         </h1>
       </div>
       <div className="flex items-center gap-3">
+        {realtimePaused ? (
+          <p role="status" className="text-xs text-muted-foreground">
+            Live updates paused
+          </p>
+        ) : null}
+        {viewers.length > 0 ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground" aria-hidden>
+              Viewing
+            </span>
+            <AvatarStack people={viewers} max={MAX_HEADER_VIEWERS} label="Viewing now" size="sm" />
+          </div>
+        ) : null}
         <AvatarStack people={view.members} max={MAX_HEADER_MEMBERS} label="Board members" />
         <MembersDialog />
         <BottlenecksPanel />

@@ -20,6 +20,7 @@ import {
 } from "./board-context";
 import { BoardHeader } from "./board-header";
 import { CardDialog } from "./card-dialog";
+import { useBoardRealtime } from "./use-board-realtime";
 
 type Props = {
   view: BoardView;
@@ -45,6 +46,13 @@ export function BoardWorkspace({
 }: Props) {
   const [optimisticView, applyOptimistic] = useOptimistic(view, applyBoardUpdate);
   const today = useToday();
+  // Server state (not the optimistic copy): what other people have actually saved.
+  const { viewers, paused: realtimePaused } = useBoardRealtime({
+    boardId: view.board.id,
+    boardTitle: view.board.title,
+    userId: membership.userId,
+    members: view.members,
+  });
   const blockerCounts = useMemo(() => unresolvedBlockerCounts(optimisticView), [optimisticView]);
 
   function mutate(
@@ -75,6 +83,8 @@ export function BoardWorkspace({
     permissions,
     membership,
     aiDecompositionEnabled,
+    viewers,
+    realtimePaused,
     now: new Date(now),
     today,
     serverToday: toUtcDateOnly(new Date(now)),
