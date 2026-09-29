@@ -196,7 +196,13 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
   const exhausted = remaining === 0;
 
   return (
-    <div ref={rootRef} tabIndex={-1} className="grid gap-1 outline-none">
+    <div
+      ref={rootRef}
+      tabIndex={-1}
+      role="group"
+      aria-label="AI suggestions for subtasks"
+      className="grid gap-1 outline-none"
+    >
       {phase === "idle" ? (
         available ? (
           <div className="grid justify-items-start gap-1">

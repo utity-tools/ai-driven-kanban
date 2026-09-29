@@ -569,6 +569,8 @@ export async function acceptAiDependencies(input: unknown): Promise<ActionResult
           "23514": "The board changed while you were reviewing. Try again.",
           DEP01: CYCLE_ERROR,
           DEP02: BLOCKER_LIMIT_ERROR,
+          // Concurrent accepts that together would form a cycle (see the migration header).
+          "40P01": CYCLE_ERROR,
         }),
       );
     }

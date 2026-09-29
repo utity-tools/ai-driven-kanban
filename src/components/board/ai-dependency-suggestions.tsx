@@ -158,6 +158,7 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
     setError(null);
     setSaveError(null);
     setItems([]);
+    setRefused(false);
     idsRef.current = [];
     setCandidateIds([]);
     setAnnouncement("Looking for blockers…");
@@ -226,7 +227,13 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
   const exhausted = remaining === 0;
 
   return (
-    <div ref={rootRef} tabIndex={-1} className="grid gap-1 outline-none">
+    <div
+      ref={rootRef}
+      tabIndex={-1}
+      role="group"
+      aria-label="AI suggestions for blockers"
+      className="grid gap-1 outline-none"
+    >
       {phase === "idle" ? (
         available ? (
           <div className="grid justify-items-start gap-1">
