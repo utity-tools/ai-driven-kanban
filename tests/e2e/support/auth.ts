@@ -21,6 +21,9 @@ export const ALICE_STORAGE_STATE = path.join(__dirname, "../../../playwright/.au
 /** Bob's signed-in storage state, same rules as ALICE_STORAGE_STATE (never sign out with it). */
 export const BOB_STORAGE_STATE = path.join(__dirname, "../../../playwright/.auth/bob.json");
 
+/** Carol's signed-in storage state, same rules as ALICE_STORAGE_STATE (never sign out with it). */
+export const CAROL_STORAGE_STATE = path.join(__dirname, "../../../playwright/.auth/carol.json");
+
 /** Unique per call, so sign-up tests never collide across workers or runs. */
 export function uniqueEmail(): string {
   return `e2e-${Date.now()}-${randomUUID().slice(0, 8)}@example.com`;

@@ -6,6 +6,18 @@ import type { ActionResult } from "@/lib/boards/action-result";
 import type { BoardUpdate } from "@/lib/boards/board-updates";
 import type { BoardPermissions } from "@/lib/boards/permissions";
 import type { BoardView } from "@/lib/boards/view-model";
+import type { PendingInvite } from "@/lib/invites/pending";
+
+/** Who is looking at the board, for the Members dialog. */
+export type Membership = {
+  userId: string;
+  /** Anonymous demo accounts cannot invite people or join boards. */
+  isDemo: boolean;
+  /** The board's creator (boards.owner_id): always an owner, cannot leave. */
+  creatorId: string;
+  /** Invites that can still be used; empty unless the viewer is an owner. */
+  pendingInvites: PendingInvite[];
+};
 
 export type MutateOptions = {
   /** Runs after the server confirmed the change (e.g. an "Undo" toast). */
@@ -25,6 +37,7 @@ export type BoardContextValue = {
   boardId: string;
   boardPath: string;
   permissions: BoardPermissions;
+  membership: Membership;
   /** Whether AI subtask suggestions are switched on for this deployment. */
   aiDecompositionEnabled: boolean;
   /** Request time, from the server. */

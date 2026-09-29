@@ -3,6 +3,7 @@ import { type SubtaskUpdate, applySubtaskUpdate } from "@/lib/subtasks/updates";
 import { compareByPosition } from "./ordering";
 import { positionAfterLast, positionForMove } from "./positions";
 import {
+  type BoardRole,
   type BoardView,
   type CardSummary,
   type ColumnView,
@@ -48,6 +49,9 @@ export type BoardUpdate =
   | { type: "detachLabel"; cardId: string; labelId: string }
   | { type: "assignMember"; cardId: string; userId: string }
   | { type: "unassignMember"; cardId: string; userId: string }
+  /** Members dialog: a role change, or a member removed (their card assignments go too). */
+  | { type: "setMemberRole"; userId: string; role: BoardRole }
+  | { type: "removeMember"; userId: string }
   /** "blocker blocks blocked" (see addCardDependency). */
   | { type: "addDependency"; blockerId: string; blockedId: string }
   | { type: "removeDependency"; blockerId: string; blockedId: string }
@@ -290,6 +294,23 @@ export function applyBoardUpdate(view: BoardView, update: BoardUpdate): BoardVie
           : { ...card, assignees: [...card.assignees, person].sort(comparePeople) },
       );
     }
+
+    case "setMemberRole":
+      return {
+        ...view,
+        members: view.members.map((m) =>
+          m.id === update.userId ? { ...m, role: update.role } : m,
+        ),
+      };
+
+    case "removeMember":
+      return {
+        ...mapAllCards(view, (card) => ({
+          ...card,
+          assignees: card.assignees.filter((p) => p.id !== update.userId),
+        })),
+        members: view.members.filter((m) => m.id !== update.userId),
+      };
 
     case "unassignMember":
       return mapCard(view, update.cardId, (card) => ({

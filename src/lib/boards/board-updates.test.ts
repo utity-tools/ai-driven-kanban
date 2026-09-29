@@ -451,6 +451,29 @@ describe("applyBoardUpdate: assignees", () => {
   });
 });
 
+describe("applyBoardUpdate: members", () => {
+  it("changes a member's role", () => {
+    const next = applyBoardUpdate(detailedView(), {
+      type: "setMemberRole",
+      userId: "u-bob",
+      role: "viewer",
+    });
+    expect(next.members.find((m) => m.id === "u-bob")?.role).toBe("viewer");
+    expect(next.members.find((m) => m.id === "u-alice")?.role).toBe("owner");
+  });
+
+  it("removes a member and their card assignments", () => {
+    let next = applyBoardUpdate(detailedView(), {
+      type: "assignMember",
+      cardId: "t1",
+      userId: "u-bob",
+    });
+    next = applyBoardUpdate(next, { type: "removeMember", userId: "u-bob" });
+    expect(next.members.map((m) => m.id)).toEqual(["u-alice"]);
+    expect(findCard(next, "t1")?.assignees).toEqual([]);
+  });
+});
+
 describe("labelCardCount", () => {
   it("counts active and archived cards carrying the label", () => {
     expect(labelCardCount(detailedView(), "l-bug")).toBe(2);

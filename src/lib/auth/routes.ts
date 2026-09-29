@@ -1,4 +1,4 @@
-import { DEFAULT_AFTER_LOGIN_PATH } from "./redirect";
+import { DEFAULT_AFTER_LOGIN_PATH, sanitizeNextPath } from "./redirect";
 
 export const LOGIN_PATH = "/login";
 export const SIGNUP_PATH = "/signup";
@@ -26,6 +26,13 @@ export function isPublicPath(pathname: string): boolean {
 export function loginPathWithNext(nextPath: string): string {
   const params = new URLSearchParams({ next: nextPath });
   return `${LOGIN_PATH}?${params.toString()}`;
+}
+
+/** Builds `/signup?next=<path>`, or plain `/signup` when `next` is unsafe or the default. */
+export function signupPathWithNext(next: unknown): string {
+  const safe = sanitizeNextPath(next);
+  if (safe === DEFAULT_AFTER_LOGIN_PATH) return SIGNUP_PATH;
+  return `${SIGNUP_PATH}?${new URLSearchParams({ next: safe }).toString()}`;
 }
 
 /**
