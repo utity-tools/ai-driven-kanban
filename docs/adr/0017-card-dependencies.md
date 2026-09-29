@@ -31,16 +31,19 @@ archived.
   deleting it and inserting a new one, so only INSERT needs guarding.
 - **Invariants in a BEFORE INSERT trigger** (`internal.check_card_dependency`):
   - acyclic: an edge `blocker -> blocked` is rejected if `blocked` already reaches `blocker`
-    (recursive walk), SQLSTATE `DEP01`;
-  - at most 20 blockers per card, SQLSTATE `DEP02`, which also bounds the walk;
+    (recursive walk that visits each card once, so it is bounded by the board's size),
+    SQLSTATE `DEP01`;
+  - at most 20 blockers per card, SQLSTATE `DEP02` (a duplicate edge is still a 23505);
   - a per-board transaction advisory lock serialises inserts, so two concurrent inserts
     (`A -> B` and `B -> A`) cannot both pass the check.
     Self-dependencies fail a CHECK constraint (23514) and duplicates the primary key (23505).
 - **SECURITY INVOKER, not DEFINER:** every edge a walk can reach is on the new edge's board, and
   the trigger first locks the blocked card `FOR KEY SHARE`, which applies the cards UPDATE policy.
   So it only proceeds for owners and editors, who can read every edge of the board; everyone else
-  is rejected by RLS right after, with a permission error rather than a cycle error. DEFINER would
-  add nothing and could read edges the caller cannot.
+  is rejected by RLS right after, with a permission error rather than a cycle error. The check
+  fails closed: if the lock finds nothing but the caller is an owner or editor (for example after
+  a future change to the cards UPDATE policy), the trigger raises instead of skipping the checks.
+  DEFINER would add nothing and could read edges the caller cannot.
 - **"Done" columns:** `is_done boolean not null default false`, any number per board, editable by
   owners and editors. Existing columns titled "Done" were backfilled; default and demo boards
   create their Done column marked.
