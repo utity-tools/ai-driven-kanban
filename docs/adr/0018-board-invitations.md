@@ -77,7 +77,9 @@ through a SECURITY DEFINER RPC.
   parses the result with Zod.
 - The token travels in the URL path (`/invite/<token>`), so platform request logs (Vercel, the
   dev server) record it. App code never logs it and the page sends no referrer. Accepted: the
-  token is single-use and short-lived, and only project admins can read those logs. A fragment
+  token is single-use and short-lived, and only project admins can read those logs. The same
+  applies to the `next` parameter of `/login` and `/signup`, and to the OAuth `redirectTo` sent
+  to Supabase Auth when a signed-out invitee signs in with GitHub. A fragment
   (`#token`) would avoid it at the cost of a client-only accept flow.
 - Used and expired invites are never purged. The rows are tiny and the pending cap bounds what
   matters; a pg_cron cleanup can come later.
