@@ -10,7 +10,12 @@ import { cn } from "@/lib/utils";
 
 import { CardFace } from "./card-face";
 
-type Props = { boardPath: string; card: CardSummary; due: DueInfo | null };
+type Props = {
+  boardPath: string;
+  card: CardSummary;
+  due: DueInfo | null;
+  blockedBy: number;
+};
 
 /**
  * A card editors can drag. With the mouse or touch the whole card is the drag
@@ -19,7 +24,7 @@ type Props = { boardPath: string; card: CardSummary; due: DueInfo | null };
  * Space picks the card up, while Enter keeps opening it (see
  * BoardKeyboardSensor). No extra button, so a card stays a single tab stop.
  */
-export function SortableCard({ boardPath, card, due }: Props) {
+export function SortableCard({ boardPath, card, due, blockedBy }: Props) {
   const { active } = useDndContext();
   const {
     attributes,
@@ -47,6 +52,7 @@ export function SortableCard({ boardPath, card, due }: Props) {
         boardPath={boardPath}
         card={card}
         due={due}
+        blockedBy={blockedBy}
         linkRef={setActivatorNodeRef}
         // Only the instructions: the link keeps its role and name.
         linkDescribedBy={attributes["aria-describedby"]}

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   type Dependency,
   blockedCardIds,
+  blockedDownstream,
   bottlenecks,
   findCycle,
   wouldCreateCycle,
@@ -47,6 +48,27 @@ describe("wouldCreateCycle", () => {
 
   it("accepts a duplicate edge (the database rejects it as a duplicate, not a cycle)", () => {
     expect(wouldCreateCycle(edges("a>b"), "a", "b")).toBe(false);
+  });
+});
+
+describe("blockedDownstream", () => {
+  it("collects direct and transitive blocked cards, not the card itself", () => {
+    const graph = edges("a>b", "b>c", "a>d", "x>y");
+    expect([...blockedDownstream(graph, "a")].sort()).toEqual(["b", "c", "d"]);
+    expect(blockedDownstream(graph, "c").size).toBe(0);
+  });
+
+  it("agrees with wouldCreateCycle for every candidate blocker", () => {
+    const graph = edges("a>b", "b>c", "a>d", "x>y");
+    const ids = ["a", "b", "c", "d", "x", "y"];
+    for (const target of ids) {
+      const downstream = blockedDownstream(graph, target);
+      for (const candidate of ids) {
+        expect(candidate === target || downstream.has(candidate)).toBe(
+          wouldCreateCycle(graph, candidate, target),
+        );
+      }
+    }
   });
 });
 

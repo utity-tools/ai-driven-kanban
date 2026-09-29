@@ -39,19 +39,44 @@ function view(): BoardView {
         id: "todo",
         title: "To do",
         position: "a0",
+        isDone: false,
         cards: [card("t1", "todo", "a0"), card("t2", "todo", "a1"), card("t3", "todo", "a2")],
       },
-      { id: "done", title: "Done", position: "a1", cards: [] },
+      { id: "done", title: "Done", position: "a1", isDone: false, cards: [] },
     ],
     archivedCards: [archived("x1", "todo", "a0V", "2026-09-20T00:00:00Z")],
     labels: [],
     members: [],
+    dependencies: [],
   };
 }
 
 const ids = (v: BoardView) => v.columns.map((c) => [c.id, c.cards.map((x) => x.id)]);
 
 describe("applyBoardUpdate", () => {
+  it("marks and unmarks a column as done", () => {
+    const done = applyBoardUpdate(view(), {
+      type: "setColumnDone",
+      columnId: "todo",
+      isDone: true,
+    });
+    expect(done.columns.map((c) => c.isDone)).toEqual([true, false]);
+    const undone = applyBoardUpdate(done, {
+      type: "setColumnDone",
+      columnId: "todo",
+      isDone: false,
+    });
+    expect(undone.columns[0]?.isDone).toBe(false);
+  });
+
+  it("adds a dependency once and removes it", () => {
+    const edge = { type: "addDependency", blockerId: "t1", blockedId: "t2" } as const;
+    const added = applyBoardUpdate(applyBoardUpdate(view(), edge), edge);
+    expect(added.dependencies).toEqual([{ blockerId: "t1", blockedId: "t2" }]);
+    const removed = applyBoardUpdate(added, { ...edge, type: "removeDependency" });
+    expect(removed.dependencies).toEqual([]);
+  });
+
   it("renames the board", () => {
     expect(applyBoardUpdate(view(), { type: "renameBoard", title: "New" }).board.title).toBe("New");
   });

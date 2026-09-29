@@ -7,6 +7,7 @@ import { renameBoard } from "@/lib/boards/actions";
 import { BOARD_TITLE_MAX } from "@/lib/boards/schemas";
 
 import { ArchivedPanel } from "./archived-panel";
+import { BottlenecksPanel } from "./bottlenecks-panel";
 import { useBoard } from "./board-context";
 import { BoardMenu } from "./board-menu";
 import { InlineEdit } from "./inline-edit";
@@ -48,6 +49,7 @@ export function BoardHeader() {
       </div>
       <div className="flex items-center gap-3">
         <AvatarStack people={view.members} max={MAX_HEADER_MEMBERS} label="Board members" />
+        <BottlenecksPanel />
         <ArchivedPanel />
         {permissions.canDeleteBoard ? <BoardMenu /> : null}
       </div>

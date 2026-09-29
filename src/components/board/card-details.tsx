@@ -5,6 +5,7 @@ import {
   ArchiveIcon,
   ArchiveRestoreIcon,
   CalendarIcon,
+  LinkIcon,
   ListChecksIcon,
   TagIcon,
   UsersIcon,
@@ -14,11 +15,13 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { renameCard } from "@/lib/boards/actions";
+import { cardDependencies } from "@/lib/boards/dependencies";
 import { describeDue } from "@/lib/boards/due-date";
 import { CARD_TITLE_MAX } from "@/lib/boards/schemas";
 import type { CardDetail } from "@/lib/boards/view-model";
 
 import { useBoard } from "./board-context";
+import { CardDependencies } from "./card-dependencies";
 import { DoneCheckbox, DueDatePicker } from "./card-due-date";
 import { CardSubtasks } from "./card-subtasks";
 import { LabelPicker } from "./card-label-picker";
@@ -43,11 +46,13 @@ type Props = {
  * read-only view.
  */
 export function CardDetails({ card, onArchive, onRestore }: Props) {
-  const { boardId, permissions, today, serverToday, mutate } = useBoard();
+  const { view, boardId, permissions, today, serverToday, mutate } = useBoard();
   const archived = card.archivedAt !== null;
   const editable = permissions.canEdit && !archived;
   const description = card.description?.trim();
   const due = describeDue(card, today, serverToday);
+  const { blockedBy, blocks } = cardDependencies(view, card.id);
+  const hasDependencies = blockedBy.length > 0 || blocks.length > 0;
 
   return (
     <>
@@ -140,6 +145,17 @@ export function CardDetails({ card, onArchive, onRestore }: Props) {
       {editable || card.subtasks.length > 0 ? (
         <Field icon={<ListChecksIcon />} title="Subtasks">
           <CardSubtasks card={card} editable={editable} />
+        </Field>
+      ) : null}
+
+      {editable || hasDependencies ? (
+        <Field icon={<LinkIcon />} title="Dependencies">
+          <CardDependencies
+            cardId={card.id}
+            blockedBy={blockedBy}
+            blocks={blocks}
+            editable={editable}
+          />
         </Field>
       ) : null}
 

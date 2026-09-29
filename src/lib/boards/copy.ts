@@ -20,3 +20,13 @@ export function labelDeletionSummary(cardCount: number): string {
   if (cardCount === 0) return "The label isn't on any card. This can't be undone.";
   return `This removes it from ${pluralize(cardCount, "card")}. This can't be undone.`;
 }
+
+/** "Blocked by 1 card", "Blocked by 3 cards". */
+export function blockedByLabel(count: number): string {
+  return `Blocked by ${pluralize(count, "card")}`;
+}
+
+/** "Holds up 1 card", "Holds up 3 cards". */
+export function holdsUpLabel(count: number): string {
+  return `Holds up ${pluralize(count, "card")}`;
+}

@@ -60,7 +60,7 @@ export const getBoard = cache(async (id: string): Promise<BoardSummary | null> =
 /**
  * Everything the board view needs: columns and cards (ordered by
  * fractional-indexing position, then id; archived cards are split out for the
- * Archived panel), labels and members. Each card embeds its checklist
+ * Archived panel), labels, members and card dependencies. Each card embeds its checklist
  * (subtasks) in the same request: the card modal shows it and the card face
  * counts it, with no query per card. Returns `null` when the board is
  * missing or not accessible.
@@ -70,10 +70,10 @@ export const getBoardView = cache(async (id: string): Promise<BoardView | null> 
   if (!board) return null;
 
   const supabase = await createClient();
-  const [columns, cards, labels, members] = await Promise.all([
+  const [columns, cards, labels, members, dependencies] = await Promise.all([
     supabase
       .from("board_columns")
-      .select("id, title, position")
+      .select("id, title, position, is_done")
       .eq("board_id", board.id)
       .order("position", { ascending: true })
       .order("id", { ascending: true }),
@@ -90,9 +90,13 @@ export const getBoardView = cache(async (id: string): Promise<BoardView | null> 
       .from("board_members")
       .select("role, profile:profiles(id, display_name, avatar_url)")
       .eq("board_id", board.id),
+    supabase
+      .from("card_dependencies")
+      .select("blocker_card_id, blocked_card_id")
+      .eq("board_id", board.id),
   ]);
 
-  for (const result of [columns, cards, labels, members]) {
+  for (const result of [columns, cards, labels, members, dependencies]) {
     if (result.error) throw new Error("Failed to load board.", { cause: result.error });
   }
 
@@ -102,5 +106,6 @@ export const getBoardView = cache(async (id: string): Promise<BoardView | null> 
     cards: cards.data ?? [],
     labels: labels.data ?? [],
     members: members.data ?? [],
+    dependencies: dependencies.data ?? [],
   });
 });

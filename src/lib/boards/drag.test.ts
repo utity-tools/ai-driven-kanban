@@ -37,14 +37,22 @@ function view(): BoardView {
         id: "todo",
         title: "To do",
         position: "a0",
+        isDone: false,
         cards: [card("t1", "todo", "a0"), card("t2", "todo", "a1"), card("t3", "todo", "a2")],
       },
-      { id: "doing", title: "Doing", position: "a1", cards: [card("d1", "doing", "a0")] },
-      { id: "done", title: "Done", position: "a2", cards: [] },
+      {
+        id: "doing",
+        title: "Doing",
+        position: "a1",
+        isDone: false,
+        cards: [card("d1", "doing", "a0")],
+      },
+      { id: "done", title: "Done", position: "a2", isDone: false, cards: [] },
     ],
     archivedCards: [{ ...card("x1", "todo", "a0V"), archivedAt: "2026-09-20T00:00:00Z" }],
     labels: [],
     members: [],
+    dependencies: [],
   };
 }
 
@@ -234,7 +242,7 @@ describe("applyLayout", () => {
     current.columns = current.columns.filter((c) => c.id !== "doing");
     current.columns[0]?.cards.splice(0, 1); // t1 was archived meanwhile
     current.columns[0]?.cards.push(card("t4", "todo", "a3")); // t4 was added meanwhile
-    current.columns.push({ id: "later", title: "Later", position: "a3", cards: [] });
+    current.columns.push({ id: "later", title: "Later", position: "a3", isDone: false, cards: [] });
 
     expect(ids(applyLayout(current, moveInLayout(LAYOUT, "t3", "t2")))).toEqual([
       ["todo", ["t3", "t2", "t4"]],

@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense, startTransition, useOptimistic } from "react";
+import { Suspense, startTransition, useMemo, useOptimistic } from "react";
 import { toast } from "sonner";
 
 import { useToday } from "@/hooks/use-today";
 import { type ActionResult, GENERIC_ERROR } from "@/lib/boards/action-result";
 import { type BoardUpdate, applyBoardUpdate } from "@/lib/boards/board-updates";
+import { unresolvedBlockerCounts } from "@/lib/boards/dependencies";
 import { toUtcDateOnly } from "@/lib/boards/due-date";
 import type { BoardPermissions } from "@/lib/boards/permissions";
 import type { BoardView } from "@/lib/boards/view-model";
@@ -32,6 +33,7 @@ type Props = {
 export function BoardWorkspace({ view, now, permissions, aiDecompositionEnabled }: Props) {
   const [optimisticView, applyOptimistic] = useOptimistic(view, applyBoardUpdate);
   const today = useToday();
+  const blockerCounts = useMemo(() => unresolvedBlockerCounts(optimisticView), [optimisticView]);
 
   function mutate(
     update: BoardUpdate | null,
@@ -55,6 +57,7 @@ export function BoardWorkspace({ view, now, permissions, aiDecompositionEnabled 
 
   const value: BoardContextValue = {
     view: optimisticView,
+    blockerCounts,
     boardId: view.board.id,
     boardPath: `/boards/${view.board.id}`,
     permissions,

@@ -21,6 +21,7 @@ export type BoardUpdate =
   | { type: "renameBoard"; title: string }
   | { type: "addColumn"; column: { id: string; title: string; position: string } }
   | { type: "renameColumn"; columnId: string; title: string }
+  | { type: "setColumnDone"; columnId: string; isDone: boolean }
   /** Drag and drop: same neighbour hints as the moveColumn action. */
   | { type: "moveColumn"; columnId: string; previousId: string | null; nextId: string | null }
   | { type: "addCard"; card: { id: string; columnId: string; title: string; position: string } }
@@ -47,6 +48,9 @@ export type BoardUpdate =
   | { type: "detachLabel"; cardId: string; labelId: string }
   | { type: "assignMember"; cardId: string; userId: string }
   | { type: "unassignMember"; cardId: string; userId: string }
+  /** "blocker blocks blocked" (see addCardDependency). */
+  | { type: "addDependency"; blockerId: string; blockedId: string }
+  | { type: "removeDependency"; blockerId: string; blockedId: string }
   /** A card's checklist (see subtasks/updates.ts). */
   | SubtaskUpdate;
 
@@ -92,13 +96,44 @@ export function applyBoardUpdate(view: BoardView, update: BoardUpdate): BoardVie
       if (view.columns.some((column) => column.id === update.column.id)) return view;
       return {
         ...view,
-        columns: [...view.columns, { ...update.column, cards: [] }].sort(compareByPosition),
+        columns: [...view.columns, { ...update.column, isDone: false, cards: [] }].sort(
+          compareByPosition,
+        ),
       };
 
     case "renameColumn":
       return mapColumns(view, (column) =>
         column.id === update.columnId ? { ...column, title: update.title } : column,
       );
+
+    case "setColumnDone":
+      return mapColumns(view, (column) =>
+        column.id === update.columnId ? { ...column, isDone: update.isDone } : column,
+      );
+
+    case "addDependency":
+      if (
+        view.dependencies.some(
+          (d) => d.blockerId === update.blockerId && d.blockedId === update.blockedId,
+        )
+      ) {
+        return view;
+      }
+      return {
+        ...view,
+        dependencies: [
+          ...view.dependencies,
+          { blockerId: update.blockerId, blockedId: update.blockedId },
+        ],
+      };
+
+    case "removeDependency":
+      return {
+        ...view,
+        dependencies: view.dependencies.filter(
+          (d) => !(d.blockerId === update.blockerId && d.blockedId === update.blockedId),
+        ),
+      };
 
     case "moveColumn": {
       const column = view.columns.find((c) => c.id === update.columnId);

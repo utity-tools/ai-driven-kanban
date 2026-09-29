@@ -20,6 +20,8 @@ export type MutateOptions = {
 export type BoardContextValue = {
   /** The board with pending optimistic changes applied. */
   view: BoardView;
+  /** Unresolved blocker count per blocked card, computed once for the whole board. */
+  blockerCounts: ReadonlyMap<string, number>;
   boardId: string;
   boardPath: string;
   permissions: BoardPermissions;

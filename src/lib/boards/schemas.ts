@@ -65,6 +65,11 @@ export const deleteBoardSchema = z.object({ boardId });
 export const createColumnSchema = z.object({ boardId, columnId, title: columnTitleSchema });
 export const renameColumnSchema = z.object({ boardId, columnId, title: columnTitleSchema });
 export const deleteColumnSchema = z.object({ boardId, columnId });
+export const setColumnDoneSchema = z.object({
+  boardId,
+  columnId,
+  isDone: z.boolean({ error: "Invalid value." }),
+});
 
 /** The client picks the new card's id so its optimistic copy keeps the same key. */
 export const createCardSchema = z.object({ boardId, columnId, cardId, title: cardTitleSchema });
@@ -74,6 +79,16 @@ export const updateCardDescriptionSchema = z.object({
   cardId,
   description: descriptionSchema,
 });
+/**
+ * "blockerCardId blocks blockedCardId". Same board is enforced by the database
+ * (composite foreign keys), acyclicity and the 20-blocker cap by a trigger.
+ */
+export const cardDependencySchema = z
+  .object({ boardId, blockerCardId: id("card"), blockedCardId: id("card") })
+  .refine((edge) => edge.blockerCardId !== edge.blockedCardId, {
+    error: "A card can't depend on itself.",
+  });
+
 /** Archive, restore and delete-permanently all identify a card the same way. */
 export const cardRefSchema = z.object({ boardId, cardId });
 
@@ -174,6 +189,8 @@ export type DeleteBoardInput = z.input<typeof deleteBoardSchema>;
 export type CreateColumnInput = z.input<typeof createColumnSchema>;
 export type RenameColumnInput = z.input<typeof renameColumnSchema>;
 export type DeleteColumnInput = z.input<typeof deleteColumnSchema>;
+export type SetColumnDoneInput = z.input<typeof setColumnDoneSchema>;
+export type CardDependencyInput = z.input<typeof cardDependencySchema>;
 export type CreateCardInput = z.input<typeof createCardSchema>;
 export type RenameCardInput = z.input<typeof renameCardSchema>;
 export type UpdateCardDescriptionInput = z.input<typeof updateCardDescriptionSchema>;

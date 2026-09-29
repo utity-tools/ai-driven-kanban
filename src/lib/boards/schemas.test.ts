@@ -7,6 +7,8 @@ import {
   DESCRIPTION_MAX,
   LABEL_NAME_MAX,
   cardAssigneeSchema,
+  cardDependencySchema,
+  setColumnDoneSchema,
   cardLabelSchema,
   cardRefSchema,
   createBoardSchema,
@@ -268,6 +270,31 @@ describe("cardAssigneeSchema", () => {
     expect(
       messageOf(cardAssigneeSchema.safeParse({ boardId: BOARD, cardId: CARD, userId: "bob" })),
     ).toBe("Invalid member.");
+  });
+});
+
+describe("cardDependencySchema", () => {
+  const OTHER = "6f1c2c1e-2a4b-4c7d-9e3f-0a1b2c3d4e5f";
+
+  it("needs a board and two different card ids", () => {
+    const edge = { boardId: BOARD, blockerCardId: CARD, blockedCardId: OTHER };
+    expect(cardDependencySchema.safeParse(edge).success).toBe(true);
+    expect(messageOf(cardDependencySchema.safeParse({ ...edge, blockedCardId: "x" }))).toBe(
+      "Invalid card.",
+    );
+    expect(messageOf(cardDependencySchema.safeParse({ ...edge, blockedCardId: CARD }))).toBe(
+      "A card can't depend on itself.",
+    );
+  });
+});
+
+describe("setColumnDoneSchema", () => {
+  it("needs ids and a boolean", () => {
+    const input = { boardId: BOARD, columnId: COLUMN, isDone: true };
+    expect(setColumnDoneSchema.safeParse(input).success).toBe(true);
+    expect(messageOf(setColumnDoneSchema.safeParse({ ...input, isDone: "yes" }))).toBe(
+      "Invalid value.",
+    );
   });
 });
 

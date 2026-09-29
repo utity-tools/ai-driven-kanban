@@ -7,6 +7,7 @@ import type { DueInfo } from "@/lib/boards/due-date";
 import type { CardSummary } from "@/lib/boards/view-model";
 
 import { CardLink } from "./card-link";
+import { BlockedBadge } from "./blocked-badge";
 import { DueBadge } from "./due-badge";
 import { LabelList } from "./label-chip";
 import { SubtaskBadge } from "./subtask-badge";
@@ -18,6 +19,8 @@ type Props = {
   boardPath: string;
   card: CardSummary;
   due: DueInfo | null;
+  /** Unresolved cards blocking this one; a lock badge shows when above 0. */
+  blockedBy?: number;
   /** Drag and drop: the link is the keyboard handle (Space picks the card up). */
   linkRef?: Ref<HTMLAnchorElement>;
   /** Drag and drop: id of the screen-reader instructions. */
@@ -35,13 +38,15 @@ export function CardFace({
   boardPath,
   card,
   due,
+  blockedBy = 0,
   linkRef,
   linkDescribedBy,
   preview = false,
 }: Props) {
   const hasDescription = Boolean(card.description?.trim());
   const hasSubtasks = card.subtasks.length > 0;
-  const hasFooter = due !== null || hasDescription || hasSubtasks || card.assignees.length > 0;
+  const hasFooter =
+    due !== null || blockedBy > 0 || hasDescription || hasSubtasks || card.assignees.length > 0;
 
   return (
     <article
@@ -70,6 +75,7 @@ export function CardFace({
       {hasFooter ? (
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-muted-foreground">
+            <BlockedBadge count={blockedBy} />
             {due ? <DueBadge due={due} /> : null}
             {hasDescription ? (
               <span title="Has a description">
