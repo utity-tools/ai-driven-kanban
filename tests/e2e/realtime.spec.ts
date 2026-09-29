@@ -113,7 +113,7 @@ bobJoins(
         modal.getByText("This card is archived and not shown on the board."),
       ).toBeVisible(LIVE);
       await expect(modal).toBeVisible();
-      await expect(bob.getByText("That card was deleted by someone else.")).toHaveCount(0);
+      await expect(bob.getByText("That card no longer exists.")).toHaveCount(0);
     });
 
     await test.step("Alice deletes it permanently: Bob's modal closes with a notice", async () => {
@@ -128,7 +128,7 @@ bobJoins(
         .click();
 
       await expect(modal).toBeHidden(LIVE);
-      await expect(bob.getByText("That card was deleted by someone else.")).toBeVisible(LIVE);
+      await expect(bob.getByText("That card no longer exists.")).toBeVisible(LIVE);
     });
   },
 );

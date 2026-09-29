@@ -44,15 +44,15 @@ export function CardDialog() {
   const card =
     shownId === null ? null : (buildCardDetails(view).find((c) => c.id === shownId) ?? null);
 
-  // A card that was open and then vanished (deleted by someone else, seen
-  // after a live refresh): close the modal instead of leaving "Card not found".
+  // A card that was open and then vanished (deleted elsewhere, seen after a
+  // live refresh, or an optimistic add that was rolled back): close the modal instead of leaving "Card not found".
   const wasFound = useRef<string | null>(null);
   useEffect(() => {
     if (card) {
       wasFound.current = card.id;
     } else if (cardId !== null && wasFound.current === cardId) {
       wasFound.current = null;
-      toast.info("That card was deleted by someone else.");
+      toast.info("That card no longer exists.");
       window.history.replaceState(
         null,
         "",
