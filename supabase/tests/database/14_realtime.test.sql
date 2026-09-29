@@ -14,7 +14,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(63);
+select plan(64);
 
 -- Broadcasts sent on a board's topic in this transaction, as sorted 'table:op' strings.
 create function pg_temp.changes(p_board_id uuid)
@@ -229,12 +229,19 @@ select ok(
   (select bool_and(m.event = 'change' and m.private and m.extension = 'broadcast'
                    and m.topic ~ '^board:[0-9a-f-]{36}$'
                    and (select array_agg(k order by k) from jsonb_object_keys(m.payload) k)
-                       = array['id', 'op', 'table']
+                       = array['actor', 'id', 'op', 'table']
                    and m.payload ->> 'op' in ('INSERT', 'UPDATE', 'DELETE'))
    from realtime.messages m
    where m.topic in ('board:' || current_setting('test.board1'), 'board:' || current_setting('test.board2'),
                      'board:' || current_setting('test.board3'))),
-  'every broadcast is private, event "change", payload {id, table, op} only (no row data)'
+  'every broadcast is private, event "change", payload {actor, id, table, op} only (no row data)'
+);
+select ok(
+  (select bool_and(m.payload ->> 'actor' = '00000000-0000-4000-a000-000000001401')
+   from realtime.messages m
+   where m.topic = 'board:' || current_setting('test.board1')
+     and m.payload ->> 'table' = 'board_columns' and m.payload ->> 'op' = 'INSERT'),
+  'the actor is the user who made the change'
 );
 select is(
   (select count(*)::int from realtime.messages m

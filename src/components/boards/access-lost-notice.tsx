@@ -10,7 +10,8 @@ import { toast } from "sonner";
 export function AccessLostNotice({ message }: { message: string | null }) {
   useEffect(() => {
     if (!message) return;
-    toast.info(message);
+    // A fixed id: Strict Mode runs this effect twice in development.
+    toast.info(message, { id: "access-lost" });
     window.history.replaceState(null, "", window.location.pathname);
   }, [message]);
   return null;

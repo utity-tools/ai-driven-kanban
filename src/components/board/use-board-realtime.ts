@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createClient } from "@/lib/db/client";
 import type { BoardMember, Person } from "@/lib/boards/view-model";
 import { accessLostHref } from "@/lib/realtime/access-lost";
+import { isOwnChange, parseChangeNotice } from "@/lib/realtime/change-notice";
 import {
   type PresencePayload,
   type PresenceState,
@@ -102,12 +103,13 @@ export function useBoardRealtime({ boardId, boardTitle, userId, members }: Optio
 
     channel
       .on("broadcast", { event: "change" }, ({ payload }) => {
+        const notice = parseChangeNotice(payload);
         // Membership changes may have removed the viewer: check before refreshing.
-        if ((payload as { table?: string } | null)?.table === "board_members") {
-          void refreshIfStillMember();
-        } else {
-          refresher.request();
-        }
+        if (notice.table === "board_members") void refreshIfStillMember();
+        // Our own change: the Server Action already brought the fresh board back, and a
+        // second refresh would re-render mid-interaction. Other tabs of the same user
+        // catch up when they become visible.
+        else if (!isOwnChange(notice, userId)) refresher.request();
       })
       .on("presence", { event: "sync" }, () => {
         if (!disposed) setPresence({ ...channel.presenceState() });

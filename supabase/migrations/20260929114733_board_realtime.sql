@@ -4,7 +4,11 @@
 -- * Broadcast from the database, not Postgres Changes. Every write that changes what a board
 --   shows sends one Realtime Broadcast message on the private channel `board:<board uuid>`:
 --     event   'change'
---     payload { "table": <table name>, "op": "INSERT" | "UPDATE" | "DELETE" }
+--     payload { "table": <table name>, "op": "INSERT" | "UPDATE" | "DELETE",
+--               "actor": <auth.uid() of the writer, or null> }
+--   The writer's own client ignores its notices (its Server Action already returned the fresh
+--   board); refreshing again would re-render mid-interaction. actor is a board member's user
+--   id, which other members can already see.
 --   The payload carries NO row data: authorization for the data itself stays in the table
 --   policies, which the refetch goes through. realtime.send() also adds an "id" key (a random
 --   message uuid) to every payload; it is not row data.
@@ -123,7 +127,9 @@ begin
 
     foreach v_board_id in array coalesce(v_board_ids, '{}') loop
       perform realtime.send(
-        jsonb_build_object('table', tg_table_name, 'op', tg_op),
+        -- actor: who made the change (null outside a user request), so the writer's own
+        -- client can skip the refresh its Server Action already did.
+        jsonb_build_object('table', tg_table_name, 'op', tg_op, 'actor', auth.uid()),
         'change',
         'board:' || v_board_id::text,
         true
