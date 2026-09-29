@@ -148,7 +148,7 @@ $$;
 
 comment on function private.broadcast_board_change() is
   'AFTER ... FOR EACH STATEMENT trigger: sends one Realtime broadcast (event "change", payload '
-  '{table, op}, no row data) on the private topic "board:<id>" per board touched by the '
+  '{table, op, actor}, no row data) on the private topic "board:<id>" per board touched by the '
   'statement. Argument: the column holding the board id. Never raises.';
 
 revoke execute on function private.broadcast_board_change() from public, anon, authenticated;
@@ -280,10 +280,10 @@ create policy "board channels: members can receive broadcast and presence"
   using (
     realtime.messages.extension in ('broadcast', 'presence')
     and realtime.messages.topic = (select realtime.topic())
-    and public.has_board_role(
+    and (select public.has_board_role(
       internal.board_id_from_realtime_topic((select realtime.topic())),
       '{owner,editor,viewer}'
-    )
+    ))
   );
 
 -- Sending: presence only. No policy admits extension = 'broadcast', so clients cannot
@@ -294,8 +294,8 @@ create policy "board channels: members can track presence"
   with check (
     realtime.messages.extension = 'presence'
     and realtime.messages.topic = (select realtime.topic())
-    and public.has_board_role(
+    and (select public.has_board_role(
       internal.board_id_from_realtime_topic((select realtime.topic())),
       '{owner,editor,viewer}'
-    )
+    ))
   );
