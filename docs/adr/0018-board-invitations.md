@@ -40,7 +40,9 @@ through a SECURITY DEFINER RPC.
   the caller's role. The usual case is the inviter or a co-member opening the link; burning it
   would lock out the person it was meant for, and not burning it grants nothing new.
 - **Former owners:** when an owner is demoted, leaves or is removed, the pending invites they
-  created are deleted. Used invites are kept as the record of who invited whom.
+  created are deleted. Used invites are kept as the record of who invited whom, until the
+  inviter's account is deleted (`created_by` cascades). `create_board_invite` locks the caller's
+  owner membership row, so an invite cannot be created while a demotion is in flight.
 - **Demo users** (anonymous, deleted after 7 days, ADR 0009) cannot create or accept invites.
 - **Member management** needs no new policies: owners change roles (column-level UPDATE on
   `role`) and remove members; any member can leave; the existing triggers keep the creator an
@@ -67,5 +69,11 @@ through a SECURITY DEFINER RPC.
   an invite. Tightening it would break many test fixtures; revisit later.
 - ADR 0006 lets co-members see each other's email. With invites, strangers can become
   co-members, so that choice should be revisited before sign-ups open widely.
+- Links are bearer tokens: a member who opened a pending link (a no-op) and is later removed can
+  still use it to rejoin with the invite's role. The Members UI should suggest revoking pending
+  links after removing someone.
+- The generated types show `get_board_invite`'s columns as non-null strings; `board_id`,
+  `board_title` and `inviter_name` can be null and `status` is one of three values, so the app
+  parses the result with Zod.
 - Used and expired invites are never purged. The rows are tiny and the pending cap bounds what
   matters; a pg_cron cleanup can come later.
