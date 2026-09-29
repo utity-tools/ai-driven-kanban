@@ -94,7 +94,7 @@ export const getBoardView = cache(async (id: string): Promise<BoardView | null> 
       .eq("board_id", board.id),
     supabase
       .from("card_dependencies")
-      .select("blocker_card_id, blocked_card_id")
+      .select("blocker_card_id, blocked_card_id, source")
       .eq("board_id", board.id),
   ]);
 

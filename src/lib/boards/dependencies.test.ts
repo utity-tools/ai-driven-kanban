@@ -27,7 +27,7 @@ function card(id: string, columnId: string): CardSummary {
 }
 
 /** a, b, c in "To do"; d in "Done" (isDone); z archived from "To do". */
-function view(edges: [string, string][]): BoardView {
+function view(edges: [string, string][], ai: string[] = []): BoardView {
   const archived: ArchivedCard = { ...card("z", "todo"), archivedAt: "2026-09-20T00:00:00Z" };
   return {
     board: { id: "b", title: "Board" },
@@ -44,7 +44,11 @@ function view(edges: [string, string][]): BoardView {
     archivedCards: [archived],
     labels: [],
     members: [],
-    dependencies: edges.map(([blockerId, blockedId]) => ({ blockerId, blockedId })),
+    dependencies: edges.map(([blockerId, blockedId]) => ({
+      blockerId,
+      blockedId,
+      source: (ai.includes(`${blockerId}>${blockedId}`) ? "ai" : "manual") as "ai" | "manual",
+    })),
   };
 }
 
@@ -82,19 +86,60 @@ describe("cardDependencies", () => {
 
     expect(cardDependencies(v, "b")).toEqual({
       blockedBy: [
-        { cardId: "c", title: "C", columnTitle: "To do", state: "pending", resolved: false },
-        { cardId: "d", title: "D", columnTitle: "Done", state: "done", resolved: true },
+        {
+          cardId: "c",
+          title: "C",
+          columnTitle: "To do",
+          state: "pending",
+          resolved: false,
+          source: "manual",
+        },
+        {
+          cardId: "d",
+          title: "D",
+          columnTitle: "Done",
+          state: "done",
+          resolved: true,
+          source: "manual",
+        },
       ],
       blocks: [
-        { cardId: "a", title: "A", columnTitle: "To do", state: "pending", resolved: false },
+        {
+          cardId: "a",
+          title: "A",
+          columnTitle: "To do",
+          state: "pending",
+          resolved: false,
+          source: "manual",
+        },
       ],
     });
+  });
+
+  it("carries the edge source to both lists", () => {
+    const v = view(
+      [
+        ["c", "b"],
+        ["b", "a"],
+      ],
+      ["c>b"],
+    );
+    const { blockedBy, blocks } = cardDependencies(v, "b");
+    expect(blockedBy.map((l) => l.source)).toEqual(["ai"]);
+    expect(blocks.map((l) => l.source)).toEqual(["manual"]);
   });
 
   it("marks archived cards as archived and resolved", () => {
     const { blockedBy } = cardDependencies(view([["z", "a"]]), "a");
     expect(blockedBy).toEqual([
-      { cardId: "z", title: "Z", columnTitle: "To do", state: "archived", resolved: true },
+      {
+        cardId: "z",
+        title: "Z",
+        columnTitle: "To do",
+        state: "archived",
+        resolved: true,
+        source: "manual",
+      },
     ]);
   });
 });

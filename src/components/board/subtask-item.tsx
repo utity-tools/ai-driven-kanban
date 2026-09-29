@@ -1,6 +1,6 @@
 "use client";
 
-import { SparklesIcon, XIcon } from "lucide-react";
+import { XIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { SUBTASK_TITLE_MAX } from "@/lib/subtasks/schemas";
 import { type Subtask, isDone } from "@/lib/subtasks/subtask";
 import { cn } from "@/lib/utils";
 
+import { AiMarker } from "./ai-marker";
 import { InlineEdit } from "./inline-edit";
 import { SubtaskEstimatePicker } from "./subtask-estimate-picker";
 
@@ -97,15 +98,5 @@ export function SubtaskItem({ subtask, handlers, handle }: Props) {
         ) : null}
       </div>
     </div>
-  );
-}
-
-function AiMarker() {
-  return (
-    <Badge variant="outline" title="Proposed by AI" className="text-muted-foreground">
-      <SparklesIcon aria-hidden />
-      <span aria-hidden>AI</span>
-      <span className="sr-only">Proposed by AI</span>
-    </Badge>
   );
 }

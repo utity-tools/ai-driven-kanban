@@ -33,7 +33,8 @@ select is(
 select has_table('public', 'card_dependencies', 'card_dependencies exists');
 select columns_are(
   'public', 'card_dependencies',
-  array['board_id', 'blocker_card_id', 'blocked_card_id', 'created_by', 'created_at'],
+  -- source: added by 20260929170619_ai_dependencies.sql (tested in 15_accept_ai_dependencies).
+  array['board_id', 'blocker_card_id', 'blocked_card_id', 'created_by', 'created_at', 'source'],
   'card_dependencies has exactly the expected columns'
 );
 select col_is_pk('public', 'card_dependencies', array['blocker_card_id', 'blocked_card_id'],

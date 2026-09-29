@@ -115,7 +115,10 @@ export function CardSubtasks({ card, editable }: Props) {
         </ul>
       ) : null}
       {editable ? <SubtaskComposer count={subtasks.length} onAdd={add} /> : null}
-      {ai !== "hidden" ? <AiSubtaskSuggestions cardId={cardId} subtasks={subtasks} /> : null}
+      {/* Mounted whenever the feature is on, so an open panel survives the button hiding. */}
+      {aiDecompositionEnabled && editable ? (
+        <AiSubtaskSuggestions cardId={cardId} subtasks={subtasks} available={ai !== "hidden"} />
+      ) : null}
     </div>
   );
 }
