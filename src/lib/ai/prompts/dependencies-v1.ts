@@ -61,21 +61,23 @@ function neutralizeDelimiters(text: string): string {
   );
 }
 
-/** Untrusted text on a single line: line breaks would forge extra candidate lines. */
+/** Untrusted text on a single line: line breaks would forge extra candidate lines. \s misses NEL (U+0085). */
 function oneLine(text: string): string {
-  return neutralizeDelimiters(text).replace(/\s+/g, " ").trim();
+  return neutralizeDelimiters(text)
+    .replace(/[\s\u0085\u2028\u2029]+/g, " ")
+    .trim();
 }
 
 function formatCandidates(candidates: readonly PromptCandidate[]): string {
-  const shown = candidates.slice(0, MAX_CANDIDATES_IN_PROMPT);
-  const lines = shown.map(
-    (candidate, index) =>
-      `${candidateRef(index)} | column: ${oneLine(candidate.columnTitle)} | ${
-        candidate.done ? "done" : "open"
-      } | ${oneLine(candidate.title)}`,
-  );
-  const hidden = candidates.length - shown.length;
-  if (hidden > 0) lines.push(`(and ${hidden} more not shown)`);
+  // Defensive cap: callers already pass promptCandidates(...), so this is normally a no-op.
+  const lines = candidates
+    .slice(0, MAX_CANDIDATES_IN_PROMPT)
+    .map(
+      (candidate, index) =>
+        `${candidateRef(index)} | column: ${oneLine(candidate.columnTitle)} | ${
+          candidate.done ? "done" : "open"
+        } | ${oneLine(candidate.title)}`,
+    );
   return lines.length > 0 ? lines.join("\n") : "(none)";
 }
 

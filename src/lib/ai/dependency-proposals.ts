@@ -10,8 +10,10 @@ import { type DependencyProposal, MAX_PROPOSED_DEPENDENCIES } from "./schemas";
 /*
  * Pure post-processing of an AI dependency proposal: turns the model's
  * "c1", "c2" references back into card ids and keeps only proposals the
- * database would accept. Runs on the server (final check) and in the client
- * (partial streamed output), so it must never throw on incomplete data.
+ * database would accept. Runs in the client on the streamed (partial) output, so
+ * it must never throw on incomplete data. On the server only
+ * `dependencyCandidates` and `promptCandidates` run; the `accept_ai_dependencies`
+ * RPC is the real final check when the user confirms.
  */
 
 /** A card the model may be offered as a blocker. */
@@ -39,7 +41,7 @@ export type DependencyContext = {
  * The candidates for `targetId`, in board order: active cards other than the
  * target that aren't already its blockers and wouldn't close a cycle. Filtering
  * before the call saves tokens and removes the chance of proposing them at all;
- * `proposeDependencies` re-checks everything anyway.
+ * the client's `proposeDependencies` and the accept RPC re-check everything.
  */
 export function dependencyCandidates(view: BoardView, targetId: string): DependencyCandidate[] {
   const existing = new Set(
@@ -70,9 +72,10 @@ export type ValidDependency = {
 /**
  * The proposals of a partial (still streaming or stopped) or final output that
  * can be saved, in the model's order:
- * - `complete: false` (still streaming): the last item is used only once its
- *   rationale has started, because until then its reference may be cut short
- *   ("c1" on its way to "c12" would flash the wrong card). Items before it are complete.
+ * - `complete: false` (still streaming): the last item is never trusted, since
+ *   its reference may still be growing ("c1" on its way to "c12" would flash the
+ *   wrong card) whatever order the provider emits its fields in. An item counts
+ *   once a later item exists or the stream is complete.
  * - unknown references, the target, archived cards, duplicates, cards that
  *   already block the target and cards that would close a cycle are dropped;
  * - at most MAX_PROPOSED_DEPENDENCIES, and no more than the room left under
@@ -111,8 +114,7 @@ export function proposeDependencies(
   items.forEach((item, index) => {
     if (result.length >= room) return;
     const rationale = typeof item?.rationale === "string" ? item.rationale.trim() : "";
-    const isLast = index === items.length - 1;
-    if (!complete && isLast && rationale === "") return;
+    if (!complete && index === items.length - 1) return;
     const ref = typeof item?.blocker === "string" ? item.blocker.trim() : "";
     const candidate = byRef.get(ref);
     if (!candidate) return;

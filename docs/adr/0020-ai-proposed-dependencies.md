@@ -30,9 +30,10 @@ that the user reviews; accepted blockers are saved through an RPC that is the on
   server, and their ids are returned in the `X-Candidate-Ids` header in ref order, so the client
   maps refs against the exact snapshot the model saw even if Realtime (ADR 0019) changes the board
   mid-stream.
-- **Filtering** is pure and shared by server and client (`src/lib/ai/dependency-proposals.ts`):
-  unknown refs, the target, duplicates, archived cards, existing blockers and cycle-closing
-  blockers are dropped, and the list is capped by the remaining room under 20. Checking each
+- **Filtering** is pure (`src/lib/ai/dependency-proposals.ts`): the server only uses it to build
+  the candidates; the client maps the streamed refs and drops unknown refs, the target,
+  duplicates, archived cards, existing blockers and cycle-closing blockers, capping the list by
+  the remaining room under 20. The accept RPC is the authoritative final check. Checking each
   proposal against the existing graph is enough: every new edge points at the same target, so a
   cycle can use at most one new edge and the batch cannot close a cycle among its own proposals.
 - **Saving:** `public.accept_ai_dependencies(p_card_id, p_blocker_ids uuid[])`, a thin

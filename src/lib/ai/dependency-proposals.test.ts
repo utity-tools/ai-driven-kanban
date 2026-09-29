@@ -178,17 +178,18 @@ describe("proposeDependencies", () => {
       ).toEqual([]);
     });
 
-    it("waits for the last item's rationale before trusting its reference", () => {
-      expect(
-        proposeDependencies({ dependencies: [dep("c1"), { blocker: "c2" }] }, ctx(), {
-          complete: false,
-        }),
-      ).toHaveLength(1);
-      expect(
-        proposeDependencies({ dependencies: [{ blocker: "c2", rationale: "Wh" }] }, ctx(), {
-          complete: false,
-        }),
-      ).toHaveLength(1);
+    it("never trusts the last item while streaming, whatever the field order", () => {
+      const partial = (dependencies: unknown[]) =>
+        proposeDependencies({ dependencies } as never, ctx(), { complete: false });
+      expect(partial([dep("c1"), { blocker: "c2" }])).toHaveLength(1);
+      expect(partial([{ blocker: "c2", rationale: "Wh" }])).toHaveLength(0);
+      // rationale before blocker: "c1" may be on its way to "c12"
+      expect(partial([{ rationale: "Because" }, { rationale: "Why", blocker: "c1" }])).toHaveLength(
+        0,
+      );
+      expect(partial([{ rationale: "Because", blocker: "c1" }, { rationale: "Nex" }])).toHaveLength(
+        1,
+      );
     });
 
     it("accepts a last item without rationale once the stream is complete", () => {
