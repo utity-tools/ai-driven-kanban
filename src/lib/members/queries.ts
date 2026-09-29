@@ -4,18 +4,6 @@ import { createClient } from "@/lib/db/server";
 import { type PendingInvite, toPendingInvites } from "@/lib/invites/pending";
 import type { BoardMember } from "@/lib/boards/view-model";
 
-/** The user who created the board: always an owner, cannot leave or be removed. */
-export async function getBoardCreatorId(boardId: string): Promise<string> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("boards")
-    .select("owner_id")
-    .eq("id", boardId)
-    .single();
-  if (error) throw new Error("Failed to load the board creator.", { cause: error });
-  return data.owner_id;
-}
-
 /**
  * Invites that can still be used. Only owners can read board_invites (RLS), and
  * columns are listed explicitly: token_hash is not selectable, so `select *` fails.

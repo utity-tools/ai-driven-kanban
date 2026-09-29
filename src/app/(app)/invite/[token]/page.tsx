@@ -58,9 +58,8 @@ export default async function InvitePage({ params }: PageProps<"/invite/[token]"
   return (
     <div className="mx-auto w-full max-w-md px-4 py-12">
       <Card>
-        {view.kind === "pending" ? (
-          // A pending view only exists for a valid token.
-          <PendingInvite view={view} token={token} />
+        {view.kind === "pending" && validToken.success ? (
+          <PendingInvite view={view} token={validToken.data} />
         ) : (
           <Message view={view} token={validToken.success ? validToken.data : null} />
         )}
@@ -95,14 +94,10 @@ function PendingInvite({
   );
 }
 
-function Message({
-  view,
-  token,
-}: {
-  view: Exclude<InviteView, { kind: "pending" }>;
-  token: string | null;
-}) {
+function Message({ view, token }: { view: InviteView; token: string | null }) {
   switch (view.kind) {
+    case "pending":
+      return null; // rendered by PendingInvite, which needs the validated token
     case "member":
       return (
         <>

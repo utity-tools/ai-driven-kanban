@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth/session";
 import { permissionsFor, roleOf } from "@/lib/boards/permissions";
 import { getBoard, getBoardView } from "@/lib/boards/queries";
 import { getServerEnv } from "@/lib/env";
-import { getBoardCreatorId, listPendingInvites } from "@/lib/members/queries";
+import { listPendingInvites } from "@/lib/members/queries";
 
 export async function generateMetadata({ params }: PageProps<"/boards/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -25,12 +25,12 @@ export default async function BoardPage({ params }: PageProps<"/boards/[id]">) {
   const role = roleOf(view.members, user.id);
   const permissions = permissionsFor(role);
   // Only owners can read invites (RLS); demo accounts cannot create them.
-  const [creatorId, pendingInvites] = await Promise.all([
-    getBoardCreatorId(view.board.id),
+  const board = await getBoard(id); // memoised: the same query as getBoardView's
+  if (!board) notFound();
+  const pendingInvites =
     role === "owner" && !user.isAnonymous
-      ? listPendingInvites(view.board.id, view.members)
-      : Promise.resolve([]),
-  ]);
+      ? await listPendingInvites(view.board.id, view.members)
+      : [];
 
   // Due-date status is computed against the request time, on server and client alike.
   return (
@@ -38,7 +38,12 @@ export default async function BoardPage({ params }: PageProps<"/boards/[id]">) {
       view={view}
       now={new Date().toISOString()}
       permissions={permissions}
-      membership={{ userId: user.id, isDemo: user.isAnonymous, creatorId, pendingInvites }}
+      membership={{
+        userId: user.id,
+        isDemo: user.isAnonymous,
+        creatorId: board.creatorId,
+        pendingInvites,
+      }}
       // Only a boolean reaches the client: the env itself stays on the server.
       aiDecompositionEnabled={getServerEnv().AI_DECOMPOSITION_ENABLED}
     />

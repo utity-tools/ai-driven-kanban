@@ -16,6 +16,11 @@ import { ROLE_DESCRIPTIONS, ROLE_LABELS } from "@/lib/members/management";
 import { useBoard } from "./board-context";
 import { RoleSelect } from "./role-select";
 
+const COPY_MESSAGES = {
+  copied: "Link copied to the clipboard.",
+  manual: "Couldn't copy automatically. The link is selected: press Ctrl+C or Cmd+C.",
+} as const;
+
 type Created = { url: string; expiresAt: string };
 
 /**
@@ -31,7 +36,7 @@ export function InviteSection() {
   const [role, setRole] = useState<InviteRole>("editor");
   const [created, setCreated] = useState<Created | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<"copied" | "manual" | null>(null);
   const [creating, startCreating] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -60,10 +65,10 @@ export function InviteSection() {
     if (!created) return;
     try {
       await navigator.clipboard.writeText(created.url);
-      setCopyStatus("Link copied to the clipboard.");
+      setCopyStatus("copied");
     } catch {
       inputRef.current?.select();
-      setCopyStatus("Couldn't copy automatically. The link is selected: press Ctrl+C or Cmd+C.");
+      setCopyStatus("manual");
     }
   }
 
@@ -127,11 +132,7 @@ export function InviteSection() {
               spellCheck={false}
             />
             <Button variant="outline" onClick={handleCopy}>
-              {copyStatus === "Link copied to the clipboard." ? (
-                <CheckIcon aria-hidden />
-              ) : (
-                <CopyIcon aria-hidden />
-              )}
+              {copyStatus === "copied" ? <CheckIcon aria-hidden /> : <CopyIcon aria-hidden />}
               Copy link
             </Button>
           </div>
@@ -140,7 +141,7 @@ export function InviteSection() {
             shown now: if you lose it, revoke it and create another.
           </p>
           <p role="status" className="min-h-4 text-xs">
-            {copyStatus}
+            {copyStatus ? COPY_MESSAGES[copyStatus] : null}
           </p>
         </div>
       ) : null}

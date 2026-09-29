@@ -128,6 +128,6 @@ export async function revokeInvite(input: unknown): Promise<ActionResult> {
       .eq("board_id", boardId)
       .select("id");
     if (error) return failure(friendlyDbError(error));
-    return affected(data, "This invite is already gone.");
+    return affected(data, "You can't revoke this invite, or it is already gone.");
   });
 }

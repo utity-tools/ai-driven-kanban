@@ -8,6 +8,8 @@ import { createClient } from "@/lib/db/server";
 import { type BoardView, assembleBoardView } from "./view-model";
 
 export type BoardSummary = { id: string; title: string };
+/** `creatorId` is boards.owner_id: always an owner, cannot leave or be removed. */
+export type BoardDetails = BoardSummary & { creatorId: string };
 
 /** Boards the signed-in user can see, oldest first. Runs as the user, so RLS decides. */
 export async function listBoards(): Promise<BoardSummary[]> {
@@ -44,17 +46,17 @@ export async function getLatestOwnedBoardId(userId: string): Promise<string | nu
  * or the user can't see it (RLS makes the last two indistinguishable, on
  * purpose). Memoised per request so metadata and page share one query.
  */
-export const getBoard = cache(async (id: string): Promise<BoardSummary | null> => {
+export const getBoard = cache(async (id: string): Promise<BoardDetails | null> => {
   if (!z.uuid().safeParse(id).success) return null;
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("boards")
-    .select("id, title")
+    .select("id, title, owner_id")
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error("Failed to load board.", { cause: error });
-  return data;
+  return data && { id: data.id, title: data.title, creatorId: data.owner_id };
 });
 
 /**

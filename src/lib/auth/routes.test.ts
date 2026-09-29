@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { sanitizeNextPath } from "./redirect";
-import { getAuthRedirect, isAuthPage, isPublicPath, loginPathWithNext } from "./routes";
+import {
+  getAuthRedirect,
+  isAuthPage,
+  isPublicPath,
+  loginPathWithNext,
+  signupPathWithNext,
+} from "./routes";
 
 describe("isPublicPath", () => {
   it.each([
@@ -70,4 +76,18 @@ describe("getAuthRedirect", () => {
       getAuthRedirect({ pathname: "/auth/callback", search: "", isSignedIn: true }),
     ).toBeNull();
   });
+});
+
+describe("signupPathWithNext", () => {
+  it("keeps a safe same-origin path", () => {
+    const path = `/invite/${"A".repeat(43)}`;
+    expect(signupPathWithNext(path)).toBe(`/signup?next=%2Finvite%2F${"A".repeat(43)}`);
+  });
+
+  it.each(["//evil.com", "https://evil.com", "/boards", undefined, null])(
+    "falls back to plain /signup for %s",
+    (value) => {
+      expect(signupPathWithNext(value)).toBe("/signup");
+    },
+  );
 });
