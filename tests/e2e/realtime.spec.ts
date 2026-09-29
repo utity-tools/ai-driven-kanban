@@ -30,17 +30,20 @@ const LIVE = { timeout: 15_000 };
 test.use({ storageState: ALICE_STORAGE_STATE });
 
 /** Resolves once the page's Realtime socket has been told its channel join succeeded. */
-function channelJoined(page: Page): Promise<void> {
-  return new Promise((resolve) => {
+function channelJoined(page: Page, timeoutMs = LIVE.timeout): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Realtime channel never joined")), timeoutMs);
     page.on("websocket", (socket) => {
       socket.on("framereceived", ({ payload }) => {
         if (
           typeof payload === "string" &&
           payload.includes('"phx_reply"') &&
           payload.includes('"status":"ok"') &&
-          payload.includes("realtime:")
-        )
+          payload.includes("realtime:board:")
+        ) {
+          clearTimeout(timer);
           resolve();
+        }
       });
     });
   });
@@ -160,6 +163,8 @@ bobJoins(
 bobJoins(
   "a board deleted by its owner sends the other member to the boards list with a notice",
   async ({ page: alice, bob, board }) => {
+    // Bob's join is not awaited: if the delete wins the race, his join is rejected and the
+    // channel-error membership check sends him to the same notice.
     await deleteOpenBoard(alice);
 
     // Not a 404: same redirect and notice as a removed member. The flag param is stripped.
