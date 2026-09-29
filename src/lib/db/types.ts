@@ -230,6 +230,7 @@ export type Database = {
           board_id: string
           created_at: string
           created_by: string | null
+          source: string
         }
         Insert: {
           blocked_card_id: string
@@ -237,6 +238,7 @@ export type Database = {
           board_id: string
           created_at?: string
           created_by?: string | null
+          source?: string
         }
         Update: {
           blocked_card_id?: string
@@ -244,6 +246,7 @@ export type Database = {
           board_id?: string
           created_at?: string
           created_by?: string | null
+          source?: string
         }
         Relationships: [
           {
@@ -430,6 +433,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_ai_dependencies: {
+        Args: { p_blocker_ids: string[]; p_card_id: string }
+        Returns: {
+          blocked_card_id: string
+          blocker_card_id: string
+          board_id: string
+          created_at: string
+          created_by: string | null
+          source: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "card_dependencies"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       accept_ai_subtasks: {
         Args: { p_card_id: string; p_subtasks: Json }
         Returns: {
