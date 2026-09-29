@@ -33,12 +33,14 @@ shows who is viewing the board.
   function is SECURITY DEFINER in `private` (it must send even after the writer lost access, e.g.
   leaving a board); the topic parser is SECURITY INVOKER in `internal` (ADR 0007).
 - **Client:** a hook joins the private channel, coalesces notices into one debounced refresh
-  (at most one in flight), checks access on every channel join, refreshes on rejoin and on
-  tab focus, redirects to `/boards` with a
+  (at most one in flight), checks membership on every channel join and, once it is confirmed,
+  refreshes on rejoin and on tab focus; it redirects to `/boards` with a
   notice when the viewer lost access (membership change, deleted board or rejected join), and
   closes an open card that was deleted. A notice is skipped as the tab's own echo only when its
   `actor` is the viewer **and** this tab has a mutation in flight or settled in the last 2 s: the
   Server Action already returned the fresh board, and the same user's other tabs still refresh.
+  Notices that may remove the viewer are only skipped for the tab's own leave or delete (which
+  navigates by itself); any other own echo still checks membership, redirect-only.
   The access-lost notice reads the board title from `sessionStorage`, never from the URL. Optimistic
   updates are unaffected: a refresh only replaces the base view.
 - **Presence:** each client tracks its user id; the header shows the other members viewing now
@@ -66,11 +68,14 @@ shows who is viewing the board.
   client redirects on the next notice.
 - Profile changes (names, avatars) are not broadcast.
 - CI's E2E job now starts the Realtime service.
-- A change by the same user from another tab within 2 s of a local mutation is taken for this
-  tab's own echo and missed until the next notice or focus. A per-tab id in the payload would fix
+- A board change by the same user from another tab within 2 s of a local mutation is taken for
+  this tab's own echo and missed until the next notice or focus. Access loss is not affected:
+  those notices are still checked (see Client). A per-tab id in the payload would fix
   it; not worth a migration yet.
-- A refresh is never requested while the browser is offline or the membership check fails:
-  `router.refresh()` offline falls back to a full page navigation that would lose unsaved input.
+- A refresh never runs while the browser reports offline (checked again when the debounced
+  refresh fires) or when the membership check fails: `router.refresh()` offline falls back to a full page navigation that would lose unsaved input.
+  `navigator.onLine` only detects a missing network interface; a dead network that still reports
+  online can hard-navigate, as any failed client navigation would.
 - The first join does not refresh (only checks access): a refresh right after the page renders
   would re-render under a dialog being opened. Changes between the server render and the join,
   or a board restored from the router cache, show on the next notice or focus.
