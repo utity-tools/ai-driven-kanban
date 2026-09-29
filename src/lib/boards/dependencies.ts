@@ -1,6 +1,6 @@
 import { blockedDownstream, bottlenecks } from "@/lib/graph/dependencies";
 
-import type { BoardView } from "./view-model";
+import type { BoardView, DependencySource } from "./view-model";
 
 /**
  * Most blockers a card can have. Mirrors the DEP02 check in
@@ -74,6 +74,8 @@ export type DependencyLink = {
   columnTitle: string;
   state: DependencyState;
   resolved: boolean;
+  /** Who created the edge: `ai` for an accepted AI proposal. */
+  source: DependencySource;
 };
 
 export type CardDependencies = { blockedBy: DependencyLink[]; blocks: DependencyLink[] };
@@ -85,7 +87,7 @@ export type CardDependencies = { blockedBy: DependencyLink[]; blocks: Dependency
  */
 export function cardDependencies(view: BoardView, cardId: string): CardDependencies {
   const cards = locate(view);
-  const link = (id: string): DependencyLink | null => {
+  const link = (id: string, source: DependencySource): DependencyLink | null => {
     const card = cards.get(id);
     if (!card) return null;
     const state: DependencyState = card.archived ? "archived" : card.done ? "done" : "pending";
@@ -95,23 +97,28 @@ export function cardDependencies(view: BoardView, cardId: string): CardDependenc
       columnTitle: card.columnTitle,
       state,
       resolved: state !== "pending",
+      source,
     };
   };
   // Map order is board order (columns left to right, then archived), so the lists are stable.
   const order = new Map([...cards.keys()].map((id, index) => [id, index]));
-  const links = (ids: string[]) =>
-    ids
-      .filter((id) => order.has(id))
-      .sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0))
-      .map(link)
+  const links = (edges: { id: string; source: DependencySource }[]) =>
+    edges
+      .filter((edge) => order.has(edge.id))
+      .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+      .map((edge) => link(edge.id, edge.source))
       .filter((item): item is DependencyLink => item !== null);
 
   return {
     blockedBy: links(
-      view.dependencies.filter((edge) => edge.blockedId === cardId).map((edge) => edge.blockerId),
+      view.dependencies
+        .filter((edge) => edge.blockedId === cardId)
+        .map((edge) => ({ id: edge.blockerId, source: edge.source })),
     ),
     blocks: links(
-      view.dependencies.filter((edge) => edge.blockerId === cardId).map((edge) => edge.blockedId),
+      view.dependencies
+        .filter((edge) => edge.blockerId === cardId)
+        .map((edge) => ({ id: edge.blockedId, source: edge.source })),
     ),
   };
 }

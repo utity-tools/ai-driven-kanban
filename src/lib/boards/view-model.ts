@@ -36,6 +36,12 @@ export type ColumnView = {
 /** An archived card: hidden from its column, listed in the Archived panel. */
 export type ArchivedCard = CardSummary & { archivedAt: string };
 
+/** Who created a dependency: a person, or an AI proposal a person accepted. */
+export type DependencySource = "manual" | "ai";
+
+/** A dependency edge of the board, with who created it. */
+export type BoardDependency = Dependency & { source: DependencySource };
+
 export type BoardView = {
   board: { id: string; title: string };
   columns: ColumnView[];
@@ -44,7 +50,7 @@ export type BoardView = {
   labels: Label[];
   members: BoardMember[];
   /** Edges "blocker blocks blocked" between the board's cards (archived ones included). */
-  dependencies: Dependency[];
+  dependencies: BoardDependency[];
 };
 
 // ---------------------------------------------------------------------------
@@ -72,7 +78,7 @@ export type RawBoardData = {
   }[];
   labels: LabelRow[];
   members: { role: BoardRole; profile: ProfileRow | null }[];
-  dependencies: { blocker_card_id: string; blocked_card_id: string }[];
+  dependencies: { blocker_card_id: string; blocked_card_id: string; source: string }[];
 };
 
 const ROLE_ORDER: Record<BoardRole, number> = { owner: 0, editor: 1, viewer: 2 };
@@ -172,6 +178,7 @@ export function assembleBoardView(raw: RawBoardData): BoardView {
     dependencies: raw.dependencies.map((d) => ({
       blockerId: d.blocker_card_id,
       blockedId: d.blocked_card_id,
+      source: d.source === "ai" ? "ai" : "manual",
     })),
   };
 }

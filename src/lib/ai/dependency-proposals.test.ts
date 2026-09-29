@@ -237,8 +237,8 @@ describe("dependencyCandidates", () => {
     labels: [],
     members: [],
     dependencies: [
-      { blockerId: "a", blockedId: "t" },
-      { blockerId: "t", blockedId: "e" },
+      { blockerId: "a", blockedId: "t", source: "manual" },
+      { blockerId: "t", blockedId: "e", source: "manual" },
     ],
   };
 

@@ -2,7 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 
-import { type ActionResult, SIGNED_OUT_ERROR, failure, friendlyDbError } from "./action-result";
+import { acceptDependenciesSchema } from "@/lib/ai/schemas";
+
+import {
+  type ActionResult,
+  NOT_FOUND_ERROR,
+  SIGNED_OUT_ERROR,
+  failure,
+  friendlyDbError,
+} from "./action-result";
 import { affected, runBoardAction as run } from "./action-runner";
 import { MAX_BLOCKERS } from "./dependencies";
 import { positionAfterLast, positionForMove } from "./positions";
@@ -538,4 +546,32 @@ export async function removeCardDependency(input: unknown): Promise<ActionResult
       return affected(data);
     },
   );
+}
+
+/**
+ * Saves the AI-proposed blockers the user reviewed and kept, with `source:
+ * 'ai'`. Goes through accept_ai_dependencies, the only path that may write that
+ * source; the RPC is all-or-nothing and repeats every check (owner/editor,
+ * active cards, no cycle, at most 20 blockers).
+ */
+export async function acceptAiDependencies(input: unknown): Promise<ActionResult> {
+  return run(acceptDependenciesSchema, input, async ({ cardId, blockerIds }, supabase) => {
+    const { error } = await supabase.rpc("accept_ai_dependencies", {
+      p_card_id: cardId,
+      p_blocker_ids: blockerIds,
+    });
+    if (error) {
+      return failure(
+        friendlyDbError(error, {
+          // Missing card, not an owner/editor, or a demo user: kept indistinguishable.
+          "42501": NOT_FOUND_ERROR,
+          // The shape is validated above: an archived card or blocker, or an edge that now exists.
+          "23514": "The board changed while you were reviewing. Try again.",
+          DEP01: CYCLE_ERROR,
+          DEP02: BLOCKER_LIMIT_ERROR,
+        }),
+      );
+    }
+    return { ok: true };
+  });
 }

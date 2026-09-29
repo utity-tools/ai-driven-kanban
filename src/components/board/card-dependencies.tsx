@@ -4,8 +4,12 @@ import { ArchiveIcon, CircleCheckIcon, CircleDashedIcon, XIcon } from "lucide-re
 
 import { Button } from "@/components/ui/button";
 import { addCardDependency, removeCardDependency } from "@/lib/boards/actions";
+import { dependencyCandidates } from "@/lib/ai/dependency-proposals";
+import { dependencySuggestAvailability } from "@/lib/ai/dependency-review";
 import { MAX_BLOCKERS, type DependencyLink } from "@/lib/boards/dependencies";
 
+import { AiDependencySuggestions } from "./ai-dependency-suggestions";
+import { AiMarker } from "./ai-marker";
 import { BlockerPicker } from "./blocker-picker";
 import { useBoard } from "./board-context";
 import { CardLink } from "./card-link";
@@ -25,7 +29,15 @@ type Props = {
  * and the error shows as a toast.
  */
 export function CardDependencies({ cardId, blockedBy, blocks, editable }: Props) {
-  const { boardId, boardPath, mutate } = useBoard();
+  const { view, boardId, boardPath, mutate, aiDecompositionEnabled } = useBoard();
+  const ai = dependencySuggestAvailability({
+    featureEnabled: aiDecompositionEnabled,
+    editable,
+    // `editable` already excludes archived cards.
+    archived: false,
+    candidateCount: editable ? dependencyCandidates(view, cardId).length : 0,
+    blockerCount: blockedBy.length,
+  });
 
   function add(blockerId: string) {
     mutate({ type: "addDependency", blockerId, blockedId: cardId }, () =>
@@ -67,6 +79,9 @@ export function CardDependencies({ cardId, blockedBy, blocks, editable }: Props)
               <BlockerPicker cardId={cardId} onPick={add} />
             </div>
           )
+        ) : null}
+        {ai !== "hidden" ? (
+          <AiDependencySuggestions cardId={cardId} blockerCount={blockedBy.length} />
         ) : null}
       </div>
       <div className="grid gap-1.5">
@@ -115,6 +130,7 @@ function DependencyList({
             </CardLink>
             <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
               <span>{link.columnTitle}</span>
+              {link.source === "ai" ? <AiMarker label="Suggested by AI" /> : null}
               <span
                 className="inline-flex items-center gap-1"
                 data-resolved={link.resolved}

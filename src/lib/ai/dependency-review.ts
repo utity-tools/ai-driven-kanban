@@ -96,3 +96,7 @@ export function toDependencyAcceptPayload(
 
 export const NO_DEPENDENCIES_MESSAGE =
   "The AI didn't find any cards that block this one. You can still add blockers yourself.";
+
+/** The stream ended without a usable proposal (empty body or invalid output), as opposed to "none". */
+export const EMPTY_DEPENDENCY_PROPOSAL_ERROR =
+  "The AI didn't return a usable answer. Please try again.";

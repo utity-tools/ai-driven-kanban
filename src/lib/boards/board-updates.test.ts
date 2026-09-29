@@ -72,9 +72,26 @@ describe("applyBoardUpdate", () => {
   it("adds a dependency once and removes it", () => {
     const edge = { type: "addDependency", blockerId: "t1", blockedId: "t2" } as const;
     const added = applyBoardUpdate(applyBoardUpdate(view(), edge), edge);
-    expect(added.dependencies).toEqual([{ blockerId: "t1", blockedId: "t2" }]);
+    expect(added.dependencies).toEqual([{ blockerId: "t1", blockedId: "t2", source: "manual" }]);
     const removed = applyBoardUpdate(added, { ...edge, type: "removeDependency" });
     expect(removed.dependencies).toEqual([]);
+  });
+
+  it("adds AI dependencies with source ai, skipping edges that exist", () => {
+    const start = applyBoardUpdate(view(), {
+      type: "addDependency",
+      blockerId: "t1",
+      blockedId: "t3",
+    });
+    const next = applyBoardUpdate(start, {
+      type: "addAiDependencies",
+      blockerIds: ["t1", "t2"],
+      blockedId: "t3",
+    });
+    expect(next.dependencies).toEqual([
+      { blockerId: "t1", blockedId: "t3", source: "manual" },
+      { blockerId: "t2", blockedId: "t3", source: "ai" },
+    ]);
   });
 
   it("renames the board", () => {

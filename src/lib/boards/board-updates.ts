@@ -54,6 +54,8 @@ export type BoardUpdate =
   | { type: "removeMember"; userId: string }
   /** "blocker blocks blocked" (see addCardDependency). */
   | { type: "addDependency"; blockerId: string; blockedId: string }
+  /** Accepted AI proposals (see acceptAiDependencies): all edges point to `blockedId`, source 'ai'. */
+  | { type: "addAiDependencies"; blockerIds: string[]; blockedId: string }
   | { type: "removeDependency"; blockerId: string; blockedId: string }
   /** A card's checklist (see subtasks/updates.ts). */
   | SubtaskUpdate;
@@ -127,9 +129,23 @@ export function applyBoardUpdate(view: BoardView, update: BoardUpdate): BoardVie
         ...view,
         dependencies: [
           ...view.dependencies,
-          { blockerId: update.blockerId, blockedId: update.blockedId },
+          { blockerId: update.blockerId, blockedId: update.blockedId, source: "manual" },
         ],
       };
+
+    case "addAiDependencies": {
+      const added = update.blockerIds
+        .filter(
+          (blockerId) =>
+            !view.dependencies.some(
+              (d) => d.blockerId === blockerId && d.blockedId === update.blockedId,
+            ),
+        )
+        .map((blockerId) => ({ blockerId, blockedId: update.blockedId, source: "ai" as const }));
+      return added.length === 0
+        ? view
+        : { ...view, dependencies: [...view.dependencies, ...added] };
+    }
 
     case "removeDependency":
       return {
