@@ -136,3 +136,58 @@ export function proposeDependencies(
   });
   return result;
 }
+
+/*
+ * Keeping client and model in step. Refs ("c1"...) are positions in the
+ * candidate list the server sent to the model. Realtime can change the board
+ * while a response streams, so the client doesn't recompute the list: the route
+ * sends the ids in prompt order in a response header and the client resolves
+ * them against its own board (titles, columns), keeping the positions.
+ */
+
+/** Response header with the candidate card ids the model saw, comma-separated, in ref order. */
+export const CANDIDATE_IDS_HEADER = "X-Candidate-Ids";
+
+/** The candidates that are actually sent to the model (the prompt shows only the first ones). */
+export function promptCandidates<T>(candidates: readonly T[]): T[] {
+  return candidates.slice(0, MAX_CANDIDATES_IN_PROMPT);
+}
+
+/** Header value for the ids of the candidates the model saw. UUIDs contain no commas. */
+export function encodeCandidateIds(candidates: readonly { id: string }[]): string {
+  return promptCandidates(candidates)
+    .map((candidate) => candidate.id)
+    .join(",");
+}
+
+/** Ids from the header (`null` or empty gives none); blank entries are ignored. */
+export function decodeCandidateIds(header: string | null): string[] {
+  return (header ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id !== "");
+}
+
+/**
+ * Candidates for `ids`, in the same order (ref `cN` is the Nth id), read from
+ * the client's current board. A card that has since been archived or deleted
+ * keeps its slot as an archived placeholder, so later refs still line up and
+ * `proposeDependencies` drops it.
+ */
+export function resolveCandidates(view: BoardView, ids: readonly string[]): DependencyCandidate[] {
+  const active = new Map<string, DependencyCandidate>();
+  for (const column of view.columns) {
+    for (const card of column.cards) {
+      active.set(card.id, {
+        id: card.id,
+        title: card.title,
+        columnTitle: column.title,
+        done: column.isDone,
+        archived: false,
+      });
+    }
+  }
+  return ids.map(
+    (id) => active.get(id) ?? { id, title: "", columnTitle: "", done: false, archived: true },
+  );
+}

@@ -7,8 +7,12 @@ import { findCycle } from "@/lib/graph/dependencies";
 import {
   type DependencyCandidate,
   type DependencyContext,
+  decodeCandidateIds,
   dependencyCandidates,
+  encodeCandidateIds,
+  promptCandidates,
   proposeDependencies,
+  resolveCandidates,
 } from "./dependency-proposals";
 import { MAX_CANDIDATES_IN_PROMPT } from "./prompts/dependencies-v1";
 
@@ -243,5 +247,54 @@ describe("dependencyCandidates", () => {
       { id: "b", title: "b", columnTitle: "To do", done: false, archived: false },
       { id: "d", title: "d", columnTitle: "Done", done: true, archived: false },
     ]);
+  });
+});
+
+describe("candidate id header", () => {
+  const list = Array.from({ length: MAX_CANDIDATES_IN_PROMPT + 5 }, (_, i) => cand(`x${i}`));
+
+  it("encodes only the candidates the prompt shows, in order", () => {
+    const ids = decodeCandidateIds(encodeCandidateIds(list));
+    expect(ids).toHaveLength(MAX_CANDIDATES_IN_PROMPT);
+    expect(ids.slice(0, 3)).toEqual(["x0", "x1", "x2"]);
+    expect(promptCandidates(list)).toHaveLength(MAX_CANDIDATES_IN_PROMPT);
+  });
+
+  it("decodes a missing, empty or sloppy header", () => {
+    expect(decodeCandidateIds(null)).toEqual([]);
+    expect(decodeCandidateIds("")).toEqual([]);
+    expect(decodeCandidateIds(" a, ,b ,")).toEqual(["a", "b"]);
+  });
+});
+
+describe("resolveCandidates", () => {
+  const view: BoardView = {
+    board: { id: "b", title: "B" },
+    columns: [
+      { id: "todo", title: "To do", position: "a0", isDone: false, cards: [card("a", "todo")] },
+      { id: "done", title: "Done", position: "a1", isDone: true, cards: [card("d", "done")] },
+    ],
+    archivedCards: [],
+    labels: [],
+    members: [],
+    dependencies: [],
+  };
+
+  it("keeps the order of the ids and reads titles from the board", () => {
+    expect(resolveCandidates(view, ["d", "a"])).toEqual([
+      { id: "d", title: "d", columnTitle: "Done", done: true, archived: false },
+      { id: "a", title: "a", columnTitle: "To do", done: false, archived: false },
+    ]);
+  });
+
+  it("keeps the slot of a card that is gone, so later refs line up, and it is dropped", () => {
+    const candidates = resolveCandidates(view, ["gone", "a"]);
+    expect(candidates[0]?.archived).toBe(true);
+    const result = proposeDependencies(
+      { dependencies: [dep("c1"), dep("c2")] },
+      ctx({ candidates }),
+      { complete: true },
+    );
+    expect(ids(result)).toEqual(["a"]);
   });
 });
