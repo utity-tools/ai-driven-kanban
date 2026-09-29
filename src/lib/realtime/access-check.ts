@@ -28,3 +28,17 @@ export function accessAction(status: MembershipStatus, allowRefresh: boolean): A
   if (status === "member" && allowRefresh) return "refresh";
   return "none";
 }
+
+/** How to handle a notice that may have removed the viewer (membership change, deleted board). */
+export type AccessNoticeHandling = "skip" | "check" | "check-redirect-only";
+
+/**
+ * `own`: the notice matches a mutation of this tab; `ownExit`: it matches this tab's own
+ * leave or delete, which navigates by itself. Any other own change still checks access,
+ * redirect-only: `own` cannot tell this tab from the same user's other tabs, so the notice
+ * may be another tab removing the viewer, and no later notice would reach them.
+ */
+export function accessNoticeHandling(own: boolean, ownExit: boolean): AccessNoticeHandling {
+  if (own && ownExit) return "skip";
+  return own ? "check-redirect-only" : "check";
+}

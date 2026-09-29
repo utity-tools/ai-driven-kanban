@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { accessAction, membershipStatus } from "./access-check";
+import { accessAction, accessNoticeHandling, membershipStatus } from "./access-check";
 
 describe("membershipStatus", () => {
   it("is member when the row exists", () => {
@@ -41,5 +41,19 @@ describe("accessAction", () => {
   it("does nothing on unknown", () => {
     expect(accessAction("unknown", true)).toBe("none");
     expect(accessAction("unknown", false)).toBe("none");
+  });
+});
+
+describe("accessNoticeHandling", () => {
+  it("checks someone else's change in full", () => {
+    expect(accessNoticeHandling(false, false)).toBe("check");
+  });
+
+  it("skips this tab's own leave or delete, which navigates by itself", () => {
+    expect(accessNoticeHandling(true, true)).toBe("skip");
+  });
+
+  it("still checks, redirect-only, an own change that is not an exit (maybe another tab)", () => {
+    expect(accessNoticeHandling(true, false)).toBe("check-redirect-only");
   });
 });

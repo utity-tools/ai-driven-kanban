@@ -48,9 +48,11 @@ export function BoardWorkspace({
   const [optimisticView, applyOptimistic] = useOptimistic(view, applyBoardUpdate);
   const today = useToday();
   const localActivity = useRef<LocalActivity>(idleActivity);
+  const exitActivity = useRef<LocalActivity>(idleActivity);
   // Server state (not the optimistic copy): what other people have actually saved.
   const { viewers, paused: realtimePaused } = useBoardRealtime({
     localActivity,
+    exitActivity,
     boardId: view.board.id,
     boardTitle: view.board.title,
     userId: membership.userId,
@@ -58,13 +60,23 @@ export function BoardWorkspace({
   });
   const blockerCounts = useMemo(() => unresolvedBlockerCounts(optimisticView), [optimisticView]);
 
-  function trackLocalMutation<T>(fn: () => Promise<T>): Promise<T> {
+  function trackLocalMutation<T>(fn: () => Promise<T>, options?: { exits?: boolean }): Promise<T> {
+    const tracked = options?.exits
+      ? () =>
+          trackMutation(
+            () => exitActivity.current,
+            (next) => {
+              exitActivity.current = next;
+            },
+            fn,
+          )
+      : fn;
     return trackMutation(
       () => localActivity.current,
       (next) => {
         localActivity.current = next;
       },
-      fn,
+      tracked,
     );
   }
 

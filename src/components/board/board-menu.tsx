@@ -38,7 +38,7 @@ export function BoardMenu() {
   function handleDelete() {
     startTransition(async () => {
       try {
-        const result = await trackLocalMutation(() => deleteBoard({ boardId }));
+        const result = await trackLocalMutation(() => deleteBoard({ boardId }), { exits: true });
         if (!result.ok) {
           toast.error(result.error);
           return;

@@ -81,7 +81,7 @@ export function MembersDialog() {
   function handleLeave() {
     startLeaving(async () => {
       try {
-        const result = await trackLocalMutation(() => leaveBoard({ boardId }));
+        const result = await trackLocalMutation(() => leaveBoard({ boardId }), { exits: true });
         if (!result.ok) {
           toast.error(result.error);
           return;

@@ -5,7 +5,7 @@ import { type RefObject, useEffect, useMemo, useRef, useState, useTransition } f
 
 import { createClient } from "@/lib/db/client";
 import type { BoardMember, Person } from "@/lib/boards/view-model";
-import { accessAction, membershipStatus } from "@/lib/realtime/access-check";
+import { accessAction, accessNoticeHandling, membershipStatus } from "@/lib/realtime/access-check";
 import { ACCESS_LOST_HREF, rememberAccessLost } from "@/lib/realtime/access-lost";
 import { mayAffectAccess, parseChangeNotice } from "@/lib/realtime/change-notice";
 import { type LocalActivity, isOwnChange } from "@/lib/realtime/local-activity";
@@ -26,6 +26,8 @@ type Options = {
   members: readonly BoardMember[];
   /** What this tab is mutating; tells our own changes from the same user's other tabs. */
   localActivity: RefObject<LocalActivity>;
+  /** This tab's own leave/delete of the board, which navigates by itself. */
+  exitActivity: RefObject<LocalActivity>;
 };
 
 export type BoardRealtime = {
@@ -53,6 +55,7 @@ export function useBoardRealtime({
   userId,
   members,
   localActivity,
+  exitActivity,
 }: Options): BoardRealtime {
   const router = useRouter();
   const [isRefreshing, startRefresh] = useTransition();
@@ -79,15 +82,22 @@ export function useBoardRealtime({
     let checkedAfterError = false;
     let hadConnection = false;
 
+    const isOnline = () => typeof navigator === "undefined" || navigator.onLine !== false;
+
     const refresher = createRefreshScheduler({
-      run: () =>
+      run: () => {
+        // Checked again when the refresh actually runs (debounced or a follow-up): the
+        // network may have gone since it was requested.
+        if (!isOnline()) {
+          refresher.settled();
+          return;
+        }
         startRefresh(() => {
           router.refresh();
-        }),
+        });
+      },
     });
     scheduler.current = refresher;
-
-    const isOnline = () => typeof navigator === "undefined" || navigator.onLine !== false;
 
     /** Requests a coalesced refresh, never while offline (Next would hard-navigate). */
     function requestRefresh() {
@@ -133,11 +143,15 @@ export function useBoardRealtime({
     channel
       .on("broadcast", { event: "change" }, ({ payload }) => {
         const notice = parseChangeNotice(payload);
-        const own = isOwnChange(notice, userId, localActivity.current, Date.now());
+        const now = Date.now();
+        const own = isOwnChange(notice, userId, localActivity.current, now);
         // Membership changes or a deleted board may have removed the viewer: check first.
-        // Our own leave/delete/remove navigates by itself: no access check.
+        // Our own leave/delete navigates by itself; any other own change is checked
+        // redirect-only, since it may come from the same user's other tab.
         if (mayAffectAccess(notice)) {
-          if (!own) void checkAccess(true);
+          const ownExit = isOwnChange(notice, userId, exitActivity.current, now);
+          const handling = accessNoticeHandling(own, ownExit);
+          if (handling !== "skip") void checkAccess(handling === "check");
         }
         // A change made by this tab: the Server Action already brought the fresh board
         // back, and a second refresh would re-render mid-interaction. The same user's
@@ -192,7 +206,7 @@ export function useBoardRealtime({
       scheduler.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [boardId, userId, router, localActivity]);
+  }, [boardId, userId, router, localActivity, exitActivity]);
 
   const viewers = useMemo(
     () => viewersFromPresence(presence, members, userId),
