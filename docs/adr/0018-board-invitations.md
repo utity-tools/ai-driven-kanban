@@ -75,5 +75,9 @@ through a SECURITY DEFINER RPC.
 - The generated types show `get_board_invite`'s columns as non-null strings; `board_id`,
   `board_title` and `inviter_name` can be null and `status` is one of three values, so the app
   parses the result with Zod.
+- The token travels in the URL path (`/invite/<token>`), so platform request logs (Vercel, the
+  dev server) record it. App code never logs it and the page sends no referrer. Accepted: the
+  token is single-use and short-lived, and only project admins can read those logs. A fragment
+  (`#token`) would avoid it at the cost of a client-only accept flow.
 - Used and expired invites are never purged. The rows are tiny and the pending cap bounds what
   matters; a pg_cron cleanup can come later.
