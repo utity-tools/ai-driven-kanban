@@ -150,7 +150,12 @@ export function CardDetails({ card, onArchive, onRestore }: Props) {
 
       {editable || hasDependencies ? (
         <Field icon={<LinkIcon />} title="Dependencies">
-          <CardDependencies card={card} editable={editable} />
+          <CardDependencies
+            cardId={card.id}
+            blockedBy={blockedBy}
+            blocks={blocks}
+            editable={editable}
+          />
         </Field>
       ) : null}
 

@@ -1,6 +1,12 @@
-import { blockedCardIds, bottlenecks, wouldCreateCycle } from "@/lib/graph/dependencies";
+import { blockedDownstream, bottlenecks } from "@/lib/graph/dependencies";
 
 import type { BoardView } from "./view-model";
+
+/**
+ * Most blockers a card can have. Mirrors the DEP02 check in
+ * supabase/migrations/20260929085253_card_dependencies.sql: keep them in sync.
+ */
+export const MAX_BLOCKERS = 20;
 
 /** Most cards the "Bottlenecks" popover lists. */
 export const BOTTLENECK_LIMIT = 3;
@@ -48,11 +54,6 @@ export function resolver(view: BoardView): (cardId: string) => boolean {
   };
 }
 
-/** Unresolved cards with at least one unresolved blocker. */
-export function blockedIds(view: BoardView): Set<string> {
-  return blockedCardIds(view.dependencies, resolver(view));
-}
-
 /** For each blocked card, how many unresolved cards block it. */
 export function unresolvedBlockerCounts(view: BoardView): Map<string, number> {
   const isResolved = resolver(view);
@@ -64,10 +65,14 @@ export function unresolvedBlockerCounts(view: BoardView): Map<string, number> {
   return counts;
 }
 
+/** `done`: in a done column; `archived`: archived; both count as resolved. */
+export type DependencyState = "pending" | "done" | "archived";
+
 export type DependencyLink = {
   cardId: string;
   title: string;
   columnTitle: string;
+  state: DependencyState;
   resolved: boolean;
 };
 
@@ -80,15 +85,16 @@ export type CardDependencies = { blockedBy: DependencyLink[]; blocks: Dependency
  */
 export function cardDependencies(view: BoardView, cardId: string): CardDependencies {
   const cards = locate(view);
-  const isResolved = resolver(view);
   const link = (id: string): DependencyLink | null => {
     const card = cards.get(id);
     if (!card) return null;
+    const state: DependencyState = card.archived ? "archived" : card.done ? "done" : "pending";
     return {
       cardId: id,
       title: card.title,
       columnTitle: card.columnTitle,
-      resolved: isResolved(id),
+      state,
+      resolved: state !== "pending",
     };
   };
   // Map order is board order (columns left to right, then archived), so the lists are stable.
@@ -121,14 +127,11 @@ export function blockerCandidates(
   const existing = new Set(
     view.dependencies.filter((edge) => edge.blockedId === cardId).map((edge) => edge.blockerId),
   );
+  // X -> cardId closes a cycle iff X is downstream of cardId.
+  const downstream = blockedDownstream(view.dependencies, cardId);
   return view.columns.flatMap((column) =>
     column.cards
-      .filter(
-        (card) =>
-          card.id !== cardId &&
-          !existing.has(card.id) &&
-          !wouldCreateCycle(view.dependencies, card.id, cardId),
-      )
+      .filter((card) => card.id !== cardId && !existing.has(card.id) && !downstream.has(card.id))
       .map((card) => ({ id: card.id, title: card.title, columnTitle: column.title })),
   );
 }

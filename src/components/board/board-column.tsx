@@ -2,10 +2,9 @@
 
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CircleCheckIcon } from "lucide-react";
-import { type ReactNode, useMemo } from "react";
+import type { ReactNode } from "react";
 
 import { renameColumn, setColumnDone } from "@/lib/boards/actions";
-import { unresolvedBlockerCounts } from "@/lib/boards/dependencies";
 import { describeDue } from "@/lib/boards/due-date";
 import { COLUMN_TITLE_MAX } from "@/lib/boards/schemas";
 import type { ColumnView } from "@/lib/boards/view-model";
@@ -50,8 +49,7 @@ type Props = {
 };
 
 export function BoardColumn({ column, onDelete, mode = "static", dragHandle }: Props) {
-  const { view, boardId, boardPath, today, serverToday, permissions, mutate } = useBoard();
-  const blockerCounts = useMemo(() => unresolvedBlockerCounts(view), [view]);
+  const { blockerCounts, boardId, boardPath, today, serverToday, permissions, mutate } = useBoard();
   const headingId = `column-${column.id}`;
   const count = column.cards.length;
   const preview = mode === "preview";

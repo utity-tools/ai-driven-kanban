@@ -1,18 +1,19 @@
 "use client";
 
-import { CircleCheckIcon, CircleDashedIcon, XIcon } from "lucide-react";
+import { ArchiveIcon, CircleCheckIcon, CircleDashedIcon, XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { addCardDependency, removeCardDependency } from "@/lib/boards/actions";
-import { type DependencyLink, cardDependencies } from "@/lib/boards/dependencies";
-import type { CardDetail } from "@/lib/boards/view-model";
+import { MAX_BLOCKERS, type DependencyLink } from "@/lib/boards/dependencies";
 
 import { BlockerPicker } from "./blocker-picker";
 import { useBoard } from "./board-context";
 import { CardLink } from "./card-link";
 
 type Props = {
-  card: Pick<CardDetail, "id">;
+  cardId: string;
+  blockedBy: DependencyLink[];
+  blocks: DependencyLink[];
   /** Owners and editors on an active card; everyone else gets read-only lists. */
   editable: boolean;
 };
@@ -23,10 +24,8 @@ type Props = {
  * optimistic; the database still rejects cycles and more than 20 blockers,
  * and the error shows as a toast.
  */
-export function CardDependencies({ card, editable }: Props) {
-  const { view, boardId, boardPath, mutate } = useBoard();
-  const cardId = card.id;
-  const { blockedBy, blocks } = cardDependencies(view, cardId);
+export function CardDependencies({ cardId, blockedBy, blocks, editable }: Props) {
+  const { boardId, boardPath, mutate } = useBoard();
 
   function add(blockerId: string) {
     mutate({ type: "addDependency", blockerId, blockedId: cardId }, () =>
@@ -40,7 +39,7 @@ export function CardDependencies({ card, editable }: Props) {
     const neighbor = row?.nextElementSibling ?? row?.previousElementSibling;
     const target =
       neighbor?.querySelector<HTMLElement>("[data-remove-dependency]") ??
-      document.querySelector<HTMLElement>("[data-add-blocker-trigger]");
+      button.closest('[role="dialog"]')?.querySelector<HTMLElement>("[data-add-blocker-trigger]");
     target?.focus();
     mutate({ type: "removeDependency", blockerId, blockedId }, () =>
       removeCardDependency({ boardId, blockerCardId: blockerId, blockedCardId: blockedId }),
@@ -59,9 +58,15 @@ export function CardDependencies({ card, editable }: Props) {
           onRemove={editable ? (link, button) => remove(link.cardId, cardId, button) : undefined}
         />
         {editable ? (
-          <div>
-            <BlockerPicker cardId={cardId} onPick={add} />
-          </div>
+          blockedBy.length >= MAX_BLOCKERS ? (
+            <p className="text-sm text-muted-foreground">
+              A card can have at most {MAX_BLOCKERS} blockers.
+            </p>
+          ) : (
+            <div>
+              <BlockerPicker cardId={cardId} onPick={add} />
+            </div>
+          )
         ) : null}
       </div>
       <div className="grid gap-1.5">
@@ -110,16 +115,26 @@ function DependencyList({
             </CardLink>
             <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
               <span>{link.columnTitle}</span>
-              <span className="inline-flex items-center gap-1" data-resolved={link.resolved}>
-                {link.resolved ? (
+              <span
+                className="inline-flex items-center gap-1"
+                data-resolved={link.resolved}
+                data-state={link.state}
+              >
+                {link.state === "done" ? (
                   <CircleCheckIcon
                     className="size-3.5 text-green-700 dark:text-green-400"
                     aria-hidden
                   />
+                ) : link.state === "archived" ? (
+                  <ArchiveIcon className="size-3.5" aria-hidden />
                 ) : (
                   <CircleDashedIcon className="size-3.5" aria-hidden />
                 )}
-                {link.resolved ? "Done" : "Pending"}
+                {link.state === "done"
+                  ? "Done"
+                  : link.state === "archived"
+                    ? "Archived"
+                    : "Pending"}
               </span>
             </span>
           </div>

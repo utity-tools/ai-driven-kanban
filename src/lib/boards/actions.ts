@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { type ActionResult, SIGNED_OUT_ERROR, failure, friendlyDbError } from "./action-result";
 import { affected, runBoardAction as run } from "./action-runner";
+import { MAX_BLOCKERS } from "./dependencies";
 import { positionAfterLast, positionForMove } from "./positions";
 import {
   cardAssigneeSchema,
@@ -490,7 +491,7 @@ export async function unassignMember(input: unknown): Promise<ActionResult> {
 // ---------------------------------------------------------------------------
 
 const CYCLE_ERROR = "That would create a circular dependency.";
-const BLOCKER_LIMIT_ERROR = "A card can have at most 20 blockers.";
+const BLOCKER_LIMIT_ERROR = `A card can have at most ${MAX_BLOCKERS} blockers.`;
 
 /**
  * Makes `blockerCardId` block `blockedCardId`. Idempotent like attachLabel:

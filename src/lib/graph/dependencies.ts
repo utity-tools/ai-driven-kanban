@@ -43,6 +43,18 @@ function reachableFrom(
 }
 
 /**
+ * Cards that wait, directly or through a chain, on `cardId` (blocker -> blocked).
+ * Adding `X -> cardId` closes a cycle exactly when X is in this set or is `cardId`,
+ * so callers checking many candidates compute it once.
+ */
+export function blockedDownstream(
+  dependencies: readonly Dependency[],
+  cardId: string,
+): Set<string> {
+  return reachableFrom(successors(dependencies), cardId);
+}
+
+/**
  * Whether adding `blocker -> blocked` would close a cycle (a self-dependency
  * counts). Mirrors the database check, so the UI can hide those options.
  */

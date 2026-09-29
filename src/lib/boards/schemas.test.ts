@@ -292,7 +292,9 @@ describe("setColumnDoneSchema", () => {
   it("needs ids and a boolean", () => {
     const input = { boardId: BOARD, columnId: COLUMN, isDone: true };
     expect(setColumnDoneSchema.safeParse(input).success).toBe(true);
-    expect(setColumnDoneSchema.safeParse({ ...input, isDone: "yes" }).success).toBe(false);
+    expect(messageOf(setColumnDoneSchema.safeParse({ ...input, isDone: "yes" }))).toBe(
+      "Invalid value.",
+    );
   });
 });
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  blockedIds,
+  MAX_BLOCKERS,
   blockerCandidates,
   cardDependencies,
   filterCandidates,
@@ -58,17 +58,13 @@ describe("resolver", () => {
   });
 });
 
-describe("blockedIds and unresolvedBlockerCounts", () => {
+describe("unresolvedBlockerCounts", () => {
   const v = view([
     ["a", "b"],
     ["d", "b"], // resolved blocker: does not count
     ["z", "c"], // archived blocker: does not count
     ["b", "c"],
   ]);
-
-  it("lists unresolved cards with an unresolved blocker", () => {
-    expect([...blockedIds(v)].sort()).toEqual(["b", "c"]);
-  });
 
   it("counts only unresolved blockers", () => {
     expect(Object.fromEntries(unresolvedBlockerCounts(v))).toEqual({ b: 1, c: 1 });
@@ -86,16 +82,20 @@ describe("cardDependencies", () => {
 
     expect(cardDependencies(v, "b")).toEqual({
       blockedBy: [
-        { cardId: "c", title: "C", columnTitle: "To do", resolved: false },
-        { cardId: "d", title: "D", columnTitle: "Done", resolved: true },
+        { cardId: "c", title: "C", columnTitle: "To do", state: "pending", resolved: false },
+        { cardId: "d", title: "D", columnTitle: "Done", state: "done", resolved: true },
       ],
-      blocks: [{ cardId: "a", title: "A", columnTitle: "To do", resolved: false }],
+      blocks: [
+        { cardId: "a", title: "A", columnTitle: "To do", state: "pending", resolved: false },
+      ],
     });
   });
 
-  it("includes archived cards as resolved", () => {
+  it("marks archived cards as archived and resolved", () => {
     const { blockedBy } = cardDependencies(view([["z", "a"]]), "a");
-    expect(blockedBy).toEqual([{ cardId: "z", title: "Z", columnTitle: "To do", resolved: true }]);
+    expect(blockedBy).toEqual([
+      { cardId: "z", title: "Z", columnTitle: "To do", state: "archived", resolved: true },
+    ]);
   });
 });
 
@@ -147,5 +147,11 @@ describe("filterCandidates", () => {
     expect(filterCandidates(items, "  LOG ")).toEqual([{ title: "Fix login" }]);
     expect(filterCandidates(items, "  ")).toEqual(items);
     expect(filterCandidates(items, "zzz")).toEqual([]);
+  });
+});
+
+describe("MAX_BLOCKERS", () => {
+  it("matches the database limit of 20 blockers per card", () => {
+    expect(MAX_BLOCKERS).toBe(20);
   });
 });
