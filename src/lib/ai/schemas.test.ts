@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MAX_PROPOSED_DEPENDENCIES,
   MAX_PROPOSED_SUBTASKS,
+  acceptDependenciesSchema,
   acceptProposalSchema,
   decompositionProposalSchema,
+  dependencyProposalSchema,
 } from "./schemas";
 
 describe("decompositionProposalSchema", () => {
@@ -111,5 +114,65 @@ describe("acceptProposalSchema", () => {
       subtasks: [{ title: "Add index", estimate: null, source: "manual" }],
     });
     expect(result.subtasks[0]).toEqual({ title: "Add index", estimate: null });
+  });
+});
+
+describe("dependencyProposalSchema", () => {
+  it("accepts a proposal, and an empty one", () => {
+    expect(
+      dependencyProposalSchema.safeParse({
+        dependencies: [{ blocker: "c1", rationale: "The API must exist first." }],
+      }).success,
+    ).toBe(true);
+    expect(dependencyProposalSchema.safeParse({ dependencies: [] }).success).toBe(true);
+  });
+
+  it("trims and rejects empty references and rationales", () => {
+    expect(
+      dependencyProposalSchema.parse({ dependencies: [{ blocker: " c2 ", rationale: " why " }] })
+        .dependencies[0],
+    ).toEqual({ blocker: "c2", rationale: "why" });
+    expect(
+      dependencyProposalSchema.safeParse({ dependencies: [{ blocker: "  ", rationale: "x" }] })
+        .success,
+    ).toBe(false);
+    expect(
+      dependencyProposalSchema.safeParse({ dependencies: [{ blocker: "c1", rationale: "" }] })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects a rationale over 200 characters", () => {
+    expect(
+      dependencyProposalSchema.safeParse({
+        dependencies: [{ blocker: "c1", rationale: "a".repeat(201) }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it(`rejects more than ${MAX_PROPOSED_DEPENDENCIES} blockers`, () => {
+    const dependencies = Array.from({ length: MAX_PROPOSED_DEPENDENCIES + 1 }, (_, i) => ({
+      blocker: `c${i + 1}`,
+      rationale: "why",
+    }));
+    expect(dependencyProposalSchema.safeParse({ dependencies }).success).toBe(false);
+  });
+});
+
+describe("acceptDependenciesSchema", () => {
+  const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  const base = { boardId: id(1), cardId: id(2) };
+
+  it("accepts 1 to 10 card ids", () => {
+    expect(acceptDependenciesSchema.safeParse({ ...base, blockerIds: [id(3)] }).success).toBe(true);
+    const ten = Array.from({ length: 10 }, (_, i) => id(i + 3));
+    expect(acceptDependenciesSchema.safeParse({ ...base, blockerIds: ten }).success).toBe(true);
+  });
+
+  it("rejects none, more than 10 and non-uuids", () => {
+    expect(acceptDependenciesSchema.safeParse({ ...base, blockerIds: [] }).success).toBe(false);
+    const eleven = Array.from({ length: 11 }, (_, i) => id(i + 3));
+    expect(acceptDependenciesSchema.safeParse({ ...base, blockerIds: eleven }).success).toBe(false);
+    expect(acceptDependenciesSchema.safeParse({ ...base, blockerIds: ["c1"] }).success).toBe(false);
   });
 });
