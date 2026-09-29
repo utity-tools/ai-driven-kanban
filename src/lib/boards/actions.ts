@@ -7,6 +7,7 @@ import { affected, runBoardAction as run } from "./action-runner";
 import { positionAfterLast, positionForMove } from "./positions";
 import {
   cardAssigneeSchema,
+  cardDependencySchema,
   cardLabelSchema,
   cardRefSchema,
   createBoardSchema,
@@ -21,6 +22,7 @@ import {
   renameBoardSchema,
   renameCardSchema,
   renameColumnSchema,
+  setColumnDoneSchema,
   setCardCompletedSchema,
   setCardDueDateSchema,
   updateCardDescriptionSchema,
@@ -113,6 +115,20 @@ export async function renameColumn(input: unknown): Promise<ActionResult> {
     const { data, error } = await supabase
       .from("board_columns")
       .update({ title })
+      .eq("id", columnId)
+      .eq("board_id", boardId)
+      .select("id");
+    if (error) return failure(friendlyDbError(error));
+    return affected(data);
+  });
+}
+
+/** Marks a column as done (its cards no longer block others) or not. */
+export async function setColumnDone(input: unknown): Promise<ActionResult> {
+  return run(setColumnDoneSchema, input, async ({ boardId, columnId, isDone }, supabase) => {
+    const { data, error } = await supabase
+      .from("board_columns")
+      .update({ is_done: isDone })
       .eq("id", columnId)
       .eq("board_id", boardId)
       .select("id");
@@ -467,4 +483,58 @@ export async function unassignMember(input: unknown): Promise<ActionResult> {
     if (error) return failure(friendlyDbError(error));
     return affected(data);
   });
+}
+
+// ---------------------------------------------------------------------------
+// Card details: dependencies
+// ---------------------------------------------------------------------------
+
+const CYCLE_ERROR = "That would create a circular dependency.";
+const BLOCKER_LIMIT_ERROR = "A card can have at most 20 blockers.";
+
+/**
+ * Makes `blockerCardId` block `blockedCardId`. Idempotent like attachLabel:
+ * an existing edge (23505) is a success. The database rejects a cycle
+ * (DEP01), a 21st blocker (DEP02) and cards of another board (23503).
+ */
+export async function addCardDependency(input: unknown): Promise<ActionResult> {
+  return run(
+    cardDependencySchema,
+    input,
+    async ({ boardId, blockerCardId, blockedCardId }, supabase) => {
+      const { error } = await supabase.from("card_dependencies").insert({
+        board_id: boardId,
+        blocker_card_id: blockerCardId,
+        blocked_card_id: blockedCardId,
+      });
+      if (error && error.code !== "23505") {
+        return failure(
+          friendlyDbError(error, {
+            DEP01: CYCLE_ERROR,
+            DEP02: BLOCKER_LIMIT_ERROR,
+            "23503": "This card no longer exists.",
+          }),
+        );
+      }
+      return { ok: true };
+    },
+  );
+}
+
+export async function removeCardDependency(input: unknown): Promise<ActionResult> {
+  return run(
+    cardDependencySchema,
+    input,
+    async ({ boardId, blockerCardId, blockedCardId }, supabase) => {
+      const { data, error } = await supabase
+        .from("card_dependencies")
+        .delete()
+        .eq("board_id", boardId)
+        .eq("blocker_card_id", blockerCardId)
+        .eq("blocked_card_id", blockedCardId)
+        .select("blocker_card_id");
+      if (error) return failure(friendlyDbError(error));
+      return affected(data);
+    },
+  );
 }

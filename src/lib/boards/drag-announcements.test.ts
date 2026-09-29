@@ -31,13 +31,15 @@ const VIEW: BoardView = {
       id: "todo",
       title: "To do",
       position: "a0",
+      isDone: false,
       cards: [card("c1", "todo", "Write docs"), card("c2", "todo", "Fix login")],
     },
-    { id: "doing", title: "Doing", position: "a1", cards: [] },
+    { id: "doing", title: "Doing", position: "a1", isDone: false, cards: [] },
   ],
   archivedCards: [],
   labels: [],
   members: [],
+  dependencies: [],
 };
 const LAYOUT = layoutOf(VIEW);
 

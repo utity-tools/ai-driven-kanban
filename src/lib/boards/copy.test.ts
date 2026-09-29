@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  blockedByLabel,
   boardDeletionSummary,
   columnDeletionSummary,
+  holdsUpLabel,
   labelDeletionSummary,
   pluralize,
 } from "./copy";
@@ -45,5 +47,14 @@ describe("labelDeletionSummary", () => {
     expect(labelDeletionSummary(0)).toBe("The label isn't on any card. This can't be undone.");
     expect(labelDeletionSummary(1)).toBe("This removes it from 1 card. This can't be undone.");
     expect(labelDeletionSummary(3)).toBe("This removes it from 3 cards. This can't be undone.");
+  });
+});
+
+describe("dependency labels", () => {
+  it("pluralises", () => {
+    expect(blockedByLabel(1)).toBe("Blocked by 1 card");
+    expect(blockedByLabel(3)).toBe("Blocked by 3 cards");
+    expect(holdsUpLabel(1)).toBe("Holds up 1 card");
+    expect(holdsUpLabel(2)).toBe("Holds up 2 cards");
   });
 });

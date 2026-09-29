@@ -1,9 +1,11 @@
 "use client";
 
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import type { ReactNode } from "react";
+import { CircleCheckIcon } from "lucide-react";
+import { type ReactNode, useMemo } from "react";
 
-import { renameColumn } from "@/lib/boards/actions";
+import { renameColumn, setColumnDone } from "@/lib/boards/actions";
+import { unresolvedBlockerCounts } from "@/lib/boards/dependencies";
 import { describeDue } from "@/lib/boards/due-date";
 import { COLUMN_TITLE_MAX } from "@/lib/boards/schemas";
 import type { ColumnView } from "@/lib/boards/view-model";
@@ -48,7 +50,8 @@ type Props = {
 };
 
 export function BoardColumn({ column, onDelete, mode = "static", dragHandle }: Props) {
-  const { boardId, boardPath, today, serverToday, permissions, mutate } = useBoard();
+  const { view, boardId, boardPath, today, serverToday, permissions, mutate } = useBoard();
+  const blockerCounts = useMemo(() => unresolvedBlockerCounts(view), [view]);
   const headingId = `column-${column.id}`;
   const count = column.cards.length;
   const preview = mode === "preview";
@@ -59,10 +62,22 @@ export function BoardColumn({ column, onDelete, mode = "static", dragHandle }: P
       {column.cards.map((card) => {
         const due = describeDue(card, today, serverToday);
         return mode === "sortable" ? (
-          <SortableCard key={card.id} boardPath={boardPath} card={card} due={due} />
+          <SortableCard
+            key={card.id}
+            boardPath={boardPath}
+            card={card}
+            due={due}
+            blockedBy={blockerCounts.get(card.id) ?? 0}
+          />
         ) : (
           <li key={card.id}>
-            <CardFace boardPath={boardPath} card={card} due={due} preview={preview} />
+            <CardFace
+              boardPath={boardPath}
+              card={card}
+              due={due}
+              blockedBy={blockerCounts.get(card.id) ?? 0}
+              preview={preview}
+            />
           </li>
         );
       })}
@@ -101,11 +116,28 @@ export function BoardColumn({ column, onDelete, mode = "static", dragHandle }: P
             column.title
           )}
         </h2>
+        {column.isDone ? (
+          <span title="Done column" className="text-green-700 dark:text-green-400">
+            <CircleCheckIcon className="size-4" aria-hidden />
+            <span className="sr-only">Done column</span>
+          </span>
+        ) : null}
         <span className="text-xs text-muted-foreground tabular-nums">
           {count}
           <span className="sr-only">{count === 1 ? " card" : " cards"}</span>
         </span>
-        {canEdit && onDelete ? <ColumnMenu title={column.title} onDelete={onDelete} /> : null}
+        {canEdit && onDelete ? (
+          <ColumnMenu
+            title={column.title}
+            isDone={column.isDone}
+            onToggleDone={() =>
+              mutate({ type: "setColumnDone", columnId: column.id, isDone: !column.isDone }, () =>
+                setColumnDone({ boardId, columnId: column.id, isDone: !column.isDone }),
+              )
+            }
+            onDelete={onDelete}
+          />
+        ) : null}
       </header>
       {count === 0 ? (
         permissions.canEdit ? null : (

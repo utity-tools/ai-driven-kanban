@@ -34,12 +34,13 @@ function raw(overrides: Partial<RawBoardData> = {}): RawBoardData {
   return {
     board: { id: "b1", title: "Demo" },
     columns: [
-      { id: "col-done", title: "Done", position: "a1" },
-      { id: "col-todo", title: "To do", position: "Zz" }, // byte order: "Zz" < "a1"
+      { id: "col-done", title: "Done", position: "a1", is_done: false },
+      { id: "col-todo", title: "To do", position: "Zz", is_done: false }, // byte order: "Zz" < "a1"
     ],
     cards: [],
     labels: [],
     members: [],
+    dependencies: [],
     ...overrides,
   };
 }

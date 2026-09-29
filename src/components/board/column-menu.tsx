@@ -1,6 +1,6 @@
 "use client";
 
-import { EllipsisIcon, Trash2Icon } from "lucide-react";
+import { CircleCheckIcon, EllipsisIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +11,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /** Per-column actions (keyboard: Enter/Space opens, arrows move, Escape closes). */
-export function ColumnMenu({ title, onDelete }: { title: string; onDelete: () => void }) {
+export function ColumnMenu({
+  title,
+  isDone,
+  onToggleDone,
+  onDelete,
+}: {
+  title: string;
+  isDone: boolean;
+  onToggleDone: () => void;
+  onDelete: () => void;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -27,6 +37,10 @@ export function ColumnMenu({ title, onDelete }: { title: string; onDelete: () =>
         <EllipsisIcon aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-auto min-w-44">
+        <DropdownMenuItem onClick={onToggleDone}>
+          <CircleCheckIcon aria-hidden />
+          {isDone ? "Unmark as done column" : "Mark as done column"}
+        </DropdownMenuItem>
         <DropdownMenuItem variant="destructive" onClick={onDelete}>
           <Trash2Icon aria-hidden />
           Delete column…

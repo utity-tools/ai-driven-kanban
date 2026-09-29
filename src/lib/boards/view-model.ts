@@ -1,3 +1,4 @@
+import type { Dependency } from "@/lib/graph/dependencies";
 import { type Subtask, type SubtaskRow, toSubtasks } from "@/lib/subtasks/subtask";
 
 import { compareByPosition, comparePositions } from "./ordering";
@@ -23,7 +24,14 @@ export type CardSummary = {
   subtasks: Subtask[];
 };
 
-export type ColumnView = { id: string; title: string; position: string; cards: CardSummary[] };
+export type ColumnView = {
+  id: string;
+  title: string;
+  position: string;
+  /** Cards in a done column are resolved: they no longer block other cards (ADR 0017). */
+  isDone: boolean;
+  cards: CardSummary[];
+};
 
 /** An archived card: hidden from its column, listed in the Archived panel. */
 export type ArchivedCard = CardSummary & { archivedAt: string };
@@ -35,6 +43,8 @@ export type BoardView = {
   archivedCards: ArchivedCard[];
   labels: Label[];
   members: BoardMember[];
+  /** Edges "blocker blocks blocked" between the board's cards (archived ones included). */
+  dependencies: Dependency[];
 };
 
 // ---------------------------------------------------------------------------
@@ -46,7 +56,7 @@ type LabelRow = { id: string; name: string; color: string };
 
 export type RawBoardData = {
   board: { id: string; title: string };
-  columns: { id: string; title: string; position: string }[];
+  columns: { id: string; title: string; position: string; is_done: boolean }[];
   cards: {
     id: string;
     column_id: string;
@@ -62,6 +72,7 @@ export type RawBoardData = {
   }[];
   labels: LabelRow[];
   members: { role: BoardRole; profile: ProfileRow | null }[];
+  dependencies: { blocker_card_id: string; blocked_card_id: string }[];
 };
 
 const ROLE_ORDER: Record<BoardRole, number> = { owner: 0, editor: 1, viewer: 2 };
@@ -143,6 +154,7 @@ export function assembleBoardView(raw: RawBoardData): BoardView {
     id: column.id,
     title: column.title,
     position: column.position,
+    isDone: column.is_done,
     cards: (cardsByColumn.get(column.id) ?? []).sort(compareByPosition),
   }));
 
@@ -157,6 +169,10 @@ export function assembleBoardView(raw: RawBoardData): BoardView {
     archivedCards,
     labels: raw.labels.map((l) => ({ id: l.id, name: l.name, color: l.color })).sort(compareLabels),
     members,
+    dependencies: raw.dependencies.map((d) => ({
+      blockerId: d.blocker_card_id,
+      blockedId: d.blocked_card_id,
+    })),
   };
 }
 
