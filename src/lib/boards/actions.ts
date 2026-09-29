@@ -563,7 +563,7 @@ export async function acceptAiDependencies(input: unknown): Promise<ActionResult
     if (error) {
       return failure(
         friendlyDbError(error, {
-          // Missing card, not an owner/editor, or a demo user: kept indistinguishable.
+          // Missing card or not an owner/editor: kept indistinguishable.
           "42501": NOT_FOUND_ERROR,
           // The shape is validated above: an archived card or blocker, or an edge that now exists.
           "23514": "The board changed while you were reviewing. Try again.",

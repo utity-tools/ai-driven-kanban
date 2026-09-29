@@ -35,6 +35,8 @@ type Props = {
   cardId: string;
   /** The card's current checklist: new rows go after it, and it caps the selection. */
   subtasks: readonly Subtask[];
+  /** Whether "Suggest with AI" may show; an open panel stays whatever this says. */
+  available: boolean;
 };
 
 type Phase = "idle" | "streaming" | "review" | "error";
@@ -49,7 +51,7 @@ type Phase = "idle" | "streaming" | "review" | "error";
  * that had focus goes away (Stop, Retry) it returns there; closing the review
  * returns it to "Suggest with AI".
  */
-export function AiSubtaskSuggestions({ cardId, subtasks }: Props) {
+export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
   const { boardId, mutate } = useBoard();
   const [phase, setPhase] = useState<Phase>("idle");
   const [items, setItems] = useState<ReviewItem[]>([]);
@@ -65,6 +67,8 @@ export function AiSubtaskSuggestions({ cardId, subtasks }: Props) {
   const panelRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const openerRef = useRef<HTMLButtonElement>(null);
+  // Focus fallback when the opener is gone (an accept can hide it by filling the card).
+  const rootRef = useRef<HTMLDivElement>(null);
   const focusAfterRender = useRef<"heading" | "opener" | "restore" | null>(null);
 
   const { object, submit, stop, clear } = useObject({
@@ -105,7 +109,7 @@ export function AiSubtaskSuggestions({ cardId, subtasks }: Props) {
     const target = focusAfterRender.current;
     focusAfterRender.current = null;
     if (target === "heading") headingRef.current?.focus();
-    else if (target === "opener") openerRef.current?.focus();
+    else if (target === "opener") (openerRef.current ?? rootRef.current)?.focus();
     else if (target === "restore" && !panelRef.current?.contains(document.activeElement)) {
       // The focused control (Stop, Retry, Add) was unmounted.
       headingRef.current?.focus();
@@ -192,28 +196,30 @@ export function AiSubtaskSuggestions({ cardId, subtasks }: Props) {
   const exhausted = remaining === 0;
 
   return (
-    <div className="grid gap-1">
+    <div ref={rootRef} tabIndex={-1} className="grid gap-1 outline-none">
       {phase === "idle" ? (
-        <div className="grid justify-items-start gap-1">
-          <Button
-            ref={openerRef}
-            variant="outline"
-            size="sm"
-            // aria-disabled, not disabled: closing the review returns focus here.
-            aria-disabled={exhausted || undefined}
-            aria-describedby={remaining !== null ? quotaHintId : undefined}
-            className={cn(exhausted && "cursor-not-allowed opacity-50")}
-            onClick={exhausted ? undefined : start}
-          >
-            <SparklesIcon aria-hidden />
-            Suggest with AI
-          </Button>
-          {remaining !== null ? (
-            <p id={quotaHintId} className="text-xs text-muted-foreground">
-              {quotaRemainingMessage(remaining)}
-            </p>
-          ) : null}
-        </div>
+        available ? (
+          <div className="grid justify-items-start gap-1">
+            <Button
+              ref={openerRef}
+              variant="outline"
+              size="sm"
+              // aria-disabled, not disabled: closing the review returns focus here.
+              aria-disabled={exhausted || undefined}
+              aria-describedby={remaining !== null ? quotaHintId : undefined}
+              className={cn(exhausted && "cursor-not-allowed opacity-50")}
+              onClick={exhausted ? undefined : start}
+            >
+              <SparklesIcon aria-hidden />
+              Suggest with AI
+            </Button>
+            {remaining !== null ? (
+              <p id={quotaHintId} className="text-xs text-muted-foreground">
+                {quotaRemainingMessage(remaining)}
+              </p>
+            ) : null}
+          </div>
+        ) : null
       ) : (
         <section
           ref={panelRef}

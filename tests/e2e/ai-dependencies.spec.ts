@@ -317,3 +317,40 @@ test("a blocker added by hand has no AI badge", async ({ boardPage: page }) => {
   await expect(depRow(reopened, "Blocked by", A)).toBeVisible();
   await expect(aiBadge(reopened)).toHaveCount(0);
 });
+
+test("a failed save keeps the panel open with the error and rolls the optimistic blockers back", async ({
+  boardPage: page,
+  board,
+}) => {
+  const dialog = await seedAndOpen(page, [TARGET, A, B], TARGET);
+  await mockSuggestions(page, [A, B], (ref) => ({
+    dependencies: [
+      { blocker: ref(A), rationale: "The API needs a schema first." },
+      { blocker: ref(B), rationale: "The feature calls the API." },
+    ],
+  }));
+  await suggestButton(dialog).click();
+  await expect(suggestedList(dialog).getByRole("listitem")).toHaveCount(2);
+
+  // The board changes under the review: another tab archives a proposed blocker,
+  // so the accept RPC rejects it (23514). Accepting both would also fill the
+  // panel's own availability, which must not unmount it mid-save.
+  const other = await page.context().newPage();
+  await other.goto(board.path);
+  const archiving = trackServerActions(other);
+  await cardLink(other, B).click();
+  await other
+    .getByRole("dialog", { name: B, exact: true })
+    .getByRole("button", { name: "Archive", exact: true })
+    .click();
+  await expect(cardLink(other, B)).toHaveCount(0);
+  await archiving.settled(1);
+  await other.close();
+
+  await panel(dialog).getByRole("button", { name: "Add 2 blockers" }).click();
+
+  const message = "The board changed while you were reviewing. Try again.";
+  await expect(panel(dialog).getByText(message, { exact: true })).toBeVisible();
+  await expect(depList(dialog, "Blocked by").getByRole("listitem")).toHaveCount(0);
+  await expect(panel(dialog).getByRole("button", { name: "Add 2 blockers" })).toBeEnabled();
+});

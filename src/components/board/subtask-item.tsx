@@ -12,7 +12,6 @@ import { type Subtask, isDone } from "@/lib/subtasks/subtask";
 import { cn } from "@/lib/utils";
 
 import { AiMarker } from "./ai-marker";
-
 import { InlineEdit } from "./inline-edit";
 import { SubtaskEstimatePicker } from "./subtask-estimate-picker";
 

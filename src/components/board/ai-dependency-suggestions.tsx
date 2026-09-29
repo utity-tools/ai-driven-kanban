@@ -34,6 +34,8 @@ type Props = {
   cardId: string;
   /** How many blockers the card has: it caps the selection. */
   blockerCount: number;
+  /** Whether "Suggest blockers with AI" may show; an open panel stays whatever this says. */
+  available: boolean;
 };
 
 type Phase = "idle" | "streaming" | "review" | "empty" | "error";
@@ -48,7 +50,7 @@ type Phase = "idle" | "streaming" | "review" | "empty" | "error";
  * suggestions" heading; when the control that had focus goes away (Stop,
  * Retry) it returns there; closing the review returns it to "Suggest with AI".
  */
-export function AiDependencySuggestions({ cardId, blockerCount }: Props) {
+export function AiDependencySuggestions({ cardId, blockerCount, available }: Props) {
   const { view, boardId, mutate } = useBoard();
   const [phase, setPhase] = useState<Phase>("idle");
   const [items, setItems] = useState<DependencyReviewItem[]>([]);
@@ -59,6 +61,8 @@ export function AiDependencySuggestions({ cardId, blockerCount }: Props) {
   // The ids the model saw, in reference order, from the response header.
   const [candidateIds, setCandidateIds] = useState<string[]>([]);
   const [remaining, setRemaining] = useState<number | null>(null);
+  // 409: no candidates or too many blockers; asking again can't change that.
+  const [refused, setRefused] = useState(false);
 
   // Callbacks of useObject may outlive a render: read the latest board and ids through refs.
   const viewRef = useRef(view);
@@ -72,6 +76,8 @@ export function AiDependencySuggestions({ cardId, blockerCount }: Props) {
   const panelRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const openerRef = useRef<HTMLButtonElement>(null);
+  // Focus fallback when the opener is gone (an accept can hide it by filling the card).
+  const rootRef = useRef<HTMLDivElement>(null);
   const focusAfterRender = useRef<"heading" | "opener" | "restore" | null>(null);
 
   function proposals(partial: Parameters<typeof proposeDependencies>[0], complete: boolean) {
@@ -90,6 +96,7 @@ export function AiDependencySuggestions({ cardId, blockerCount }: Props) {
           ? 0
           : parseQuotaRemaining(response.headers.get(QUOTA_REMAINING_HEADER));
       if (left !== null) setRemaining(left);
+      setRefused(response.status === 409);
       const ids = decodeCandidateIds(response.headers.get(CANDIDATE_IDS_HEADER));
       idsRef.current = ids;
       setCandidateIds(ids);
@@ -125,7 +132,7 @@ export function AiDependencySuggestions({ cardId, blockerCount }: Props) {
     const target = focusAfterRender.current;
     focusAfterRender.current = null;
     if (target === "heading") headingRef.current?.focus();
-    else if (target === "opener") openerRef.current?.focus();
+    else if (target === "opener") (openerRef.current ?? rootRef.current)?.focus();
     else if (target === "restore" && !panelRef.current?.contains(document.activeElement)) {
       // The focused control (Stop, Retry, Add) was unmounted.
       headingRef.current?.focus();
@@ -219,28 +226,30 @@ export function AiDependencySuggestions({ cardId, blockerCount }: Props) {
   const exhausted = remaining === 0;
 
   return (
-    <div className="grid gap-1">
+    <div ref={rootRef} tabIndex={-1} className="grid gap-1 outline-none">
       {phase === "idle" ? (
-        <div className="grid justify-items-start gap-1">
-          <Button
-            ref={openerRef}
-            variant="outline"
-            size="sm"
-            // aria-disabled, not disabled: closing the review returns focus here.
-            aria-disabled={exhausted || undefined}
-            aria-describedby={remaining !== null ? quotaHintId : undefined}
-            className={cn(exhausted && "cursor-not-allowed opacity-50")}
-            onClick={exhausted ? undefined : start}
-          >
-            <SparklesIcon aria-hidden />
-            Suggest blockers with AI
-          </Button>
-          {remaining !== null ? (
-            <p id={quotaHintId} className="text-xs text-muted-foreground">
-              {quotaRemainingMessage(remaining)}
-            </p>
-          ) : null}
-        </div>
+        available ? (
+          <div className="grid justify-items-start gap-1">
+            <Button
+              ref={openerRef}
+              variant="outline"
+              size="sm"
+              // aria-disabled, not disabled: closing the review returns focus here.
+              aria-disabled={exhausted || undefined}
+              aria-describedby={remaining !== null ? quotaHintId : undefined}
+              className={cn(exhausted && "cursor-not-allowed opacity-50")}
+              onClick={exhausted ? undefined : start}
+            >
+              <SparklesIcon aria-hidden />
+              Suggest blockers with AI
+            </Button>
+            {remaining !== null ? (
+              <p id={quotaHintId} className="text-xs text-muted-foreground">
+                {quotaRemainingMessage(remaining)}
+              </p>
+            ) : null}
+          </div>
+        ) : null
       ) : (
         <section
           ref={panelRef}
@@ -285,7 +294,7 @@ export function AiDependencySuggestions({ cardId, blockerCount }: Props) {
             <>
               <p className="text-sm text-destructive">{error}</p>
               <div className="flex gap-2">
-                {exhausted ? null : (
+                {exhausted || refused ? null : (
                   <Button size="sm" onClick={start}>
                     Retry
                   </Button>

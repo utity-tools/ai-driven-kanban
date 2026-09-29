@@ -80,8 +80,13 @@ export function CardDependencies({ cardId, blockedBy, blocks, editable }: Props)
             </div>
           )
         ) : null}
-        {ai !== "hidden" ? (
-          <AiDependencySuggestions cardId={cardId} blockerCount={blockedBy.length} />
+        {/* Mounted whenever the feature is on, so an open panel survives the button hiding. */}
+        {aiDecompositionEnabled && editable ? (
+          <AiDependencySuggestions
+            cardId={cardId}
+            blockerCount={blockedBy.length}
+            available={ai !== "hidden"}
+          />
         ) : null}
       </div>
       <div className="grid gap-1.5">
