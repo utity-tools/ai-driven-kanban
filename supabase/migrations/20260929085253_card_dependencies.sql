@@ -289,6 +289,13 @@ begin
   for key share;
 
   if not found then
+    -- Fail closed: if the caller could still pass the INSERT policy (say a later migration
+    -- narrows the cards UPDATE policy), never let the row through unchecked. Same SQLSTATE
+    -- as the FK violation it stands in for.
+    if public.has_board_role(new.board_id, '{owner,editor}') then
+      raise exception 'blocked card not found on this board'
+        using errcode = '23503';
+    end if;
     return new;
   end if;
 
@@ -297,7 +304,9 @@ begin
   perform pg_advisory_xact_lock(84200002, hashtext(new.board_id::text));
 
   if (select count(*) from public.card_dependencies d
-      where d.blocked_card_id = new.blocked_card_id) >= 20 then
+      where d.blocked_card_id = new.blocked_card_id
+        -- A duplicate of an existing edge is left to the PK (23505), even on a full card.
+        and d.blocker_card_id <> new.blocker_card_id) >= 20 then
     raise exception 'A card can have at most 20 blockers'
       using errcode = 'DEP02';
   end if;

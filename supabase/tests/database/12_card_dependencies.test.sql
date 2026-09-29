@@ -8,7 +8,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(58);
+select plan(60);
 
 -- ---------------------------------------------------------------------------
 -- Schema: board_columns.is_done
@@ -116,7 +116,7 @@ select is_empty(
 
 select is_empty(
   $$ select 1 from public.board_columns where lower(btrim(title)) = 'done' and not is_done $$,
-  'every existing Done column (seed and sign-up defaults) is marked is_done'
+  'every Done column in the seed and sign-up defaults is marked is_done (the backfill runs on an empty database here)'
 );
 
 select lives_ok(
@@ -390,6 +390,22 @@ select throws_ok(
      from generate_series(1, 21) i $$,
   'DEP02', 'A card can have at most 20 blockers',
   'a single 21-row insert is rejected as a whole'
+);
+select throws_ok(
+  $$ insert into public.card_dependencies (board_id, blocker_card_id, blocked_card_id)
+     values (current_setting('test.board1')::uuid,
+             '00000000-0000-4000-d000-000000001301', '00000000-0000-4000-d000-000000001220') $$,
+  '23505', null,
+  'a duplicate edge on a full card is a duplicate (23505), not DEP02'
+);
+select throws_ok(
+  $$ insert into public.card_dependencies (board_id, blocker_card_id, blocked_card_id)
+     values (current_setting('test.board1')::uuid,
+             '00000000-0000-4000-d000-000000001301', '00000000-0000-4000-d000-000000001302'),
+            (current_setting('test.board1')::uuid,
+             '00000000-0000-4000-d000-000000001302', '00000000-0000-4000-d000-000000001301') $$,
+  'DEP01', 'dependency would create a cycle',
+  'a single insert of X -> Y and Y -> X is rejected as a cycle'
 );
 
 select set_config('request.jwt.claims', '{"sub": "00000000-0000-4000-a000-000000001203", "role": "authenticated"}', true);
