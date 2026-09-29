@@ -3,16 +3,21 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
 
+import { takeAccessLostMessage } from "@/lib/realtime/access-lost";
+
 /**
- * Tells the viewer they were removed from a board they had open, then drops
- * the `?left=` param so a reload does not repeat it.
+ * Tells the viewer they lost access to a board they had open. The title comes
+ * from sessionStorage (set right before the redirect), never from the URL, so a
+ * crafted `?left=` link cannot show arbitrary text. A bare `?left=1` shows
+ * nothing. The param is dropped so a reload does not repeat the notice.
  */
-export function AccessLostNotice({ message }: { message: string | null }) {
+export function AccessLostNotice() {
   useEffect(() => {
-    if (!message) return;
-    // A fixed id: Strict Mode runs this effect twice in development.
-    toast.info(message, { id: "access-lost" });
+    // Strict Mode runs this twice in development: the fixed toast id dedupes,
+    // and the first run has already consumed the stored title.
+    const message = takeAccessLostMessage();
+    if (message) toast.info(message, { id: "access-lost" });
     window.history.replaceState(null, "", window.location.pathname);
-  }, [message]);
+  }, []);
   return null;
 }

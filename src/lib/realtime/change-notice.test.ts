@@ -1,37 +1,38 @@
 import { describe, expect, it } from "vitest";
 
-import { isOwnChange, parseChangeNotice } from "./change-notice";
+import { mayAffectAccess, parseChangeNotice } from "./change-notice";
 
 const ME = "00000000-0000-4000-a000-000000000001";
-const OTHER = "00000000-0000-4000-a000-000000000002";
 
 describe("parseChangeNotice", () => {
-  it("reads table and actor, ignoring other keys", () => {
+  it("reads table, op and actor, ignoring other keys", () => {
     expect(parseChangeNotice({ table: "cards", op: "UPDATE", actor: ME, id: "x" })).toEqual({
       table: "cards",
+      op: "UPDATE",
       actor: ME,
     });
   });
 
-  it("treats a missing or null actor as unknown", () => {
+  it("treats missing or null fields as unknown", () => {
     expect(parseChangeNotice({ table: "cards", actor: null })).toEqual({
       table: "cards",
+      op: null,
       actor: null,
     });
-    expect(parseChangeNotice({ table: "cards" }).actor).toBeNull();
   });
 
   it("survives malformed payloads", () => {
-    for (const payload of [null, undefined, "cards", 42, [], { table: 1, actor: {} }]) {
-      expect(parseChangeNotice(payload)).toEqual({ table: null, actor: null });
+    for (const payload of [null, undefined, "cards", 42, [], { table: 1, op: 2, actor: {} }]) {
+      expect(parseChangeNotice(payload)).toEqual({ table: null, op: null, actor: null });
     }
   });
 });
 
-describe("isOwnChange", () => {
-  it("is true only when the actor is the current user", () => {
-    expect(isOwnChange({ table: "cards", actor: ME }, ME)).toBe(true);
-    expect(isOwnChange({ table: "cards", actor: OTHER }, ME)).toBe(false);
-    expect(isOwnChange({ table: "cards", actor: null }, ME)).toBe(false);
+describe("mayAffectAccess", () => {
+  it("flags membership changes and board deletion only", () => {
+    expect(mayAffectAccess({ table: "board_members", op: "DELETE", actor: null })).toBe(true);
+    expect(mayAffectAccess({ table: "boards", op: "DELETE", actor: null })).toBe(true);
+    expect(mayAffectAccess({ table: "boards", op: "UPDATE", actor: null })).toBe(false);
+    expect(mayAffectAccess({ table: "cards", op: "DELETE", actor: null })).toBe(false);
   });
 });

@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { createClient } from "@/lib/db/client";
 import type { BoardMember, Person } from "@/lib/boards/view-model";
-import { accessLostHref } from "@/lib/realtime/access-lost";
-import { isOwnChange, parseChangeNotice } from "@/lib/realtime/change-notice";
+import { ACCESS_LOST_HREF, rememberAccessLost } from "@/lib/realtime/access-lost";
+import { mayAffectAccess, parseChangeNotice } from "@/lib/realtime/change-notice";
+import { type LocalActivity, isOwnChange } from "@/lib/realtime/local-activity";
 import {
   type PresencePayload,
   type PresenceState,
@@ -22,6 +23,8 @@ type Options = {
   boardTitle: string;
   userId: string;
   members: readonly BoardMember[];
+  /** What this tab is mutating; tells our own changes from the same user's other tabs. */
+  localActivity: RefObject<LocalActivity>;
 };
 
 export type BoardRealtime = {
@@ -43,7 +46,13 @@ export type BoardRealtime = {
  * sure it is loaded before joining. Phoenix rejoins errored/timed-out
  * channels by itself, so no manual retry.
  */
-export function useBoardRealtime({ boardId, boardTitle, userId, members }: Options): BoardRealtime {
+export function useBoardRealtime({
+  boardId,
+  boardTitle,
+  userId,
+  members,
+  localActivity,
+}: Options): BoardRealtime {
   const router = useRouter();
   const [isRefreshing, startRefresh] = useTransition();
   const [presence, setPresence] = useState<PresenceState>({});
@@ -67,6 +76,7 @@ export function useBoardRealtime({ boardId, boardTitle, userId, members }: Optio
     let disposed = false;
     let pausedTimer: ReturnType<typeof setTimeout> | null = null;
     let hadConnection = false;
+    let checkedAfterError = false;
 
     const refresher = createRefreshScheduler({
       run: () =>
@@ -88,7 +98,8 @@ export function useBoardRealtime({ boardId, boardTitle, userId, members }: Optio
         if (disposed) return;
         if (!error && data === null) {
           refresher.cancel();
-          router.replace(accessLostHref(titleRef.current));
+          rememberAccessLost(titleRef.current);
+          router.replace(ACCESS_LOST_HREF);
           return;
         }
       } catch {
@@ -104,12 +115,14 @@ export function useBoardRealtime({ boardId, boardTitle, userId, members }: Optio
     channel
       .on("broadcast", { event: "change" }, ({ payload }) => {
         const notice = parseChangeNotice(payload);
-        // Membership changes may have removed the viewer: check before refreshing.
-        if (notice.table === "board_members") void refreshIfStillMember();
-        // Our own change: the Server Action already brought the fresh board back, and a
-        // second refresh would re-render mid-interaction. Other tabs of the same user
-        // catch up when they become visible.
-        else if (!isOwnChange(notice, userId)) refresher.request();
+        // Membership changes or a deleted board may have removed the viewer: check first.
+        if (mayAffectAccess(notice)) void refreshIfStillMember();
+        // A change made by this tab: the Server Action already brought the fresh board
+        // back, and a second refresh would re-render mid-interaction. The same user's
+        // other tabs and devices have no local mutation, so they do refresh.
+        else if (!isOwnChange(notice, userId, localActivity.current, Date.now())) {
+          refresher.request();
+        }
       })
       .on("presence", { event: "sync" }, () => {
         if (!disposed) setPresence({ ...channel.presenceState() });
@@ -123,12 +136,18 @@ export function useBoardRealtime({ boardId, boardTitle, userId, members }: Optio
           if (pausedTimer) clearTimeout(pausedTimer);
           pausedTimer = null;
           setPaused(false);
+          checkedAfterError = false;
           // Catch up on anything missed while the channel was down.
           if (hadConnection) void refreshIfStillMember();
           hadConnection = true;
           const payload: PresencePayload = { user_id: userId };
           void channel.track(payload);
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          // A rejected join may mean the viewer was removed: check once per outage.
+          if (status === "CHANNEL_ERROR" && !checkedAfterError) {
+            checkedAfterError = true;
+            void refreshIfStillMember();
+          }
           pausedTimer ??= setTimeout(() => setPaused(true), PAUSED_AFTER_MS);
         }
       });
@@ -148,7 +167,7 @@ export function useBoardRealtime({ boardId, boardTitle, userId, members }: Optio
       scheduler.current = null;
       void supabase.removeChannel(channel);
     };
-  }, [boardId, userId, router]);
+  }, [boardId, userId, router, localActivity]);
 
   const viewers = useMemo(
     () => viewersFromPresence(presence, members, userId),

@@ -6,7 +6,7 @@ import { AccessLostNotice } from "@/components/boards/access-lost-notice";
 import { NewBoardDialog } from "@/components/boards/new-board-dialog";
 import { requireUser } from "@/lib/auth/session";
 import { listBoards } from "@/lib/boards/queries";
-import { ACCESS_LOST_PARAM, accessLostMessage } from "@/lib/realtime/access-lost";
+import { ACCESS_LOST_PARAM } from "@/lib/realtime/access-lost";
 
 export const metadata: Metadata = { title: "Your boards" };
 
@@ -14,14 +14,14 @@ export default async function BoardsPage({ searchParams }: PageProps<"/boards">)
   // The proxy already redirects signed-out users; this is the authoritative check.
   await requireUser();
   const boards = await listBoards();
-  const lostAccess = accessLostMessage((await searchParams)[ACCESS_LOST_PARAM]);
+  const lostAccess = (await searchParams)[ACCESS_LOST_PARAM] !== undefined;
 
   return (
     <section
       aria-labelledby="boards-heading"
       className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8"
     >
-      <AccessLostNotice message={lostAccess} />
+      {lostAccess ? <AccessLostNotice /> : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 id="boards-heading" className="text-2xl font-semibold tracking-tight">
           Your boards
