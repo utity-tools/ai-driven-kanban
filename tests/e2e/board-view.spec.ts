@@ -96,9 +96,11 @@ test.describe("board layout", () => {
     await openDemoBoard(page);
 
     const members = page.getByRole("list", { name: "Board members" }).getByRole("img");
-    await expect(members).toHaveCount(2);
+    // Ordered by role (owner, editor, viewer), then name.
+    await expect(members).toHaveCount(3);
     await expect(members.nth(0)).toHaveAccessibleName("Alice Martin");
     await expect(members.nth(1)).toHaveAccessibleName("Bob Chen");
+    await expect(members.nth(2)).toHaveAccessibleName("Carol Diaz");
   });
 });
 

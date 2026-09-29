@@ -7,6 +7,8 @@ import { expect, type Page } from "@playwright/test";
 export const ALICE = { email: "alice@example.com", password: "password123" } as const;
 /** Editor (not owner) on Alice's "Demo board". */
 export const BOB = { email: "bob@example.com", password: "password123" } as const;
+/** Viewer (read-only) on Alice's "Demo board". */
+export const CAROL = { email: "carol@example.com", password: "password123" } as const;
 
 /**
  * Alice's signed-in storage state, written once per run by `auth.setup.ts`.
