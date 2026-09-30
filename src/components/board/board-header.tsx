@@ -31,7 +31,7 @@ export function BoardHeader() {
           <ArrowLeftIcon className="size-3.5" aria-hidden />
           All boards
         </Link>
-        <h1 className="truncate text-2xl font-semibold tracking-tight">
+        <h1 className="truncate font-heading text-2xl font-bold tracking-tight">
           {permissions.canEdit ? (
             <InlineEdit
               value={title}
