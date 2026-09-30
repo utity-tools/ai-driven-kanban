@@ -14,6 +14,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { type KeyboardEvent, useId, useState } from "react";
 
+import { wasJustAdded } from "@/lib/ai/just-added";
 import { moveSubtask } from "@/lib/subtasks/actions";
 import {
   SUBTASK_MOVE_INSTRUCTIONS,
@@ -134,6 +135,8 @@ function SortableSubtask({
 }) {
   const { listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id: subtask.id });
+  // Asked once, on mount: only rows accepted a moment ago snap into place.
+  const [snap] = useState(() => wasJustAdded(subtask.id));
 
   return (
     <li
@@ -142,6 +145,7 @@ function SortableSubtask({
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
         "relative rounded-md bg-popover motion-reduce:transition-none!",
+        snap && "motion-safe:animate-accept-snap",
         isDragging && "z-10 shadow-md ring-1 ring-foreground/10",
       )}
     >

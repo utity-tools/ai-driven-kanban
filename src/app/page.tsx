@@ -1,11 +1,6 @@
-import {
-  type LucideIcon,
-  ShieldCheckIcon,
-  SparklesIcon,
-  SquareKanbanIcon,
-  TagIcon,
-} from "lucide-react";
+import { ShieldCheckIcon, SquareKanbanIcon, TagIcon } from "lucide-react";
 import Link from "next/link";
+import type { ComponentType } from "react";
 
 import { BrandMark } from "@/components/brand/brand-mark";
 import { GitHubIcon } from "@/components/icons/github-icon";
@@ -15,10 +10,17 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { DEMO_RETENTION_DAYS, landingPageErrorMessage, visitorKind } from "@/lib/auth/demo";
 import { getCurrentUser } from "@/lib/auth/session";
+import { cn } from "@/lib/utils";
 
 const REPO_URL = "https://github.com/utity-tools/ai-driven-kanban";
 
-const FEATURES: { icon: LucideIcon; title: string; description: string }[] = [
+type FeatureIcon = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+
+function AiFeatureIcon({ className }: { className?: string }) {
+  return <BrandMark size={20} className={cn("text-ai", className)} />;
+}
+
+const FEATURES: { icon: FeatureIcon; title: string; description: string }[] = [
   {
     icon: SquareKanbanIcon,
     title: "Board with drag and drop",
@@ -31,7 +33,7 @@ const FEATURES: { icon: LucideIcon; title: string; description: string }[] = [
     description: "Markdown descriptions, labels, due dates and members on every card.",
   },
   {
-    icon: SparklesIcon,
+    icon: AiFeatureIcon,
     title: "AI decomposition, human in the loop",
     description:
       "Coming soon: AI proposes subtasks, estimates and dependencies. Nothing is saved until you review it.",

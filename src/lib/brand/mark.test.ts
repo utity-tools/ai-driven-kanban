@@ -3,7 +3,13 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { MARK_PATHS, MARK_VIEW_BOX, markStrokePx, markStrokeWidth } from "./mark";
+import {
+  MARK_PATHS,
+  MARK_VIEW_BOX,
+  markStrokePx,
+  markStrokeWidth,
+  thinkingImageSize,
+} from "./mark";
 
 describe("markStrokePx", () => {
   it.each([
@@ -49,5 +55,13 @@ describe("icon.svg", () => {
   it("draws the same mark as MARK_PATHS", () => {
     const svg = readFileSync(resolve(__dirname, "../../app/icon.svg"), "utf8");
     for (const d of MARK_PATHS) expect(svg).toContain(`d="${d}"`);
+  });
+});
+
+describe("thinkingImageSize", () => {
+  it("makes the animated mark as wide as the static one by scaling the image's wider viewBox", () => {
+    // 16px static mark = 16/98 px per unit; the image spans 128 units.
+    expect(thinkingImageSize(16)).toBe(21);
+    expect(thinkingImageSize(98)).toBe(128);
   });
 });

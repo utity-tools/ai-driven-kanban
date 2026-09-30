@@ -157,6 +157,8 @@ test("review an AI proposal: uncheck, edit and re-estimate, then add only what w
   await expect(dialog.getByRole("status").filter({ hasText: "Added" })).toHaveText(
     "Added 2 subtasks.",
   );
+  // The outcome stays on screen under the button, not only in the screen-reader status.
+  await expect(dialog.getByRole("status").filter({ hasText: "Added" })).toBeVisible();
   await expect
     .poll(() => subtaskTitles(dialog))
     .toEqual(["Design the sign-in form", "Write the E2E test"]);
@@ -190,6 +192,35 @@ test("review an AI proposal: uncheck, edit and re-estimate, then add only what w
       subtaskList(scope).getByRole("checkbox", { name: "Wire up Supabase Auth" }),
     ).toHaveCount(0);
     await expect(scope.getByText("0/2 · 0 of 11 pts", { exact: true })).toBeVisible();
+  }
+});
+
+test("while the AI works a thinking mark shows; stopping before anything streamed says so", async ({
+  boardPage: page,
+}) => {
+  // The route answers only when released, so the streaming state stays observable.
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  await page.route(DECOMPOSE_ROUTE, async (route) => {
+    await gate;
+    await fulfillStream(route, JSON.stringify(PROPOSAL)).catch(() => {});
+  });
+
+  try {
+    const dialog = await createAndOpenCard(page, "Card for stopping early");
+    await suggestButton(dialog).click();
+
+    await expect(suggestions(dialog).locator("[data-ai-thinking]")).toBeVisible();
+    await suggestions(dialog).getByRole("button", { name: "Stop" }).click();
+
+    await expect(suggestions(dialog)).toBeHidden();
+    await expect(suggestButton(dialog)).toBeFocused();
+    const stopped = dialog.getByRole("status").filter({ hasText: "Stopped" });
+    await expect(stopped).toHaveText("Stopped. No subtasks were suggested.");
+    await expect(stopped).toBeVisible();
+  } finally {
+    // Never leave the route handler waiting, even when an assertion fails.
+    release();
   }
 });
 

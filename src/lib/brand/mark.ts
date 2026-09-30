@@ -35,3 +35,14 @@ export function markStrokePx(size: number): number {
 export function markStrokeWidth(size: number): number {
   return (markStrokePx(size) * MARK_VIEW_BOX.width) / size;
 }
+
+/** Side of the square viewBox of `public/brand/thinking.svg` (-4 -4 128 128). */
+const THINKING_VIEW_BOX_SIZE = 128;
+
+/**
+ * Side in px of the animated "Thinking" image whose mark matches a static `BrandMark` of
+ * `markSize` px wide: the image's viewBox is wider than the mark, so it needs a larger box.
+ */
+export function thinkingImageSize(markSize: number): number {
+  return Math.round((markSize * THINKING_VIEW_BOX_SIZE) / MARK_VIEW_BOX.width);
+}

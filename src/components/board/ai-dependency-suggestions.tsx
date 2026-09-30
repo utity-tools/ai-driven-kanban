@@ -1,9 +1,11 @@
 "use client";
 
 import { experimental_useObject as useObject } from "@ai-sdk/react";
-import { SparklesIcon, SquareIcon } from "lucide-react";
+import { SquareIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { BrandMark } from "@/components/brand/brand-mark";
+import { ThinkingMark, preloadThinkingMark } from "@/components/brand/thinking-mark";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -21,13 +23,16 @@ import {
   toDependencyAcceptPayload,
   toDependencyReviewItems,
 } from "@/lib/ai/dependency-review";
+import { markJustAdded } from "@/lib/ai/just-added";
 import { QUOTA_REMAINING_HEADER, parseQuotaRemaining, quotaRemainingMessage } from "@/lib/ai/quota";
 import { decompositionErrorMessage } from "@/lib/ai/review";
 import { dependencyProposalSchema } from "@/lib/ai/schemas";
+import { type CloseReason, type VisibleOutcome, visibleOutcome } from "@/lib/ai/visible-outcome";
 import { acceptAiDependencies } from "@/lib/boards/actions";
 import type { BoardView } from "@/lib/boards/view-model";
 import { cn } from "@/lib/utils";
 
+import { AiStatus } from "./ai-status";
 import { useBoard } from "./board-context";
 
 type Props = {
@@ -58,6 +63,8 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  // What stays on screen under "Suggest with AI" after the panel closes.
+  const [outcome, setOutcome] = useState<VisibleOutcome | null>(null);
   // The ids the model saw, in reference order, from the response header.
   const [candidateIds, setCandidateIds] = useState<string[]>([]);
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -161,6 +168,7 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
     setRefused(false);
     idsRef.current = [];
     setCandidateIds([]);
+    setOutcome(null);
     setAnnouncement("Looking for blockers…");
     submit({});
   }
@@ -169,7 +177,7 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
     stop();
     const valid = proposals(object, false);
     if (valid.length === 0) {
-      close("Stopped. No blockers were suggested.");
+      close("stopped", "Stopped. No blockers were suggested.");
       return;
     }
     focusAfterRender.current = "heading";
@@ -178,13 +186,14 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
     setAnnouncement(`Stopped. Review the ${valid.length} suggested so far.`);
   }
 
-  function close(message: string) {
+  function close(reason: CloseReason, message: string) {
     clear();
     focusAfterRender.current = "opener";
     setPhase("idle");
     setItems([]);
     setError(null);
     setSaveError(null);
+    setOutcome(visibleOutcome(reason, message));
     setAnnouncement(message);
   }
 
@@ -200,6 +209,8 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
     setSaving(true);
     setSaveError(null);
     setAnnouncement("Adding blockers…");
+    // Before mutate: the optimistic rows mount at once and ask whether to snap.
+    markJustAdded(payload.blockerIds);
     mutate(
       { type: "addAiDependencies", blockerIds: payload.blockerIds, blockedId: cardId },
       () => acceptAiDependencies(payload),
@@ -207,7 +218,7 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
         onSuccess() {
           setSaving(false);
           const count = payload.blockerIds.length;
-          close(`Added ${count} ${count === 1 ? "blocker" : "blockers"}.`);
+          close("added", `Added ${count} ${count === 1 ? "blocker" : "blockers"}.`);
         },
         onError(message) {
           setSaving(false);
@@ -246,8 +257,11 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
               aria-describedby={remaining !== null ? quotaHintId : undefined}
               className={cn(exhausted && "cursor-not-allowed opacity-50")}
               onClick={exhausted ? undefined : start}
+              // Fetch the thinking mark while the pointer or focus is on the way to a click.
+              onPointerEnter={preloadThinkingMark}
+              onFocus={preloadThinkingMark}
             >
-              <SparklesIcon aria-hidden />
+              <BrandMark size={14} className="text-ai" />
               Suggest blockers with AI
             </Button>
             {remaining !== null ? (
@@ -271,7 +285,7 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
               tabIndex={-1}
               className="flex items-center gap-1.5 text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&_svg]:size-3.5"
             >
-              <SparklesIcon aria-hidden />
+              <BrandMark size={14} className="text-ai" />
               AI blocker suggestions
             </h5>
             {streaming ? (
@@ -284,13 +298,19 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
 
           {streaming ? (
             <>
-              <p className="text-sm text-muted-foreground" aria-hidden>
-                Looking for blockers…
-              </p>
+              <div className="flex items-center gap-2" data-ai-thinking>
+                <ThinkingMark />
+                <p className="text-sm text-muted-foreground" aria-hidden>
+                  Looking for blockers…
+                </p>
+              </div>
               {streamed.length > 0 ? (
                 <ul aria-label="Suggested blockers" className="grid gap-2">
                   {streamed.map((proposal) => (
-                    <li key={proposal.blockerId} className="grid gap-0.5 text-sm">
+                    <li
+                      key={proposal.blockerId}
+                      className="grid gap-0.5 rounded-md border border-dashed border-ai-line px-2 py-1 text-sm"
+                    >
                       <ProposalText proposal={proposal} />
                     </li>
                   ))}
@@ -306,7 +326,11 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
                     Retry
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={() => close("Suggestions discarded.")}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => close("discarded", "Suggestions discarded.")}
+                >
                   Discard
                 </Button>
               </div>
@@ -315,7 +339,11 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
             <>
               <p className="text-sm text-muted-foreground">{NO_DEPENDENCIES_MESSAGE}</p>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => close("Suggestions discarded.")}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => close("discarded", "Suggestions discarded.")}
+                >
                   Discard
                 </Button>
               </div>
@@ -328,7 +356,10 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
               </p>
               <ul aria-label="Suggested blockers" className="grid gap-2">
                 {items.map((item) => (
-                  <li key={item.key} className="flex items-start gap-2">
+                  <li
+                    key={item.key}
+                    className="flex items-start gap-2 rounded-md border border-dashed border-ai-line p-1.5"
+                  >
                     <Checkbox
                       aria-label={`Include ${item.title} as a blocker`}
                       checked={item.checked}
@@ -359,7 +390,7 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
                   variant="ghost"
                   size="sm"
                   disabled={saving}
-                  onClick={() => close("Suggestions discarded.")}
+                  onClick={() => close("discarded", "Suggestions discarded.")}
                 >
                   Discard
                 </Button>
@@ -368,10 +399,7 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
           )}
         </section>
       )}
-      {/* Always mounted, so every change is announced (a freshly mounted live region often isn't). */}
-      <p role="status" className="sr-only">
-        {announcement}
-      </p>
+      <AiStatus announcement={announcement} outcome={phase === "idle" ? outcome : null} />
     </div>
   );
 }
