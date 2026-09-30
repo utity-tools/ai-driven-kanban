@@ -4,7 +4,7 @@ import { ALICE_STORAGE_STATE } from "./support/auth";
 
 // Public and auth pages plus the brand assets (static icon, generated OG image): the headers
 // apply to every route, including those the proxy skips.
-for (const path of ["/", "/login", "/icon.svg", "/opengraph-image"]) {
+for (const path of ["/", "/login", "/icon.svg", "/apple-icon", "/opengraph-image"]) {
   test(`${path} sends the security headers`, async ({ request }) => {
     const response = await request.get(path);
     expect(response.ok()).toBe(true);
