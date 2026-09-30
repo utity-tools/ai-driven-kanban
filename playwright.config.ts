@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3000;
 const isCI = !!process.env.CI;
+// `pnpm test:e2e:prod` tests a production build (`pnpm build` first) like CI does.
+const useProdBuild = isCI || !!process.env.E2E_PROD;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -21,11 +23,12 @@ export default defineConfig({
     { name: "chromium", use: { ...devices["Desktop Chrome"] }, dependencies: ["setup"] },
   ],
   webServer: {
-    // CI tests the production build; locally reuse a running dev server.
+    // CI and `test:e2e:prod` test the production build; otherwise reuse a running dev server.
+    // The prod build never reuses a server: a stale one could be serving another build.
     // Call next directly: "pnpm start" leaves next-server running and Playwright hangs on exit.
-    command: isCI ? `next start --port ${PORT}` : `next dev --port ${PORT}`,
+    command: useProdBuild ? `next start --port ${PORT}` : `next dev --port ${PORT}`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: !isCI,
+    reuseExistingServer: !useProdBuild,
     timeout: 120_000,
     // Merged over process.env. Turns on "Suggest with AI" (read at runtime, so the CI
     // build needs no rebuild); the decompose route is mocked in the browser by the

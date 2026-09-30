@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "test:e2e:prod": "next build && E2E_PROD=1 playwright test",
     "prepare": "husky",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
