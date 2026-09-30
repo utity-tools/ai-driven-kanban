@@ -17,8 +17,9 @@ new data weaken the quota guarantees.
 
 ## Decision
 
-Every reserved call ends with **exactly one** `ai.call` log event and **one** completed row in
-`private.ai_usage`, whatever way it ends.
+Every call made through the app is designed to end with **exactly one** `ai.call` log event and
+**one** completed row in `private.ai_usage`, whatever way it ends. Rows that stay open are
+possible and bounded (see Consequences).
 
 - **Outcome:** one of `ok`, `empty`, `invalid`, `error` or `aborted` (see `src/lib/ai/outcome.ts`).
   `trackCall` (`src/lib/ai/track-call.ts`) wraps the SDK's `onFinish`, `onError` and `onAbort` and
@@ -60,8 +61,13 @@ Every reserved call ends with **exactly one** `ai.call` log event and **one** co
 - ADR 0016's "the client never reports a cost" no longer holds as written: the app now reports
   one, and the cap trusts it only downward.
 - A real cost above the estimate is undercounted by design. `cost_per_call_usd` must stay at or
-  above the real worst case (launch checklist).
-- Rows reserved by the previous app version during a deploy, or by direct API calls, stay open
-  and keep their estimate, as before.
+  above the real worst case, and is raised with a migration before AI is enabled in production.
+- **Completion values are caller-reported.** A signed-in user can reserve directly through the
+  API (within their own daily limit) and record any outcome, model, tokens, latency or cost
+  (0..1) for those rows. That can't touch the cap or other users, but it can skew aggregates.
+  Decisions such as raising `cost_per_call_usd` are therefore checked against the AI Gateway
+  dashboard, and the SQL guide uses percentiles and per-user breakdowns rather than `max()`.
+- Rows reserved by the previous app version during a deploy, by direct API calls, or by a call
+  whose record failed stay open and keep their estimate, as before.
 - `p_feature` defaults to `'decompose'` only for rollout compatibility. A later migration can
   drop the default once every caller passes it.

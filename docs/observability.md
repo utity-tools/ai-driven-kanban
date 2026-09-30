@@ -65,13 +65,13 @@ select feature, prompt_version, count(*) as calls,
   percentile_cont(0.5) within group (order by latency_ms) as p50_ms,
   percentile_cont(0.95) within group (order by latency_ms) as p95_ms,
   round(avg(input_tokens)) as avg_in, round(avg(output_tokens)) as avg_out,
-  max(actual_cost_usd) as max_real_usd
+  percentile_cont(0.95) within group (order by actual_cost_usd) as p95_real_usd
 from private.ai_usage
 where outcome = 'ok' and created_at >= now() - interval '14 days'
 group by 1, 2 order by 1, 2;
 ```
 
-Compare these numbers across prompt versions after a prompt change, together with the eval baseline (`evals/results/baseline/`). `max_real_usd` is the value to check against `private.ai_limits.cost_per_call_usd`, which must stay at or above it.
+Compare these numbers across prompt versions after a prompt change, together with the eval baseline (`evals/results/baseline/`). `p95_real_usd` gives a first idea of how far `private.ai_limits.cost_per_call_usd` is from real costs; it must stay at or above the real worst case. Confirm against the AI Gateway dashboard before changing it: completion values are caller-reported (see below).
 
 ### 3. Outcome rates per prompt version
 
@@ -83,7 +83,7 @@ where completed_at is not null and created_at >= now() - interval '14 days'
 group by 1, 2, 3 order by 1, 2, 4 desc;
 ```
 
-A rise in `invalid` or `error` after a deploy is the first thing to look at. `aborted` means the user pressed Stop or closed the review panel.
+A rise in `invalid` or `error` after a deploy is the first thing to look at. Check first that it isn't concentrated in one `user_id` (query 5). `aborted` means the user pressed Stop or closed the review panel.
 
 ### 4. Rows never completed
 
@@ -94,3 +94,25 @@ where completed_at is null and created_at < now() - interval '1 hour';
 ```
 
 Reserved more than an hour ago and never completed, so they can no longer be completed. A few are expected (rows from a deploy window, direct API reservations). A steady number means the completion path is broken: search the logs for `ai.call.incomplete` and `ai.usage.record_failed`.
+
+### 5. Calls per user
+
+```sql
+select user_id, is_demo, count(*) as calls,
+  count(*) filter (where outcome in ('invalid', 'error')) as failed,
+  max(actual_cost_usd) as max_real_usd
+from private.ai_usage
+where created_at >= now() - interval '14 days'
+group by 1, 2 order by calls desc
+limit 20;
+```
+
+## How far to trust the numbers
+
+The reservation, the per-user limits and the global cap are enforced in the database and cannot
+be influenced by the client. The **completion values** (outcome, model, tokens, latency, cost)
+are reported by the caller: the app reports real ones, but a signed-in user can also reserve
+through the API and report anything for their own rows (bounded to $0..1 per row). They can only
+lower their own rows' charge, so the cap stays safe, but aggregates can be skewed. Read them as
+monitoring signals, look for outliers per user (query 5), and confirm cost decisions with the
+AI Gateway dashboard, which is the billing source of truth.
