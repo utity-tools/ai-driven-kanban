@@ -18,7 +18,7 @@ export async function AppHeader() {
         <div className="flex h-14 w-full items-center justify-between gap-4 px-4">
           <Link
             href="/boards"
-            className="flex items-center gap-2 rounded-md font-heading font-bold tracking-[-0.02em] outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="flex items-center gap-2 rounded-md font-heading font-bold tracking-[-0.02em] outline-none focus-visible:ring-3 focus-visible:ring-ring"
           >
             <BrandMark size={22} />
             AI-Driven Kanban

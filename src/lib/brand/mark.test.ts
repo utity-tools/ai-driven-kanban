@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { MARK_VIEW_BOX, markStrokePx, markStrokeWidth } from "./mark";
+import { MARK_PATHS, MARK_VIEW_BOX, markStrokePx, markStrokeWidth } from "./mark";
 
 describe("markStrokePx", () => {
   it.each([
@@ -39,5 +42,12 @@ describe("markStrokeWidth", () => {
     for (const size of [16, 22, 48, 120, 240]) {
       expect(markStrokeWidth(size) / 2).toBeLessThanOrEqual(4);
     }
+  });
+});
+
+describe("icon.svg", () => {
+  it("draws the same mark as MARK_PATHS", () => {
+    const svg = readFileSync(resolve(__dirname, "../../app/icon.svg"), "utf8");
+    for (const d of MARK_PATHS) expect(svg).toContain(`d="${d}"`);
   });
 });

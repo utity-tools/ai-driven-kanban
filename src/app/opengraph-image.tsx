@@ -34,9 +34,7 @@ export default function OpenGraphImage() {
           <path key={d} d={d} />
         ))}
       </svg>
-      <div style={{ fontSize: 84, fontWeight: 700, letterSpacing: -2, marginTop: 48 }}>
-        {SITE_NAME}
-      </div>
+      <div style={{ fontSize: 84, letterSpacing: -2, marginTop: 48 }}>{SITE_NAME}</div>
       <div style={{ fontSize: 34, color: "#A0A39A", marginTop: 24, maxWidth: 900 }}>
         {SITE_DESCRIPTION}
       </div>

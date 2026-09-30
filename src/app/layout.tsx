@@ -22,6 +22,8 @@ const fontMono = JetBrains_Mono({
   variable: "--font-jetbrains",
   subsets: ["latin"],
   display: "swap",
+  // Only a few figures use it: don't preload it on every page.
+  preload: false,
 });
 
 export const metadata: Metadata = {
