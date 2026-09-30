@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "eval": "tsx --env-file-if-exists=.env.local evals/run.ts",
     "test:e2e": "playwright test",
     "test:e2e:prod": "next build && E2E_PROD=1 playwright test",
     "prepare": "husky",
@@ -77,6 +78,7 @@
     "prettier-plugin-tailwindcss": "^0.8.1",
     "supabase": "^2.117.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.1"
   },
