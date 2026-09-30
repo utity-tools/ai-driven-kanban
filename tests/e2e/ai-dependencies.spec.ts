@@ -169,6 +169,9 @@ test("review an AI proposal: uncheck one, add the rest, marked as AI and saved a
   // The outcome stays on screen under the button, not only in the screen-reader status.
   await expect(dialog.getByRole("status").filter({ hasText: "Added" })).toBeVisible();
   await expectSaved(dialog);
+  // The blockers just added snap into place once (the class stays; the animation runs once).
+  const snapping = '[class*="animate-accept-snap"]';
+  await expect(depList(dialog, "Blocked by").locator(snapping)).toHaveCount(2);
 
   // Persisted with source = 'ai': one Server Action, and the badges survive a reload.
   await actions.settled(1);
@@ -177,6 +180,8 @@ test("review an AI proposal: uncheck one, add the rest, marked as AI and saved a
   const reopened = cardDialog(page, TARGET);
   await modalReady(reopened);
   await expectSaved(reopened);
+  // Rows that were already there never snap.
+  await expect(depList(reopened, "Blocked by").locator(snapping)).toHaveCount(0);
   // Reopening the card never requests a proposal on its own.
   expect(mock.calls()).toBe(1);
 
@@ -271,16 +276,20 @@ test("while the AI works a thinking mark shows; stopping before anything streame
       .catch(() => {});
   });
 
-  await suggestButton(dialog).click();
-  await expect(panel(dialog).locator("[data-ai-thinking]")).toBeVisible();
-  await panel(dialog).getByRole("button", { name: "Stop" }).click();
+  try {
+    await suggestButton(dialog).click();
+    await expect(panel(dialog).locator("[data-ai-thinking]")).toBeVisible();
+    await panel(dialog).getByRole("button", { name: "Stop" }).click();
 
-  await expect(panel(dialog)).toBeHidden();
-  await expect(suggestButton(dialog)).toBeFocused();
-  const stopped = dialog.getByRole("status").filter({ hasText: "Stopped" });
-  await expect(stopped).toHaveText("Stopped. No blockers were suggested.");
-  await expect(stopped).toBeVisible();
-  release();
+    await expect(panel(dialog)).toBeHidden();
+    await expect(suggestButton(dialog)).toBeFocused();
+    const stopped = dialog.getByRole("status").filter({ hasText: "Stopped" });
+    await expect(stopped).toHaveText("Stopped. No blockers were suggested.");
+    await expect(stopped).toBeVisible();
+  } finally {
+    // Never leave the route handler waiting, even when an assertion fails.
+    release();
+  }
 });
 
 test("the daily quota: what's left is shown, and a spent quota can't be retried", async ({

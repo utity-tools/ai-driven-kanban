@@ -24,7 +24,7 @@ export function AiStatus({
       )}
     >
       {outcome?.tone === "success" ? <CheckIcon aria-hidden className="size-3.5 shrink-0" /> : null}
-      {announcement}
+      {outcome?.text ?? announcement}
     </p>
   );
 }

@@ -206,18 +206,22 @@ test("while the AI works a thinking mark shows; stopping before anything streame
     await fulfillStream(route, JSON.stringify(PROPOSAL)).catch(() => {});
   });
 
-  const dialog = await createAndOpenCard(page, "Card for stopping early");
-  await suggestButton(dialog).click();
+  try {
+    const dialog = await createAndOpenCard(page, "Card for stopping early");
+    await suggestButton(dialog).click();
 
-  await expect(suggestions(dialog).locator("[data-ai-thinking]")).toBeVisible();
-  await suggestions(dialog).getByRole("button", { name: "Stop" }).click();
+    await expect(suggestions(dialog).locator("[data-ai-thinking]")).toBeVisible();
+    await suggestions(dialog).getByRole("button", { name: "Stop" }).click();
 
-  await expect(suggestions(dialog)).toBeHidden();
-  await expect(suggestButton(dialog)).toBeFocused();
-  const stopped = dialog.getByRole("status").filter({ hasText: "Stopped" });
-  await expect(stopped).toHaveText("Stopped. No subtasks were suggested.");
-  await expect(stopped).toBeVisible();
-  release();
+    await expect(suggestions(dialog)).toBeHidden();
+    await expect(suggestButton(dialog)).toBeFocused();
+    const stopped = dialog.getByRole("status").filter({ hasText: "Stopped" });
+    await expect(stopped).toHaveText("Stopped. No subtasks were suggested.");
+    await expect(stopped).toBeVisible();
+  } finally {
+    // Never leave the route handler waiting, even when an assertion fails.
+    release();
+  }
 });
 
 test("an empty proposal shows an error; Retry reviews a new one; Discard saves nothing", async ({

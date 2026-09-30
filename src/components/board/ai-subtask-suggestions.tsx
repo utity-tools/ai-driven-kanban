@@ -58,7 +58,6 @@ type Phase = "idle" | "streaming" | "review" | "error";
  */
 export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
   const { boardId, mutate } = useBoard();
-  if (available) preloadThinkingMark();
   const [phase, setPhase] = useState<Phase>("idle");
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -187,10 +186,11 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
     setSaving(true);
     setSaveError(null);
     setAnnouncement("Adding subtasks…");
+    // Before mutate: the optimistic rows mount at once and ask whether to snap.
+    markJustAdded(added.map((subtask) => subtask.id));
     mutate({ type: "addSubtasks", cardId, subtasks: added }, () => acceptAiSubtasks(payload), {
       onSuccess() {
         setSaving(false);
-        markJustAdded(added.map((subtask) => subtask.id));
         close("added", `Added ${added.length} ${added.length === 1 ? "subtask" : "subtasks"}.`);
       },
       onError(message) {
@@ -226,6 +226,9 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
               aria-describedby={remaining !== null ? quotaHintId : undefined}
               className={cn(exhausted && "cursor-not-allowed opacity-50")}
               onClick={exhausted ? undefined : start}
+              // Fetch the thinking mark while the pointer or focus is on the way to a click.
+              onPointerEnter={preloadThinkingMark}
+              onFocus={preloadThinkingMark}
             >
               <BrandMark size={14} className="text-ai" />
               Suggest with AI

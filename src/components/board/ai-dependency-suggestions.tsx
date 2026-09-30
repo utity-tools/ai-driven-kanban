@@ -57,7 +57,6 @@ type Phase = "idle" | "streaming" | "review" | "empty" | "error";
  */
 export function AiDependencySuggestions({ cardId, blockerCount, available }: Props) {
   const { view, boardId, mutate } = useBoard();
-  if (available) preloadThinkingMark();
   const [phase, setPhase] = useState<Phase>("idle");
   const [items, setItems] = useState<DependencyReviewItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -210,6 +209,8 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
     setSaving(true);
     setSaveError(null);
     setAnnouncement("Adding blockers…");
+    // Before mutate: the optimistic rows mount at once and ask whether to snap.
+    markJustAdded(payload.blockerIds);
     mutate(
       { type: "addAiDependencies", blockerIds: payload.blockerIds, blockedId: cardId },
       () => acceptAiDependencies(payload),
@@ -217,7 +218,6 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
         onSuccess() {
           setSaving(false);
           const count = payload.blockerIds.length;
-          markJustAdded(payload.blockerIds);
           close("added", `Added ${count} ${count === 1 ? "blocker" : "blockers"}.`);
         },
         onError(message) {
@@ -257,6 +257,9 @@ export function AiDependencySuggestions({ cardId, blockerCount, available }: Pro
               aria-describedby={remaining !== null ? quotaHintId : undefined}
               className={cn(exhausted && "cursor-not-allowed opacity-50")}
               onClick={exhausted ? undefined : start}
+              // Fetch the thinking mark while the pointer or focus is on the way to a click.
+              onPointerEnter={preloadThinkingMark}
+              onFocus={preloadThinkingMark}
             >
               <BrandMark size={14} className="text-ai" />
               Suggest blockers with AI

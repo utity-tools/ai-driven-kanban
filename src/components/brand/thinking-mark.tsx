@@ -6,11 +6,11 @@ import { thinkingImageSize } from "@/lib/brand/mark";
 const THINKING_MARK_SRC = "/brand/thinking.svg";
 
 /**
- * Fetches the animated mark ahead of time. Call it where the AI can be asked (the
- * "Suggest with AI" button): the first answer can start streaming before a cold image loads.
+ * Fetches the animated mark ahead of time, on the way to a "Suggest with AI" click: the
+ * first answer can start streaming before a cold image loads.
  */
 export function preloadThinkingMark() {
-  preload(THINKING_MARK_SRC, { as: "image", fetchPriority: "low" });
+  preload(THINKING_MARK_SRC, { as: "image" });
 }
 
 type ThinkingMarkProps = {
