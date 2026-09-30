@@ -2,11 +2,14 @@ import { randomUUID } from "node:crypto";
 
 import { test as base, expect, type Locator, type Page } from "@playwright/test";
 
+import { createBoardAs, deleteBoardAs } from "./api";
+import { ACTION } from "./server-actions";
+
 // Fresh-board fixture and board locators shared by the specs that edit boards.
 //
 // Isolation: other specs assert the seeded Demo board's exact contents, so
-// every test that edits works on a fresh board of its own, created through
-// the "New board" dialog and deleted through the board menu afterwards.
+// every test that edits works on a fresh board of its own, created and deleted
+// through the API by the `board` fixture below.
 
 export const DEFAULT_COLUMNS = ["To do", "In progress", "Done"];
 
@@ -59,7 +62,7 @@ export async function deleteOpenBoard(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Board actions" }).click();
   await page.getByRole("menuitem", { name: "Delete board…" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Delete board" }).click();
-  await expect(page).toHaveURL("/boards");
+  await expect(page).toHaveURL("/boards", ACTION);
 }
 
 /** Opens the composer of a column, adds each title with Enter, leaves the composer open. */
@@ -81,22 +84,31 @@ export async function addCards(
 }
 
 /**
- * `board`: a fresh board created (as the signed-in user) before the test and
- * deleted after it, unless the test deleted it itself. `boardPage`: the page,
- * already on that board, for tests that don't need its title or path.
+ * `board`: a fresh board created before the test and deleted after it, unless the
+ * test deleted it itself. `boardPage`: the page, already on that board, for tests
+ * that don't need its title or path.
+ *
+ * Setup and teardown go through the API as the test's signed-in user (support/api.ts):
+ * the UI paths are covered by the specs that test them, and going through them here
+ * only made every test wait on a Server Action and a redirect. The page is left on
+ * the board, as it would be after creating it in the dialog.
  */
 export const test = base.extend<{ board: FreshBoard; boardPage: Page }>({
-  board: async ({ page }, provide) => {
+  board: async ({ page, storageState }, provide) => {
+    if (typeof storageState !== "string") {
+      throw new Error("The board fixture needs a storageState file, e.g. ALICE_STORAGE_STATE.");
+    }
     const title = uniqueTitle("E2E board");
-    const path = await createBoardViaDialog(page, title);
+    const boardId = await createBoardAs(storageState, title);
+    const path = `/boards/${boardId}`;
+    // `finally`: a failure in the test or in the goto still removes the board.
+    try {
+      await page.goto(path);
+      await expect(boardHeading(page)).toHaveText(title);
 
-    await provide({ title, path });
-
-    // Clean up unless the test deleted the board itself.
-    await page.goto(path);
-    await expect(boardHeading(page)).toBeVisible();
-    if (await page.getByRole("button", { name: "Board actions" }).isVisible()) {
-      await deleteOpenBoard(page);
+      await provide({ title, path });
+    } finally {
+      await deleteBoardAs(storageState, boardId);
     }
   },
   boardPage: async ({ page, board }, provide) => {

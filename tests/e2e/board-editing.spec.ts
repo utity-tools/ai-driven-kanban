@@ -1,3 +1,4 @@
+import { boardIdFromPath, deleteBoardAs } from "./support/api";
 import { ALICE_STORAGE_STATE, BOB_STORAGE_STATE } from "./support/auth";
 import {
   DEFAULT_COLUMNS,
@@ -7,6 +8,7 @@ import {
   cardTitles,
   column,
   columnHeadings,
+  createBoardViaDialog,
   deleteOpenBoard,
   expect,
   test,
@@ -18,29 +20,35 @@ import { trackServerActions } from "./support/server-actions";
 //
 // Isolation: other specs assert the seeded Demo board's exact contents, so
 // every test that edits works on a fresh board of its own (the `board` fixture
-// in support/boards.ts creates it through the "New board" dialog and deletes
-// it through the board menu afterwards).
+// in support/boards.ts creates and deletes it through the API; the "New board"
+// dialog and the board menu are tested here).
 
 test.use({ storageState: ALICE_STORAGE_STATE });
 
 test.describe("new board", () => {
-  test("the dialog creates a board with the default columns and opens it", async ({
-    page,
-    board,
-  }) => {
-    await expect(page).toHaveURL(board.path);
-    await expect(boardHeading(page)).toHaveText(board.title);
-    await expect(columnHeadings(page)).toHaveText(DEFAULT_COLUMNS);
-    for (const title of DEFAULT_COLUMNS) {
-      await expect(column(page, title).getByText("0 cards", { exact: true })).toBeAttached();
-    }
-    await expect(page.getByRole("button", { name: "Archived cards (0)" })).toBeVisible();
+  test("the dialog creates a board with the default columns and opens it", async ({ page }) => {
+    // The one test of the UI path: other specs get their board from the API.
+    const title = uniqueTitle("E2E board");
+    const path = await createBoardViaDialog(page, title);
+    try {
+      await expect(page).toHaveURL(path);
+      await expect(boardHeading(page)).toHaveText(title);
+      await expect(columnHeadings(page)).toHaveText(DEFAULT_COLUMNS);
+      for (const columnTitle of DEFAULT_COLUMNS) {
+        await expect(
+          column(page, columnTitle).getByText("0 cards", { exact: true }),
+        ).toBeAttached();
+      }
+      await expect(page.getByRole("button", { name: "Archived cards (0)" })).toBeVisible();
 
-    await page.goto("/boards");
-    await expect(page.getByRole("main").getByRole("link", { name: board.title })).toHaveAttribute(
-      "href",
-      board.path,
-    );
+      await page.goto("/boards");
+      await expect(page.getByRole("main").getByRole("link", { name: title })).toHaveAttribute(
+        "href",
+        path,
+      );
+    } finally {
+      await deleteBoardAs(ALICE_STORAGE_STATE, boardIdFromPath(path));
+    }
   });
 
   test("an empty or blank title shows a validation error and creates nothing", async ({ page }) => {
