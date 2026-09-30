@@ -85,7 +85,7 @@ export function BoardColumn({ column, onDelete, mode = "static", dragHandle }: P
   return (
     <section
       aria-labelledby={preview ? undefined : headingId}
-      className="flex max-h-full w-full flex-col gap-2 rounded-xl bg-muted/70 p-2 dark:bg-muted/40"
+      className="flex max-h-full w-full flex-col gap-2 rounded-xl bg-muted p-2"
     >
       <header
         className={cn(

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { BrandMark } from "@/components/brand/brand-mark";
 import { GitHubIcon } from "@/components/icons/github-icon";
 import { BoardPreview } from "@/components/landing/board-preview";
 import { LandingCta } from "@/components/landing/landing-cta";
@@ -54,8 +55,9 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-4">
           <Link
             href="/"
-            className="rounded-md font-semibold tracking-tight outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="flex items-center gap-2 rounded-md font-heading font-bold tracking-[-0.02em] outline-none focus-visible:ring-3 focus-visible:ring-ring"
           >
+            <BrandMark size={22} />
             AI-Driven Kanban
           </Link>
           <a
@@ -79,9 +81,10 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             <p className="w-fit rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">
               Human-in-the-loop AI planning
             </p>
+            <BrandMark size={52} />
             <h1
               id="hero-heading"
-              className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl"
+              className="font-heading text-4xl font-bold tracking-[-0.02em] text-balance sm:text-5xl"
             >
               AI-Driven Kanban
             </h1>
@@ -108,7 +111,10 @@ export default async function Home({ searchParams }: PageProps<"/">) {
 
         <section aria-labelledby="features-heading" className="border-t bg-muted/40">
           <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-12 sm:py-16">
-            <h2 id="features-heading" className="text-2xl font-semibold tracking-tight">
+            <h2
+              id="features-heading"
+              className="font-heading text-2xl font-bold tracking-[-0.02em]"
+            >
               What&apos;s inside
             </h2>
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -118,7 +124,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
                   className="grid content-start gap-2 rounded-xl border bg-card p-5 text-card-foreground"
                 >
                   <Icon className="size-5" aria-hidden />
-                  <h3 className="font-medium">{title}</h3>
+                  <h3 className="font-heading font-bold">{title}</h3>
                   <p className="text-sm text-muted-foreground">{description}</p>
                 </li>
               ))}

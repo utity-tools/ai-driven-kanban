@@ -57,7 +57,7 @@ export function CardDetails({ card, onArchive, onRestore }: Props) {
   return (
     <>
       <DialogHeader className="pr-8">
-        <DialogTitle className="text-lg leading-snug font-semibold break-words">
+        <DialogTitle className="font-heading text-lg leading-snug font-bold break-words">
           {editable ? (
             <InlineEdit
               value={card.title}

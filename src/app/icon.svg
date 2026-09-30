@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="11 16 98 88" width="32" height="29" fill="none" stroke-width="6" stroke-linejoin="round">
+  <style>
+    path { stroke: #151614; }
+    @media (prefers-color-scheme: dark) { path { stroke: #EDEEEA; } }
+  </style>
+  <path d="M30,20L45,20L45,100L30,100Q15,100 15,85L15,35Q15,20 30,20Z"/>
+  <path d="M45,20L75,20L75,100L45,100Z"/>
+  <path d="M75,20L90,20Q105,20 105,35L105,85Q105,100 90,100L75,100Z"/>
+</svg>
