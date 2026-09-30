@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDecompositionModel, streamDecomposition } from "@/lib/ai/decompose";
-import { PROMPT_VERSION } from "@/lib/ai/prompts/decompose-v2";
+import { PROMPT_VERSION } from "@/lib/ai/prompts/decompose-v3";
 import {
   QUOTA_EXCEEDED_MESSAGES,
   QUOTA_REMAINING_HEADER,

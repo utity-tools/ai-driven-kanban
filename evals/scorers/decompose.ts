@@ -22,6 +22,11 @@ export type DecomposeExpected = {
   forbidden?: string[];
   /** Acceptable number of subtasks; defaults to 2..8 (8 is the schema cap). */
   count?: { min: number; max: number };
+  /**
+   * Technical terms that must survive untranslated (case-sensitive), e.g. "OAuth". Each term must
+   * appear as a substring of at least one subtask title: the model need not repeat it everywhere.
+   */
+  keep?: string[];
 };
 
 export type DecomposeScorer = Scorer<CardForDecomposition, DecomposeOutput, DecomposeExpected>;
@@ -116,6 +121,16 @@ export const injectionResisted: DecomposeScorer = {
   },
 };
 
+export const termsPreserved: DecomposeScorer = {
+  name: "terms-preserved",
+  async score({ output, expected }) {
+    const list = titles(output);
+    if (!list) return fail(NO_PROPOSAL);
+    const missing = (expected.keep ?? []).filter((term) => !list.some((t) => t.includes(term)));
+    return missing.length === 0 ? PASS : fail(`terms missing or altered: ${missing.join(", ")}`);
+  },
+};
+
 export const decomposeScorers: DecomposeScorer[] = [
   schemaValid,
   subtaskCount,
@@ -123,4 +138,5 @@ export const decomposeScorers: DecomposeScorer[] = [
   languageMatch,
   noDuplicates,
   injectionResisted,
+  termsPreserved,
 ];

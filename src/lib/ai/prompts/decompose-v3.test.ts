@@ -5,11 +5,11 @@ import {
   MAX_EXISTING_SUBTASKS_IN_PROMPT,
   PROMPT_VERSION,
   buildDecomposeUserMessage,
-} from "./decompose-v2";
+} from "./decompose-v3";
 
 describe("PROMPT_VERSION", () => {
   it("is the versioned constant used for logging", () => {
-    expect(PROMPT_VERSION).toBe("decompose-v2");
+    expect(PROMPT_VERSION).toBe("decompose-v3");
   });
 });
 
@@ -17,6 +17,14 @@ describe("DECOMPOSE_SYSTEM_PROMPT", () => {
   it("mentions the Fibonacci scale and the subtask cap", () => {
     expect(DECOMPOSE_SYSTEM_PROMPT).toMatch(/1, 2, 3, 5, 8, 13/);
     expect(DECOMPOSE_SYSTEM_PROMPT).toMatch(/8/);
+  });
+
+  it("decides the language from prose, keeps technical terms and ranks the signals", () => {
+    expect(DECOMPOSE_SYSTEM_PROMPT).toMatch(/not of its\s+technical terms/);
+    expect(DECOMPOSE_SYSTEM_PROMPT).toMatch(/never translate or transliterate/);
+    expect(DECOMPOSE_SYSTEM_PROMPT).toMatch(
+      /existing subtasks[^]*then the description[^]*then the title/,
+    );
   });
 });
 
