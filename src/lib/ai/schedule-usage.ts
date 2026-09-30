@@ -5,7 +5,12 @@ import type { AiFeature } from "@/lib/observability/ai-log";
 import { createCompletionSlot, recordAiCall, type UsageRecorder } from "./record-usage";
 import type { AiCallResult } from "./track-call";
 
-/** How long the after() task waits for the call to report its end once the response is done. */
+/**
+ * How long the after() task waits for the call to report its end once the response is done.
+ * Keep it short: the record uses the request's cookie-based Supabase client, which can't set
+ * refreshed auth cookies after the response, so this must finish well before the access token
+ * could need a refresh (auth-js refreshes within 90 s of expiry; the proxy refreshes per request).
+ */
 const COMPLETION_WAIT_MS = 5_000;
 
 /**

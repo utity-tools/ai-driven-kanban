@@ -113,7 +113,7 @@ export async function POST(
   if (subtasksError) {
     console.error("ai.decompose.subtasks_fetch_failed", { requestId, error: subtasksError });
     // The model was never called: completed as an error with no tokens or cost.
-    onComplete({ outcome: "error", latencyMs: 0, promptVersion: PROMPT_VERSION });
+    onComplete({ outcome: "error", latencyMs: 0, promptVersion: PROMPT_VERSION, costUsd: 0 });
     return Response.json({ error: "Something went wrong." }, { status: 500 });
   }
 
