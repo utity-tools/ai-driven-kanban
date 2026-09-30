@@ -504,12 +504,26 @@ export type Database = {
         }
         Returns: boolean
       }
+      record_ai_usage: {
+        Args: {
+          p_actual_cost_usd?: number
+          p_input_tokens?: number
+          p_latency_ms?: number
+          p_model?: string
+          p_outcome: string
+          p_output_tokens?: number
+          p_prompt_version?: string
+          p_usage_id: string
+        }
+        Returns: undefined
+      }
       reserve_ai_decomposition: {
-        Args: never
+        Args: { p_feature?: string }
         Returns: {
           daily_limit: number
           remaining: number
           resets_at: string
+          usage_id: string
         }[]
       }
       shares_board_with: { Args: { p_user_id: string }; Returns: boolean }
