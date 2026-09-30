@@ -3,7 +3,7 @@ import type { Locator, Page } from "@playwright/test";
 import { ALICE_STORAGE_STATE } from "./support/auth";
 import { addCards, cardLink, column, expect, test } from "./support/boards";
 import { pickUpWithKeyboard } from "./support/dnd";
-import { trackServerActions } from "./support/server-actions";
+import { ACTION, trackServerActions } from "./support/server-actions";
 
 // Card dependencies (v0.3): the modal's "Blocked by" / "Blocks" lists, the
 // blocker picker, the "Blocked by N cards" badge, done columns and the
@@ -94,10 +94,13 @@ async function seedDependency(page: Page, blocker: string, blocked: string): Pro
   await closeCard(dialog);
 }
 
-/** The blocker row is resolved: no "Pending", and its status reads `status`. */
+/**
+ * The blocker row is resolved: no "Pending", and its status reads `status`. The change
+ * comes from a Server Action's refresh of the board, hence the longer first wait.
+ */
 async function expectResolved(dialog: Locator, status = "Done"): Promise<void> {
   const row = depList(dialog, "Blocked by").getByRole("listitem");
-  await expect(row.getByText("Pending", { exact: true })).toHaveCount(0);
+  await expect(row.getByText("Pending", { exact: true })).toHaveCount(0, ACTION);
   await expect(row.locator("[data-resolved=true]")).toHaveText(status);
 }
 

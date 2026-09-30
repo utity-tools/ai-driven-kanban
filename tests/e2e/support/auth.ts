@@ -10,6 +10,9 @@ export const BOB = { email: "bob@example.com", password: "password123" } as cons
 /** Viewer (read-only) on Alice's "Demo board". */
 export const CAROL = { email: "carol@example.com", password: "password123" } as const;
 
+/** The seeded Demo board (see supabase/seed.sql). */
+export const DEMO_BOARD_PATH = "/boards/b0a4d000-0000-4000-8000-000000000001";
+
 /**
  * Alice's signed-in storage state, written once per run by `auth.setup.ts`.
  * Only for tests that need to *be* signed in, not to test signing in. Never sign
