@@ -1,6 +1,6 @@
 # 0016. Daily AI quotas and a global cost cap
 
-- **Status:** accepted
+- **Status:** accepted, amended by [0021](0021-ai-call-observability.md) (the cap now counts real costs, downward only)
 - **Date:** 2026-09-28
 
 ## Context

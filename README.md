@@ -36,8 +36,9 @@ bottlenecks are detected with deterministic, tested logic and surfaced in real t
   provider (Anthropic, Claude Haiku 4.5 by default). Don't put secrets or personal data in cards
   you ask the AI about.
 - **What is stored:** nothing from the model until you accept it. Accepted subtasks are saved
-  like any other subtask. For quotas, the app records that a call happened (who and when),
-  never the card text or the response.
+  like any other subtask. For quotas and monitoring, the app records metadata about each call
+  (who, when, which feature, model, tokens, cost, duration and how it ended), never the card
+  text or the response ([observability](docs/observability.md)).
 - **Limits:** 20 suggestions a day per account and 3 per demo session, plus a global daily
   budget. All reset at midnight UTC ([ADR 0016](docs/adr/0016-daily-ai-quotas-and-cost-cap.md)).
 
@@ -56,12 +57,13 @@ Full guide, commands, environments and known issues: [docs/setup.md](docs/setup.
 
 ## Documentation
 
-| Doc                          | What it covers                                                             |
-| ---------------------------- | -------------------------------------------------------------------------- |
-| [Setup](docs/setup.md)       | First run, commands, environments, where each variable lives, known issues |
-| [Workflow](docs/workflow.md) | Branch → PR → preview → merge, agents, enforcement layers, dependencies    |
-| [Security](docs/security.md) | Secrets inventory, rules, safeguards, leak procedure, incidents            |
-| [ADRs](docs/adr)             | Architecture decisions and why they were made                              |
+| Doc                                    | What it covers                                                             |
+| -------------------------------------- | -------------------------------------------------------------------------- |
+| [Setup](docs/setup.md)                 | First run, commands, environments, where each variable lives, known issues |
+| [Workflow](docs/workflow.md)           | Branch → PR → preview → merge, agents, enforcement layers, dependencies    |
+| [Security](docs/security.md)           | Secrets inventory, rules, safeguards, leak procedure, incidents            |
+| [Observability](docs/observability.md) | AI call events, usage records and ready-made SQL                           |
+| [ADRs](docs/adr)                       | Architecture decisions and why they were made                              |
 
 ## How this project is built
 
