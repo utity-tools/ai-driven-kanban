@@ -1,5 +1,12 @@
 import { expect, type Page, type Request } from "@playwright/test";
 
+/**
+ * Budget for a step that waits on a Server Action (and the redirect after it). Actions run
+ * one at a time and, on `next dev` with many workers, compile routes on demand, so one can
+ * legitimately take longer than the default 5s expect timeout. Only for those steps.
+ */
+export const ACTION = { timeout: 15_000 };
+
 function isServerAction(request: Request): boolean {
   return request.method() === "POST" && request.headers()["next-action"] !== undefined;
 }
@@ -32,10 +39,13 @@ export function trackServerActions(page: Page) {
      */
     async settled(count: number): Promise<void> {
       await expect
-        .poll(() => started, { message: `waiting for ${count} Server Action(s) to start` })
+        .poll(() => started, {
+          message: `waiting for ${count} Server Action(s) to start`,
+          ...ACTION,
+        })
         .toBeGreaterThanOrEqual(count);
       await expect
-        .poll(() => pending.size, { message: "waiting for Server Actions to finish" })
+        .poll(() => pending.size, { message: "waiting for Server Actions to finish", ...ACTION })
         .toBe(0);
     },
   };
