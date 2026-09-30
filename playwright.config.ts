@@ -9,7 +9,9 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
   forbidOnly: isCI,
-  retries: isCI ? 2 : 0,
+  // One retry: on a production build the suite is stable (0 failures in 214 stress runs),
+  // so a second retry would only hide a real flake.
+  retries: isCI ? 1 : 0,
   workers: isCI ? 1 : undefined,
   reporter: isCI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
