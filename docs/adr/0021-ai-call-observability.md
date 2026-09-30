@@ -71,3 +71,11 @@ possible and bounded (see Consequences).
   whose record failed stay open and keep their estimate, as before.
 - `p_feature` defaults to `'decompose'` only for rollout compatibility. A later migration can
   drop the default once every caller passes it.
+- **Stop on Vercel (found with this data, 2026-09-30).** On the staging preview, every call the
+  user stopped still recorded `ok` with a full output (about 130 tokens), while locally it
+  recorded `aborted`. Vercel only propagates a client disconnect to `request.signal` when the
+  function opts in to request cancellation, so Stop closed the panel but the model kept
+  generating (and billing). `vercel.json` now sets `supportsCancellation: true` for
+  `src/app/api/cards/**/route.ts`. With it, Vercel terminates the function on disconnect and
+  keeps only work wrapped in `after()`/`waitUntil`, which is where the usage record already
+  runs.

@@ -4,5 +4,10 @@
     "deploymentEnabled": {
       "main": false
     }
+  },
+  "functions": {
+    "src/app/api/cards/**/route.ts": {
+      "supportsCancellation": true
+    }
   }
 }
