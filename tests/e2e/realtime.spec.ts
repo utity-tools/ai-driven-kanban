@@ -9,14 +9,14 @@ import {
   deleteOpenBoard,
   expect,
 } from "./support/boards";
-import { createInviteLink, joinAsBob, memberRow, openMembers, test } from "./support/members";
+import { addBobToBoard, memberRow, openMembers, test } from "./support/members";
 import { trackServerActions } from "./support/server-actions";
 
 // Live board (v0.4): another member's change shows up without a reload, presence
 // avatars, and what happens when access is lost or an open card is deleted.
 //
-// Isolation: Alice owns a fresh board (support/boards.ts) and Bob joins it through
-// an invite link, each in a browser context of their own. Nothing touches the
+// Isolation: Alice owns a fresh board (support/boards.ts) and Bob is added to it through
+// the invite RPCs (support/members.ts), each in a browser context of their own. Nothing touches the
 // Demo board. Updates arrive through Supabase Realtime plus a debounced refresh,
 // so waits use a generous expect timeout, never fixed sleeps.
 //
@@ -52,9 +52,7 @@ function channelJoined(page: Page, timeoutMs = LIVE.timeout): Promise<void> {
 /** Alice's board with Bob already on it as an editor. */
 const bobJoins = test.extend<{ bob: Page }>({
   bob: async ({ page, board, session }, provide) => {
-    const link = await createInviteLink(await openMembers(page));
-    await page.keyboard.press("Escape");
-    await provide(await joinAsBob(session, link, board));
+    await provide(await addBobToBoard(session, page, board));
   },
 });
 
@@ -163,8 +161,6 @@ bobJoins(
 bobJoins(
   "a board deleted by its owner sends the other member to the boards list with a notice",
   async ({ page: alice, bob, board }) => {
-    // Bob's join is not awaited: if the delete wins the race, his join is rejected and the
-    // channel-error membership check sends him to the same notice.
     await deleteOpenBoard(alice);
 
     // Not a 404: same redirect and notice as a removed member. The flag param is stripped.

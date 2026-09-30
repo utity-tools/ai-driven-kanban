@@ -9,7 +9,8 @@ import {
   signIn,
 } from "./support/auth";
 import { boardHeading, cardLink, column, expect } from "./support/boards";
-import { createInviteLink, joinAsBob, memberRow, openMembers, test } from "./support/members";
+import { addBobToBoard, createInviteLink, memberRow, openMembers, test } from "./support/members";
+import { ACTION } from "./support/server-actions";
 
 // Members and invitations (v0.3): the Members dialog, single-use invite links
 // and the /invite/<token> page.
@@ -127,9 +128,7 @@ test("an owner changes a role, removes a member and revokes an invite", async ({
   board,
   session,
 }) => {
-  const first = await createInviteLink(await openMembers(page));
-  const bob = await joinAsBob(session, first, board);
-  await page.reload();
+  const bob = await addBobToBoard(session, page, board);
   const dialog = await openMembers(page);
   const second = await createInviteLink(dialog);
 
@@ -196,8 +195,7 @@ test("an owner changes a role, removes a member and revokes an invite", async ({
 });
 
 test("a member leaves the board; the creator cannot", async ({ page, board, session }) => {
-  const link = await createInviteLink(await openMembers(page));
-  const bob = await joinAsBob(session, link, board);
+  const bob = await addBobToBoard(session, page, board);
 
   const dialog = await openMembers(bob);
   await expect(dialog.getByText("Only owners can change roles or invite people.")).toBeVisible();
@@ -207,7 +205,7 @@ test("a member leaves the board; the creator cannot", async ({ page, board, sess
     .getByRole("alertdialog", { name: `Leave “${board.title}”?` })
     .getByRole("button", { name: "Leave board" })
     .click();
-  await expect(bob).toHaveURL("/boards");
+  await expect(bob).toHaveURL("/boards", ACTION);
   await expect(bob.getByRole("main").getByRole("link", { name: board.title })).toHaveCount(0);
 
   await page.reload();
@@ -269,5 +267,5 @@ test("a demo visitor is asked to create an account to join", async ({ boardPage,
   await expect(demo.getByRole("button", { name: "Join board" })).toHaveCount(0);
   await demo.getByRole("main").getByRole("button", { name: "Create an account" }).click();
   // The demo user is signed out first, then sign-up keeps the invite as `next`.
-  await expect(demo).toHaveURL(`/signup?next=${encodeURIComponent(path)}`);
+  await expect(demo).toHaveURL(`/signup?next=${encodeURIComponent(path)}`, ACTION);
 });

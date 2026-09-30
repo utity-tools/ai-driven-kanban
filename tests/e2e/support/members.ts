@@ -1,6 +1,7 @@
 import type { BrowserContext, Locator, Page } from "@playwright/test";
 
-import { BOB_STORAGE_STATE } from "./auth";
+import { addMemberAs, boardIdFromPath, type InviteRole } from "./api";
+import { ALICE_STORAGE_STATE, BOB_STORAGE_STATE } from "./auth";
 import { boardHeading, expect, test as boardsTest } from "./boards";
 
 // Members dialog, invite links and multi-user sessions shared by the specs that
@@ -56,19 +57,24 @@ export function memberRow(dialog: Locator, name: string): Locator {
     .filter({ hasText: name });
 }
 
-/** Opens the invite link as Bob, joins, and ends on the board. Returns Bob's page. */
-export async function joinAsBob(
+/**
+ * Setup shortcut for tests that are not about joining: Bob becomes a member of Alice's
+ * board through the invite RPCs (support/api.ts), Alice's page reloads so it lists him
+ * (a live update sent before her Realtime channel had joined would be missed for good),
+ * and Bob opens the board in a context of his own. The invite flow itself is tested
+ * through the UI in members-invites.spec.ts.
+ */
+export async function addBobToBoard(
   session: OpenSession,
-  link: string,
+  owner: Page,
   board: { title: string; path: string },
+  role: InviteRole = "editor",
 ): Promise<Page> {
+  await addMemberAs(ALICE_STORAGE_STATE, boardIdFromPath(board.path), BOB_STORAGE_STATE, role);
+  await owner.reload();
+  await expect(boardHeading(owner)).toHaveText(board.title);
   const page = await session(BOB_STORAGE_STATE);
-  await page.goto(link);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    `invited you to join ${board.title} as`,
-  );
-  await page.getByRole("button", { name: "Join board" }).click();
-  await expect(page).toHaveURL(board.path);
+  await page.goto(board.path);
   await expect(boardHeading(page)).toHaveText(board.title);
   return page;
 }
