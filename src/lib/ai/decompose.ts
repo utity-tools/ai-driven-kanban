@@ -14,6 +14,7 @@ import {
   PROMPT_VERSION,
 } from "./prompts/decompose-v2";
 import { decompositionProposalSchema } from "./schemas";
+import { type AiCallResult, trackCall } from "./track-call";
 
 /**
  * Upper bound on generated tokens per call: eight short subtasks fit in a few
@@ -43,12 +44,21 @@ export function streamDecomposition({
   model,
   card,
   abortSignal,
+  onComplete,
 }: {
   model: LanguageModel;
   card: CardForDecomposition;
   abortSignal?: AbortSignal;
+  /** Called exactly once when the call ends, however it ends (see trackCall). */
+  onComplete?: (result: AiCallResult) => void;
 }) {
-  const start = performance.now();
+  const tracker = trackCall({
+    promptVersion: PROMPT_VERSION,
+    schema: decompositionProposalSchema,
+    itemsKey: "subtasks",
+    abortSignal,
+    onComplete,
+  });
 
   return streamText({
     model,
@@ -57,21 +67,6 @@ export function streamDecomposition({
     output: Output.object({ schema: decompositionProposalSchema }),
     maxOutputTokens: MAX_DECOMPOSITION_OUTPUT_TOKENS,
     abortSignal,
-    onFinish({ usage, response }) {
-      // Observability: model, latency, tokens and (when available) cost per call.
-      console.info("ai.decompose", {
-        promptVersion: PROMPT_VERSION,
-        model: response.modelId,
-        latencyMs: Math.round(performance.now() - start),
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-        totalTokens: usage.totalTokens,
-      });
-    },
-    onError({ error }) {
-      // Only the message: SDK errors can carry the request body, i.e. the user's card text.
-      const message = error instanceof Error ? error.message : String(error);
-      console.error("ai.decompose.error", { promptVersion: PROMPT_VERSION, message });
-    },
+    ...tracker,
   });
 }

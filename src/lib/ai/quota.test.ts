@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseQuotaRemaining,
+  parseReservation,
   quotaExceededKind,
   quotaRemainingMessage,
   secondsUntilQuotaReset,
@@ -53,5 +54,26 @@ describe("quotaRemainingMessage", () => {
     expect(quotaRemainingMessage(2)).toBe("2 AI suggestions left today.");
     expect(quotaRemainingMessage(1)).toBe("1 AI suggestion left today.");
     expect(quotaRemainingMessage(0)).toMatch(/^No AI suggestions left today/);
+  });
+});
+
+describe("parseReservation", () => {
+  const usageId = "0b1f6c3e-8d2a-4b7e-9c11-2f3a4b5c6d7e";
+
+  it("reads remaining and usage_id from the reservation row", () => {
+    expect(
+      parseReservation({ remaining: 4, daily_limit: 5, resets_at: "x", usage_id: usageId }),
+    ).toEqual({ remaining: 4, usageId });
+  });
+
+  it.each([
+    null,
+    undefined,
+    {},
+    { remaining: 4 },
+    { remaining: -1, usage_id: usageId },
+    { remaining: 4, usage_id: "nope" },
+  ])("returns null for %j", (row) => {
+    expect(parseReservation(row)).toBeNull();
   });
 });

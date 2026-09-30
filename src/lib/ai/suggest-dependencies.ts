@@ -11,6 +11,7 @@ import {
   PROMPT_VERSION,
 } from "./prompts/dependencies-v1";
 import { dependencyProposalSchema } from "./schemas";
+import { type AiCallResult, trackCall } from "./track-call";
 
 /** Upper bound on generated tokens per call: ten short rationales fit in ~500. */
 export const MAX_DEPENDENCY_OUTPUT_TOKENS = 1024;
@@ -33,13 +34,22 @@ export function streamDependencySuggestions({
   target,
   candidates,
   abortSignal,
+  onComplete,
 }: {
   model: LanguageModel;
   target: CardForDependencies;
   candidates: readonly PromptCandidate[];
   abortSignal?: AbortSignal;
+  /** Called exactly once when the call ends, however it ends (see trackCall). */
+  onComplete?: (result: AiCallResult) => void;
 }) {
-  const start = performance.now();
+  const tracker = trackCall({
+    promptVersion: PROMPT_VERSION,
+    schema: dependencyProposalSchema,
+    itemsKey: "dependencies",
+    abortSignal,
+    onComplete,
+  });
 
   return streamText({
     model,
@@ -48,20 +58,6 @@ export function streamDependencySuggestions({
     output: Output.object({ schema: dependencyProposalSchema }),
     maxOutputTokens: MAX_DEPENDENCY_OUTPUT_TOKENS,
     abortSignal,
-    onFinish({ usage, response }) {
-      console.info("ai.dependencies", {
-        promptVersion: PROMPT_VERSION,
-        model: response.modelId,
-        latencyMs: Math.round(performance.now() - start),
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-        totalTokens: usage.totalTokens,
-      });
-    },
-    onError({ error }) {
-      // Only the message: SDK errors can carry the request body, i.e. the user's card text.
-      const message = error instanceof Error ? error.message : String(error);
-      console.error("ai.dependencies.error", { promptVersion: PROMPT_VERSION, message });
-    },
+    ...tracker,
   });
 }

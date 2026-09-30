@@ -11,12 +11,15 @@ const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   getBoardView: vi.fn(),
   getDecompositionModel: vi.fn(),
+  afterTasks: [] as (() => unknown)[],
 }));
 
 vi.mock("@/lib/env", () => ({ getServerEnv: mocks.getServerEnv }));
 vi.mock("@/lib/auth/session", () => ({ getCurrentUser: mocks.getCurrentUser }));
 vi.mock("@/lib/db/server", () => ({ createClient: mocks.createClient }));
 vi.mock("@/lib/boards/queries", () => ({ getBoardView: mocks.getBoardView }));
+// after() only works inside a request scope: collect its tasks and run them by hand.
+vi.mock("next/server", () => ({ after: (task: () => unknown) => mocks.afterTasks.push(task) }));
 vi.mock("@/lib/ai/decompose", () => ({ getDecompositionModel: mocks.getDecompositionModel }));
 
 import { POST } from "@/app/api/cards/[cardId]/dependencies/suggest/route";
@@ -24,6 +27,7 @@ import { POST } from "@/app/api/cards/[cardId]/dependencies/suggest/route";
 const BOARD_ID = "00000000-0000-4000-8000-00000000b0a0";
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const TARGET = uuid(1);
+const USAGE_ID = uuid(99);
 
 function card(id: string, columnId = "col-1"): CardSummary {
   return {
@@ -65,7 +69,7 @@ type Fake = {
   card: { board_id: string } | null;
   cardError: unknown;
   canEdit: boolean;
-  reserve: { data: { remaining: number } | null; error: { code: string } | null };
+  reserve: { data: { remaining: number; usage_id: string } | null; error: { code: string } | null };
 };
 
 let calls: { table?: string; rpc?: string; args?: unknown }[];
@@ -73,11 +77,12 @@ let fake: Fake;
 
 function setup(overrides: Partial<Fake> = {}) {
   calls = [];
+  mocks.afterTasks.length = 0;
   fake = {
     card: { board_id: BOARD_ID },
     cardError: null,
     canEdit: true,
-    reserve: { data: { remaining: 7 }, error: null },
+    reserve: { data: { remaining: 7, usage_id: USAGE_ID }, error: null },
     ...overrides,
   };
   mocks.createClient.mockResolvedValue({
@@ -93,6 +98,7 @@ function setup(overrides: Partial<Fake> = {}) {
     rpc(name: string, args?: unknown) {
       calls.push({ rpc: name, args });
       if (name === "has_board_role") return Promise.resolve({ data: fake.canEdit, error: null });
+      if (name === "record_ai_usage") return Promise.resolve({ error: null });
       return { single: async () => fake.reserve };
     },
   });
@@ -259,8 +265,35 @@ describe("POST /api/cards/[cardId]/dependencies/suggest", () => {
       done,
       other,
     ]);
-    expect(await response.text()).toBe(MODEL_TEXT);
+    const body = await response.text();
+    expect(body).toBe(MODEL_TEXT);
+    expect(body).not.toContain(USAGE_ID);
     expect(calls.filter((c) => c.rpc === "reserve_ai_decomposition")).toHaveLength(1);
+    expect(calls.find((c) => c.rpc === "reserve_ai_decomposition")?.args).toEqual({
+      p_feature: "dependencies",
+    });
+    // The usage id never leaves the server.
+    expect([...response.headers.values()].join(" ")).not.toContain(USAGE_ID);
+
+    // The scheduled after() task completes the reserved row with the real outcome.
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    expect(mocks.afterTasks).toHaveLength(1);
+    await mocks.afterTasks[0]!();
+    const recorded = calls.filter((c) => c.rpc === "record_ai_usage");
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0]!.args).toMatchObject({ p_usage_id: USAGE_ID, p_outcome: "empty" });
+    expect(info).toHaveBeenCalledWith(
+      "ai.call",
+      expect.objectContaining({ feature: "dependencies", outcome: "empty" }),
+    );
+    info.mockRestore();
+  });
+
+  it("does not schedule a usage record when the quota is refused", async () => {
+    setup({ reserve: { data: null, error: { code: "AIQ01" } } });
+    mocks.getBoardView.mockResolvedValue(view([column("col-1", [card(TARGET), card(uuid(2))])]));
+    expect((await call()).status).toBe(429);
+    expect(mocks.afterTasks).toHaveLength(0);
   });
 
   it("sends only the first 100 candidates in board order", async () => {

@@ -2,12 +2,15 @@ import { z } from "zod";
 
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDecompositionModel, streamDecomposition } from "@/lib/ai/decompose";
+import { PROMPT_VERSION } from "@/lib/ai/prompts/decompose-v2";
 import {
   QUOTA_EXCEEDED_MESSAGES,
   QUOTA_REMAINING_HEADER,
+  parseReservation,
   quotaExceededKind,
   secondsUntilQuotaReset,
 } from "@/lib/ai/quota";
+import { scheduleAiUsageRecord } from "@/lib/ai/schedule-usage";
 import { createClient } from "@/lib/db/server";
 import { getServerEnv } from "@/lib/env";
 
@@ -70,8 +73,8 @@ export async function POST(
   // Charged before the model is called, so failed or stopped calls count too: the
   // database enforces the per-user daily limit (smaller for demo users) and the
   // global daily cost cap, atomically.
-  const { data: quota, error: quotaError } = await supabase
-    .rpc("reserve_ai_decomposition")
+  const { data: reserved, error: quotaError } = await supabase
+    .rpc("reserve_ai_decomposition", { p_feature: "decompose" })
     .single();
   if (quotaError) {
     const exceeded = quotaExceededKind(quotaError.code);
@@ -84,6 +87,21 @@ export async function POST(
     console.error("ai.decompose.quota_failed", { error: quotaError });
     return Response.json({ error: "Something went wrong." }, { status: 500 });
   }
+  const quota = parseReservation(reserved);
+  if (!quota) {
+    console.error("ai.decompose.quota_failed", { error: "Unexpected reservation shape." });
+    return Response.json({ error: "Something went wrong." }, { status: 500 });
+  }
+
+  // One id per call correlates its logs; the usage id stays server-side. Scheduled right
+  // after the reservation so every reserved row is completed, even on the error path below.
+  const requestId = crypto.randomUUID();
+  const onComplete = scheduleAiUsageRecord({
+    supabase,
+    usageId: quota.usageId,
+    requestId,
+    feature: "decompose",
+  });
 
   // Existing subtasks go in the prompt so a second run proposes the remaining work. All of
   // them (at most 100 per card): the prompt caps how many it shows and counts the rest.
@@ -93,7 +111,9 @@ export async function POST(
     .eq("card_id", parsedCardId.data)
     .order("position");
   if (subtasksError) {
-    console.error("ai.decompose.subtasks_fetch_failed", { error: subtasksError });
+    console.error("ai.decompose.subtasks_fetch_failed", { requestId, error: subtasksError });
+    // The model was never called: completed as an error with no tokens or cost.
+    onComplete({ outcome: "error", latencyMs: 0, promptVersion: PROMPT_VERSION });
     return Response.json({ error: "Something went wrong." }, { status: 500 });
   }
 
@@ -106,6 +126,7 @@ export async function POST(
     },
     // Closing the review stops generation, so an abandoned request stops costing tokens.
     abortSignal: request.signal,
+    onComplete,
   });
   return result.toTextStreamResponse({
     headers: { [QUOTA_REMAINING_HEADER]: String(quota.remaining) },
