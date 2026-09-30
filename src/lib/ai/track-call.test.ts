@@ -1,3 +1,4 @@
+import { MockLanguageModelV3 } from "ai/test";
 import { describe, expect, it, vi } from "vitest";
 
 import { failingModel, hangingModel, textModel } from "../../../tests/helpers/mock-models";
@@ -89,6 +90,34 @@ describe.each(features)("$name onComplete", ({ valid, empty, run }) => {
     const done = drain(hangingModel(), controller.signal);
     setTimeout(() => controller.abort(), 10);
     const calls = await done;
+    expect(calls.map((c) => c.outcome)).toEqual(["aborted"]);
+  });
+
+  it("reports aborted exactly once when aborted without the stream being consumed", async () => {
+    const controller = new AbortController();
+    const calls: AiCallResult[] = [];
+    // Errors on abort even when the signal was already aborted as the model started.
+    const lateErroringModel = new MockLanguageModelV3({
+      doStream: async ({ abortSignal }) => ({
+        stream: new ReadableStream({
+          start(c) {
+            const fail = () => c.error(new DOMException("aborted", "AbortError"));
+            if (abortSignal?.aborted) fail();
+            else abortSignal?.addEventListener("abort", fail);
+          },
+        }),
+      }),
+    });
+    const result = run(lateErroringModel as ReturnType<typeof textModel>, {
+      abortSignal: controller.signal,
+      onComplete: (r) => calls.push(r),
+    });
+    // The client stopped reading: nothing consumes the stream before the abort.
+    controller.abort();
+    await vi.waitFor(() => expect(calls.map((c) => c.outcome)).toEqual(["aborted"]));
+    // Draining or erroring afterwards must not report a second time.
+    await result.consumeStream({ onError: () => {} });
+    await new Promise((r) => setTimeout(r, 10));
     expect(calls.map((c) => c.outcome)).toEqual(["aborted"]);
   });
 
