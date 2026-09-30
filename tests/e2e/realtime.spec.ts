@@ -49,10 +49,27 @@ function channelJoined(page: Page, timeoutMs = LIVE.timeout): Promise<void> {
   });
 }
 
-/** Alice's board with Bob already on it as an editor. */
+/**
+ * Waits until both members are live on the board. "Viewing now" lists a member only after
+ * their channel joined and tracked presence, and each page only receives presence once its
+ * own channel has joined, so seeing each other proves both are subscribed. A change made
+ * before that is broadcast to nobody and missed for good (ADR 0019: a join does not refresh).
+ */
+async function bothAreLive(alice: Page, bob: Page): Promise<void> {
+  await expect(
+    alice.getByRole("list", { name: "Viewing now" }).getByRole("img", { name: BOB_NAME }),
+  ).toBeVisible(LIVE);
+  await expect(
+    bob.getByRole("list", { name: "Viewing now" }).getByRole("img", { name: ALICE_NAME }),
+  ).toBeVisible(LIVE);
+}
+
+/** Alice's board with Bob already on it as an editor, both subscribed to live updates. */
 const bobJoins = test.extend<{ bob: Page }>({
   bob: async ({ page, board, session }, provide) => {
-    await provide(await addBobToBoard(session, page, board));
+    const bob = await addBobToBoard(session, page, board);
+    await bothAreLive(page, bob);
+    await provide(bob);
   },
 });
 
