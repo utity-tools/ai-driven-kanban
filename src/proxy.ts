@@ -32,7 +32,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except Next.js internals and static assets.
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml)$).*)",
+    // Everything except Next.js internals, static assets and the generated icon routes
+    // (apple-icon, opengraph-image; Next may append a hash), which must be public.
+    "/((?!_next/static|_next/image|favicon.ico|apple-icon|opengraph-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml)$).*)",
   ],
 };
