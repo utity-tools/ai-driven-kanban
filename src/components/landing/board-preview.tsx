@@ -1,4 +1,6 @@
-import { CheckIcon, SparklesIcon, XIcon } from "lucide-react";
+import { CheckIcon, XIcon } from "lucide-react";
+
+import { BrandMark } from "@/components/brand/brand-mark";
 
 const COLUMNS = [
   { title: "To do", cards: ["Design the onboarding flow", "Write API contract"] },
@@ -33,9 +35,9 @@ export function BoardPreview() {
           </div>
         ))}
       </div>
-      <div className="mt-3 rounded-xl border border-dashed border-foreground/25 bg-card p-3 sm:mt-4">
-        <p className="flex items-center gap-1.5 text-xs font-medium">
-          <SparklesIcon className="size-3.5" />
+      <div className="mt-3 rounded-xl border border-dashed border-ai-line bg-card p-3 sm:mt-4">
+        <p className="flex items-center gap-1.5 text-xs font-medium text-ai-foreground">
+          <BrandMark size={16} className="text-ai" />
           AI proposal · waiting for your review
         </p>
         <ul className="mt-2 grid gap-1.5">
