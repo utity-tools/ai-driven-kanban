@@ -1,5 +1,5 @@
 import { type CardForDecomposition, streamDecomposition } from "@/lib/ai/decompose";
-import { PROMPT_VERSION } from "@/lib/ai/prompts/decompose-v2";
+import { PROMPT_VERSION } from "@/lib/ai/prompts/decompose-v3";
 
 import { decomposeCases } from "../datasets/decompose";
 import { mockJsonModel } from "../mock";
@@ -37,7 +37,8 @@ export const decomposeFeature: Feature<CardForDecomposition, DecomposeOutput, De
     const estimates = [2, 3, 5];
     return mockJsonModel({
       subtasks: MOCK_SUBTASKS[expected.language].map((title, i) => ({
-        title,
+        // The first subtask carries the terms the case expects to survive.
+        title: i === 0 && expected.keep ? `${title} (${expected.keep.join(", ")})` : title,
         estimate: estimates[i],
       })),
     });

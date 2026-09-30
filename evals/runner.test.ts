@@ -60,7 +60,7 @@ describe("eval pipeline with mock models", () => {
     const scores = report.cases[0]!.scores;
     expect(scores["schema-valid"]?.pass).toBe(false);
     expect(toMarkdown(report)).toContain("## Failures");
-    expect(reportFileName(report)).toMatch(/^decompose-decompose-v2-\d{4}-/);
+    expect(reportFileName(report)).toMatch(/^decompose-decompose-v3-\d{4}-/);
   });
 });
 

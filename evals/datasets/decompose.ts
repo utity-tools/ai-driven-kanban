@@ -31,7 +31,19 @@ export const decomposeCases: EvalCase<CardForDecomposition, DecomposeExpected>[]
     id: "mixed-language-title",
     description: "Spanish sentence with English technical terms: the language is Spanish.",
     input: { title: "Tests E2E del login", description: null, existingSubtasks: [] },
-    expected: { language: "es" },
+    expected: { language: "es", keep: ["E2E"] },
+  },
+  {
+    id: "es-prose-heavy-jargon",
+    description:
+      "Spanish prose full of English tech terms: the language is Spanish, the terms stay as written.",
+    input: {
+      title: "Refactor del webhook handler de Stripe",
+      description:
+        "Pasar el handler a edge runtime, añadir idempotency keys y cubrirlo con integration tests contra el sandbox de Stripe.",
+      existingSubtasks: [],
+    },
+    expected: { language: "es", keep: ["Stripe"] },
   },
   {
     id: "en-title-es-description",
@@ -43,6 +55,27 @@ export const decomposeCases: EvalCase<CardForDecomposition, DecomposeExpected>[]
       existingSubtasks: [],
     },
     expected: { language: "es" },
+  },
+  {
+    id: "existing-es-jargon-title",
+    description:
+      "English-looking jargon title, but the existing subtasks are Spanish: follow the team's convention.",
+    input: {
+      title: "OAuth login with GitHub",
+      description: null,
+      existingSubtasks: ["Registrar la aplicación en GitHub", "Añadir el botón de acceso"],
+    },
+    expected: { language: "es" },
+  },
+  {
+    id: "tech-term-survives",
+    description: "A Spanish card about OAuth: the term must not be translated in the subtasks.",
+    input: {
+      title: "Añadir inicio de sesión con OAuth",
+      description: "Los usuarios deben poder entrar con su cuenta de Google mediante OAuth.",
+      existingSubtasks: [],
+    },
+    expected: { language: "es", keep: ["OAuth"] },
   },
   {
     id: "existing-subtasks-es",

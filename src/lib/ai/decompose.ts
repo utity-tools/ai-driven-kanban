@@ -12,7 +12,7 @@ import {
   buildDecomposeUserMessage,
   DECOMPOSE_SYSTEM_PROMPT,
   PROMPT_VERSION,
-} from "./prompts/decompose-v2";
+} from "./prompts/decompose-v3";
 import { decompositionProposalSchema } from "./schemas";
 import { type AiCallResult, trackCall } from "./track-call";
 

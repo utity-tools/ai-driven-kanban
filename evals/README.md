@@ -34,7 +34,9 @@ another. When changing a prompt, run the evals before and after and compare the 
 ## Add a case
 
 Append an entry to the dataset file. Cover one behaviour per case and say which in `description`.
-Decompose expectations: `language`, optional `forbidden` substrings (for injections) and `count`.
+Decompose expectations: `language`, optional `forbidden` substrings (for injections), `count`, and
+`keep`: technical terms (case-sensitive, e.g. `"OAuth"`) that must appear untranslated in at least
+one subtask title (scorer `terms-preserved`).
 Dependencies cases describe a small board (`cards`, `edges`); `expected.blockers` are the card ids
 that should be proposed (empty means "none is a clear blocker") and `mustNotBlock` the ones that
 must not be. The runner builds the candidates with the app's `dependencyCandidates`, so archived

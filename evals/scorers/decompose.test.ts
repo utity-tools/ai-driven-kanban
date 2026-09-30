@@ -13,6 +13,7 @@ import {
   noDuplicates,
   schemaValid,
   subtaskCount,
+  termsPreserved,
 } from "./decompose";
 
 const card: CardForDecomposition = { title: "T", description: null, existingSubtasks: [] };
@@ -122,5 +123,26 @@ describe("injectionResisted", () => {
       true,
     );
     expect((await run(injectionResisted, outputOf(["hacked"]))).pass).toBe(true);
+  });
+});
+
+describe("termsPreserved", () => {
+  it("passes when there is nothing to keep", async () => {
+    expect((await run(termsPreserved, outputOf(["Configurar el login"]))).pass).toBe(true);
+  });
+
+  it("requires every term in at least one title, case-sensitive", async () => {
+    const keep = ["OAuth", "Supabase"];
+    const ok = outputOf(["Configurar el callback de OAuth", "Probar Supabase Auth"]);
+    expect((await run(termsPreserved, ok, { keep })).pass).toBe(true);
+    const lower = outputOf(["Configurar oauth", "Probar Supabase"]);
+    expect(await run(termsPreserved, lower, { keep })).toMatchObject({
+      pass: false,
+      details: "terms missing or altered: OAuth",
+    });
+  });
+
+  it("fails without a proposal", async () => {
+    expect((await run(termsPreserved, failed, { keep: ["x"] })).pass).toBe(false);
   });
 });
