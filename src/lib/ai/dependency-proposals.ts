@@ -37,13 +37,26 @@ export type DependencyContext = {
   dependencies: readonly Dependency[];
 };
 
+/** The slice of a BoardView that `dependencyCandidates` reads (so evals can build one cheaply). */
+export type CandidateSource = {
+  dependencies: readonly Dependency[];
+  columns: readonly {
+    title: string;
+    isDone: boolean;
+    cards: readonly { id: string; title: string }[];
+  }[];
+};
+
 /**
  * The candidates for `targetId`, in board order: active cards other than the
  * target that aren't already its blockers and wouldn't close a cycle. Filtering
  * before the call saves tokens and removes the chance of proposing them at all;
  * the client's `proposeDependencies` and the accept RPC re-check everything.
  */
-export function dependencyCandidates(view: BoardView, targetId: string): DependencyCandidate[] {
+export function dependencyCandidates(
+  view: CandidateSource,
+  targetId: string,
+): DependencyCandidate[] {
   const existing = new Set(
     view.dependencies.filter((edge) => edge.blockedId === targetId).map((edge) => edge.blockerId),
   );
