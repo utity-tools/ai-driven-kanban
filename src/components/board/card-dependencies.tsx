@@ -13,6 +13,7 @@ import { AiMarker } from "./ai-marker";
 import { BlockerPicker } from "./blocker-picker";
 import { useBoard } from "./board-context";
 import { CardLink } from "./card-link";
+import { SnapItem } from "./snap-item";
 
 type Props = {
   cardId: string;
@@ -121,8 +122,9 @@ function DependencyList({
   return (
     <ul aria-label={label} className="grid gap-1">
       {links.map((link) => (
-        <li
+        <SnapItem
           key={link.cardId}
+          id={link.cardId}
           className="flex items-start gap-2 rounded-md border px-2 py-1.5 text-sm"
         >
           <div className="grid min-w-0 flex-1 gap-0.5">
@@ -172,7 +174,7 @@ function DependencyList({
               <XIcon aria-hidden />
             </Button>
           ) : null}
-        </li>
+        </SnapItem>
       ))}
     </ul>
   );

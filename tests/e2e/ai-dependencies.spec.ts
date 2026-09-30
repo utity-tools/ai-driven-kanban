@@ -166,6 +166,8 @@ test("review an AI proposal: uncheck one, add the rest, marked as AI and saved a
   await expect(dialog.getByRole("status").filter({ hasText: "Added" })).toHaveText(
     "Added 2 blockers.",
   );
+  // The outcome stays on screen under the button, not only in the screen-reader status.
+  await expect(dialog.getByRole("status").filter({ hasText: "Added" })).toBeVisible();
   await expectSaved(dialog);
 
   // Persisted with source = 'ai': one Server Action, and the badges survive a reload.
@@ -247,6 +249,38 @@ test("an empty proposal says so and Discard saves nothing", async ({ boardPage: 
   await expect(depList(reopened, "Blocked by").getByRole("listitem")).toHaveCount(0);
   await expect(reopened.getByText("No card blocks this one.")).toBeVisible();
   await expect(aiBadge(reopened)).toHaveCount(0);
+});
+
+test("while the AI works a thinking mark shows; stopping before anything streamed says so", async ({
+  boardPage: page,
+}) => {
+  const dialog = await seedAndOpen(page, [TARGET, A], TARGET);
+  const ids = [await cardId(page, A)];
+  // The route answers only when released, so the streaming state stays observable.
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  await page.route(SUGGEST_ROUTE, async (route) => {
+    await gate;
+    await route
+      .fulfill({
+        status: 200,
+        contentType: "text/plain; charset=utf-8",
+        headers: { "X-Candidate-Ids": ids.join(",") },
+        body: JSON.stringify({ dependencies: [{ blocker: "c1", rationale: "Needed first." }] }),
+      })
+      .catch(() => {});
+  });
+
+  await suggestButton(dialog).click();
+  await expect(panel(dialog).locator("[data-ai-thinking]")).toBeVisible();
+  await panel(dialog).getByRole("button", { name: "Stop" }).click();
+
+  await expect(panel(dialog)).toBeHidden();
+  await expect(suggestButton(dialog)).toBeFocused();
+  const stopped = dialog.getByRole("status").filter({ hasText: "Stopped" });
+  await expect(stopped).toHaveText("Stopped. No blockers were suggested.");
+  await expect(stopped).toBeVisible();
+  release();
 });
 
 test("the daily quota: what's left is shown, and a spent quota can't be retried", async ({

@@ -1,9 +1,11 @@
 "use client";
 
 import { experimental_useObject as useObject } from "@ai-sdk/react";
-import { SparklesIcon, SquareIcon } from "lucide-react";
+import { SquareIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { BrandMark } from "@/components/brand/brand-mark";
+import { ThinkingMark, preloadThinkingMark } from "@/components/brand/thinking-mark";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,13 +23,16 @@ import {
   toAcceptPayload,
   toReviewItems,
 } from "@/lib/ai/review";
+import { markJustAdded } from "@/lib/ai/just-added";
 import { decompositionProposalSchema } from "@/lib/ai/schemas";
+import { type CloseReason, type VisibleOutcome, visibleOutcome } from "@/lib/ai/visible-outcome";
 import { formatPoints, spellPoints } from "@/lib/subtasks/estimates";
 import { acceptAiSubtasks } from "@/lib/subtasks/actions";
 import { SUBTASK_TITLE_MAX } from "@/lib/subtasks/schemas";
 import type { Subtask } from "@/lib/subtasks/subtask";
 import { cn } from "@/lib/utils";
 
+import { AiStatus } from "./ai-status";
 import { useBoard } from "./board-context";
 import { SubtaskEstimatePicker } from "./subtask-estimate-picker";
 
@@ -53,12 +58,15 @@ type Phase = "idle" | "streaming" | "review" | "error";
  */
 export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
   const { boardId, mutate } = useBoard();
+  if (available) preloadThinkingMark();
   const [phase, setPhase] = useState<Phase>("idle");
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  // What stays on screen under "Suggest with AI" after the panel closes.
+  const [outcome, setOutcome] = useState<VisibleOutcome | null>(null);
 
   const headingId = useId();
   // Daily suggestions left, known after the first request (ADR 0016); null until then.
@@ -135,6 +143,7 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
     setError(null);
     setSaveError(null);
     setItems([]);
+    setOutcome(null);
     setAnnouncement("Generating subtasks…");
     submit({});
   }
@@ -143,7 +152,7 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
     stop();
     const streamed = streamedSubtasks(object);
     if (streamed.length === 0) {
-      close("Stopped. No subtasks were suggested.");
+      close("stopped", "Stopped. No subtasks were suggested.");
       return;
     }
     focusAfterRender.current = "heading";
@@ -152,13 +161,14 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
     setAnnouncement(`Stopped. Review the ${streamed.length} suggested so far.`);
   }
 
-  function close(message: string) {
+  function close(reason: CloseReason, message: string) {
     clear();
     focusAfterRender.current = "opener";
     setPhase("idle");
     setItems([]);
     setError(null);
     setSaveError(null);
+    setOutcome(visibleOutcome(reason, message));
     setAnnouncement(message);
   }
 
@@ -180,7 +190,8 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
     mutate({ type: "addSubtasks", cardId, subtasks: added }, () => acceptAiSubtasks(payload), {
       onSuccess() {
         setSaving(false);
-        close(`Added ${added.length} ${added.length === 1 ? "subtask" : "subtasks"}.`);
+        markJustAdded(added.map((subtask) => subtask.id));
+        close("added", `Added ${added.length} ${added.length === 1 ? "subtask" : "subtasks"}.`);
       },
       onError(message) {
         setSaving(false);
@@ -216,7 +227,7 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
               className={cn(exhausted && "cursor-not-allowed opacity-50")}
               onClick={exhausted ? undefined : start}
             >
-              <SparklesIcon aria-hidden />
+              <BrandMark size={14} className="text-ai" />
               Suggest with AI
             </Button>
             {remaining !== null ? (
@@ -240,7 +251,7 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
               tabIndex={-1}
               className="flex items-center gap-1.5 text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&_svg]:size-3.5"
             >
-              <SparklesIcon aria-hidden />
+              <BrandMark size={14} className="text-ai" />
               AI suggestions
             </h4>
             {streaming ? (
@@ -253,16 +264,19 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
 
           {streaming ? (
             <>
-              <p className="text-sm text-muted-foreground" aria-hidden>
-                Generating subtasks…
-              </p>
+              <div className="flex items-center gap-2" data-ai-thinking>
+                <ThinkingMark />
+                <p className="text-sm text-muted-foreground" aria-hidden>
+                  Generating subtasks…
+                </p>
+              </div>
               {streamed.length > 0 ? (
                 <ul aria-label="Suggested subtasks" className="grid gap-1">
                   {streamed.map((subtask, index) => (
                     <li
                       // Streamed rows only grow at the end, so the index is stable here.
                       key={index}
-                      className="flex min-h-8 items-start gap-2 py-1 text-sm leading-6"
+                      className="flex min-h-8 items-start gap-2 rounded-md border border-dashed border-ai-line px-2 py-1 text-sm leading-6"
                     >
                       <span className="min-w-0 flex-1 break-words">{subtask.title}</span>
                       {subtask.estimate !== null ? (
@@ -285,7 +299,11 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
                     Retry
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={() => close("Suggestions discarded.")}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => close("discarded", "Suggestions discarded.")}
+                >
                   Discard
                 </Button>
               </div>
@@ -319,7 +337,7 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
                   variant="ghost"
                   size="sm"
                   disabled={saving}
-                  onClick={() => close("Suggestions discarded.")}
+                  onClick={() => close("discarded", "Suggestions discarded.")}
                 >
                   Discard
                 </Button>
@@ -328,10 +346,7 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
           )}
         </section>
       )}
-      {/* Always mounted, so every change is announced (a freshly mounted live region often isn't). */}
-      <p role="status" className="sr-only">
-        {announcement}
-      </p>
+      <AiStatus announcement={announcement} outcome={phase === "idle" ? outcome : null} />
     </div>
   );
 }
@@ -353,7 +368,7 @@ function ReviewRow({
   const titleError = item.checked ? reviewTitleError(item.title) : null;
 
   return (
-    <li className="grid gap-1">
+    <li className="grid gap-1 rounded-md border border-dashed border-ai-line p-1.5">
       <div className="flex items-center gap-2">
         <Checkbox
           aria-label={`Include ${name}`}
