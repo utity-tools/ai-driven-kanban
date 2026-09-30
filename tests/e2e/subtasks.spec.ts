@@ -114,6 +114,9 @@ test("add, rename, estimate, complete and delete subtasks; progress and card bad
   await expect(
     dialog.getByRole("button", { name: "Estimate for Write the schema: 3 points" }),
   ).toBeVisible();
+  // The first menu fades out after a pick; opening the next one meanwhile leaves two menus
+  // with the same options in the page.
+  await expect(page.getByRole("menu")).toHaveCount(0);
   await dialog.getByRole("button", { name: "Estimate for Build the UI: none" }).click();
   await page.getByRole("menuitemradio", { name: "5 pts", exact: true }).click();
   await expect(
