@@ -5,6 +5,8 @@
  * this module only maps its outcome to HTTP and to user-facing copy.
  */
 
+import { z } from "zod";
+
 /** Response header with the caller's decompositions left today, after this one. */
 export const QUOTA_REMAINING_HEADER = "X-Quota-Remaining";
 
@@ -42,4 +44,21 @@ export function parseQuotaRemaining(value: string | null): number | null {
 export function quotaRemainingMessage(remaining: number): string {
   if (remaining === 0) return "No AI suggestions left today. They reset at midnight UTC.";
   return `${remaining} AI ${remaining === 1 ? "suggestion" : "suggestions"} left today.`;
+}
+
+const reservationSchema = z.object({
+  remaining: z.number().int().nonnegative(),
+  usage_id: z.uuid(),
+});
+
+/**
+ * The parts of a reservation row the routes use. `usageId` identifies the
+ * reserved row for record_ai_usage and must stay server-side: it never goes in
+ * a header or body. Returns null when the row doesn't have the expected shape.
+ */
+export function parseReservation(row: unknown): { remaining: number; usageId: string } | null {
+  const parsed = reservationSchema.safeParse(row);
+  return parsed.success
+    ? { remaining: parsed.data.remaining, usageId: parsed.data.usage_id }
+    : null;
 }

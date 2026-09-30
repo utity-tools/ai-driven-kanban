@@ -37,24 +37,24 @@ select ok(
 
 select ok(
   (select p.prosecdef and p.proconfig @> array['search_path=""']
-   from pg_proc p where p.oid = 'private.reserve_ai_decomposition()'::regprocedure),
+   from pg_proc p where p.oid = 'private.reserve_ai_decomposition(text)'::regprocedure),
   'private.reserve_ai_decomposition is security definer with empty search_path'
 );
 select ok(
-  not has_function_privilege('public', 'private.reserve_ai_decomposition()', 'EXECUTE')
-  and not has_function_privilege('anon', 'private.reserve_ai_decomposition()', 'EXECUTE')
-  and not has_function_privilege('authenticated', 'private.reserve_ai_decomposition()', 'EXECUTE'),
+  not has_function_privilege('public', 'private.reserve_ai_decomposition(text)', 'EXECUTE')
+  and not has_function_privilege('anon', 'private.reserve_ai_decomposition(text)', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'private.reserve_ai_decomposition(text)', 'EXECUTE'),
   'private.reserve_ai_decomposition is not executable by public, anon or authenticated'
 );
 select ok(
   (select p.prosecdef and p.proconfig @> array['search_path=""']
-   from pg_proc p where p.oid = 'public.reserve_ai_decomposition()'::regprocedure),
+   from pg_proc p where p.oid = 'public.reserve_ai_decomposition(text)'::regprocedure),
   'public.reserve_ai_decomposition is security definer with empty search_path'
 );
 select ok(
-  has_function_privilege('authenticated', 'public.reserve_ai_decomposition()', 'EXECUTE')
-  and not has_function_privilege('anon', 'public.reserve_ai_decomposition()', 'EXECUTE')
-  and not has_function_privilege('public', 'public.reserve_ai_decomposition()', 'EXECUTE'),
+  has_function_privilege('authenticated', 'public.reserve_ai_decomposition(text)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.reserve_ai_decomposition(text)', 'EXECUTE')
+  and not has_function_privilege('public', 'public.reserve_ai_decomposition(text)', 'EXECUTE'),
   'public.reserve_ai_decomposition is executable by authenticated only'
 );
 

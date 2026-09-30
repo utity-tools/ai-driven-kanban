@@ -1,5 +1,7 @@
 import type { LanguageModelUsage, ProviderMetadata } from "ai";
 
+import { gatewayCostUsd } from "@/lib/ai/outcome";
+
 /** The parts of a `streamText` result the evals read. */
 type StreamResult<T> = {
   output: PromiseLike<T>;
@@ -25,16 +27,13 @@ export async function collect<T>(result: StreamResult<T>) {
     result.usage,
     result.providerMetadata,
   ]);
-  // AI Gateway reports the cost of the call as a string in its provider metadata.
-  const cost = Number(
-    (metadata.status === "fulfilled" ? metadata.value?.gateway?.cost : undefined) ?? NaN,
-  );
+  const cost = gatewayCostUsd(metadata.status === "fulfilled" ? metadata.value : undefined);
   return {
     output: output.status === "fulfilled" ? output.value : null,
     raw: text.status === "fulfilled" ? text.value : "",
     error: output.status === "rejected" ? errorMessage(output.reason) : undefined,
     usage: usage.status === "fulfilled" ? usage.value : NO_USAGE,
-    cost: Number.isFinite(cost) ? cost : undefined,
+    cost,
   };
 }
 

@@ -12,11 +12,13 @@ import {
 import {
   QUOTA_EXCEEDED_MESSAGES,
   QUOTA_REMAINING_HEADER,
+  parseReservation,
   quotaExceededKind,
   secondsUntilQuotaReset,
 } from "@/lib/ai/quota";
 import { streamDependencySuggestions } from "@/lib/ai/suggest-dependencies";
 import { getBoardView } from "@/lib/boards/queries";
+import { scheduleAiUsageRecord } from "@/lib/ai/schedule-usage";
 import { createClient } from "@/lib/db/server";
 import { getServerEnv } from "@/lib/env";
 
@@ -114,8 +116,8 @@ export async function POST(
   }
 
   // Charged before the model is called, so failed or stopped calls count too.
-  const { data: quota, error: quotaError } = await supabase
-    .rpc("reserve_ai_decomposition")
+  const { data: reserved, error: quotaError } = await supabase
+    .rpc("reserve_ai_decomposition", { p_feature: "dependencies" })
     .single();
   if (quotaError) {
     const exceeded = quotaExceededKind(quotaError.code);
@@ -128,6 +130,20 @@ export async function POST(
     console.error("ai.dependencies.quota_failed", { error: quotaError });
     return Response.json({ error: "Something went wrong." }, { status: 500 });
   }
+  const quota = parseReservation(reserved);
+  if (!quota) {
+    console.error("ai.dependencies.quota_failed", { error: "Unexpected reservation shape." });
+    return Response.json({ error: "Something went wrong." }, { status: 500 });
+  }
+
+  // One id per call correlates its logs; the usage id stays server-side.
+  const requestId = crypto.randomUUID();
+  const onComplete = scheduleAiUsageRecord({
+    supabase,
+    usageId: quota.usageId,
+    requestId,
+    feature: "dependencies",
+  });
 
   const result = streamDependencySuggestions({
     model: getDecompositionModel(),
@@ -135,6 +151,7 @@ export async function POST(
     candidates,
     // Closing the review stops generation, so an abandoned request stops costing tokens.
     abortSignal: request.signal,
+    onComplete,
   });
   return result.toTextStreamResponse({
     headers: {
