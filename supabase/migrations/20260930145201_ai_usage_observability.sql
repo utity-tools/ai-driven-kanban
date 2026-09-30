@@ -62,9 +62,9 @@
 --   * the value is stored as reported, for observability, even when above the estimate.
 --   * per-user call counts (AIQ01) do not depend on reported values at all.
 -- Consequence: a real cost above the estimate is undercounted by the cap, by design. The
--- estimate (private.ai_limits.cost_per_call_usd) must stay >= the real worst case; the
--- launch checklist raises it when needed, and the recorded actual_cost_usd is what shows
--- whether it has to.
+-- estimate (private.ai_limits.cost_per_call_usd) must stay >= the real worst case and is
+-- raised by a migration when it isn't. Completion values are caller-reported, so that check
+-- uses the AI Gateway's own billing, with actual_cost_usd only as a hint (docs/observability.md).
 
 -- ---------------------------------------------------------------------------
 -- private.ai_usage: outcome columns
@@ -147,7 +147,7 @@ begin
   end if;
 
   if p_feature is null or p_feature not in ('decompose', 'dependencies') then
-    raise exception 'Unknown AI feature: %', coalesce(p_feature, 'null')
+    raise exception 'Unknown AI feature: %', left(coalesce(p_feature, 'null'), 32)
       using errcode = 'invalid_parameter_value';
   end if;
 

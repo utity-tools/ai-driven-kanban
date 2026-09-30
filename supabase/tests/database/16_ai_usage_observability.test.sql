@@ -7,7 +7,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(31);
+select plan(32);
 
 -- ---------------------------------------------------------------------------
 -- Shape: columns, functions, privileges
@@ -308,6 +308,14 @@ select is(
    where user_id = '00000000-0000-4000-a000-000000003003'),
   0.006::numeric(10, 6),
   'a new reservation stores the worst-case estimate (counted until its real cost is recorded)'
+);
+
+-- The drop + recreate must keep the serialising lock of 20260928152546 (a lost lock would let
+-- concurrent reservations race past both limits without any functional test noticing).
+select ok(
+  (select prosrc like '%pg_advisory_xact_lock(84200001)%'
+     from pg_proc where oid = 'private.reserve_ai_decomposition(text)'::regprocedure),
+  'private.reserve_ai_decomposition still takes the advisory lock'
 );
 
 select * from finish();
