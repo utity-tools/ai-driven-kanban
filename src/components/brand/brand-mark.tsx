@@ -22,6 +22,8 @@ export function BrandMark({ size = 24, className, title }: BrandMarkProps) {
       stroke="currentColor"
       strokeWidth={markStrokeWidth(size)}
       strokeLinejoin="round"
+      // Auto height follows the viewBox ratio when a parent (shadcn buttons) sets only a width.
+      style={{ height: "auto" }}
       className={className}
       role={title ? "img" : undefined}
       aria-hidden={title ? undefined : true}
