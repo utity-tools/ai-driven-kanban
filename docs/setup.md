@@ -59,7 +59,7 @@ Stop the database when you are not using it: `pnpm db:stop`.
 ```
  local                  CI                      preview (per PR)          production
  ─────                  ──                      ────────────────          ──────────
- pnpm dev               GitHub Actions          Vercel preview URL        ai-driven-kanban.vercel.app
+ pnpm dev               GitHub Actions          Vercel preview URL        kanban.utitytools.com
  Supabase in Docker     ephemeral Postgres      Supabase kanban-staging   Supabase kanban-prod
 ```
 
@@ -110,11 +110,25 @@ Local projects read these from `supabase/config.toml`; hosted projects need them
 
 - **Authentication → Sign In / Providers → Allow anonymous sign-ins: on**. Demo mode depends on it ([ADR 0009](adr/0009-demo-mode-with-anonymous-users.md)).
 - **Authentication → URL Configuration:** Site URL is the app's URL (production:
-  `https://ai-driven-kanban.vercel.app`), and every URL the app redirects back to is in the
+  `https://kanban.utitytools.com`), and every URL the app redirects back to is in the
   redirect URLs allow-list ([ADR 0005](adr/0005-authentication.md)).
 - **GitHub provider:** one GitHub OAuth App per Supabase project, with callback
   `https://<project-ref>.supabase.co/auth/v1/callback`; paste its client ID and secret in
   **Authentication → Sign In / Providers → GitHub**.
+
+### Production domain
+
+Production is served at `https://kanban.utitytools.com`. `utitytools.com` is registered with
+Cloudflare Registrar and its DNS lives in Cloudflare; other projects get their own subdomains.
+
+- **Cloudflare DNS:** `CNAME kanban` → the target Vercel shows for the domain
+  (`vercel domains inspect kanban.utitytools.com`), **DNS only** (grey cloud). Proxying it through
+  Cloudflare breaks Vercel's certificate issuance and caching.
+- **Vercel:** the domain is attached to the project as a Production domain; Vercel issues the
+  certificate. `ai-driven-kanban.vercel.app` redirects to it with a 308, so old links keep working.
+- **Supabase `kanban-prod`:** Site URL and redirect allow-list use the custom domain (see above).
+  Add a new domain there **before** redirecting to it: GitHub sign-in sends users back to the
+  origin they started on, and Supabase falls back to the Site URL for any origin it does not allow.
 
 ### Hosted Realtime settings (every Supabase cloud project)
 
