@@ -33,7 +33,7 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
       </CardHeader>
       <CardContent className="grid gap-4">
         {user ? (
-          <NewPasswordForm next={next} />
+          <NewPasswordForm next={next} email={user.email} />
         ) : (
           <Link href={FORGOT_PASSWORD_PATH} className={buttonVariants({ size: "lg" })}>
             Get a reset link

@@ -7,6 +7,7 @@ import {
   isPublicPath,
   loginPathWithNext,
   signupPathWithNext,
+  forgotPasswordPathWithNext,
 } from "./routes";
 
 describe("isPublicPath", () => {
@@ -94,4 +95,14 @@ describe("signupPathWithNext", () => {
       expect(signupPathWithNext(value)).toBe("/signup");
     },
   );
+});
+
+describe("forgotPasswordPathWithNext", () => {
+  it("keeps a non-default next", () => {
+    expect(forgotPasswordPathWithNext("/invite/abc")).toBe("/forgot-password?next=%2Finvite%2Fabc");
+  });
+
+  it.each([undefined, "/boards", "https://evil.example"])("is the plain path for %j", (next) => {
+    expect(forgotPasswordPathWithNext(next)).toBe("/forgot-password");
+  });
 });

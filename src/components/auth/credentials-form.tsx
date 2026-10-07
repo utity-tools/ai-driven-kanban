@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DEFAULT_AFTER_LOGIN_PATH } from "@/lib/auth/redirect";
-import { FORGOT_PASSWORD_PATH, LOGIN_PATH } from "@/lib/auth/routes";
+import { forgotPasswordPathWithNext, LOGIN_PATH } from "@/lib/auth/routes";
 import { type AuthFormState, PASSWORD_MIN_LENGTH } from "@/lib/auth/schemas";
 
 import { ResendConfirmationForm } from "./resend-confirmation-form";
@@ -98,11 +98,7 @@ export function CredentialsForm({ mode, action, next }: Props) {
             <Label htmlFor={ids.password}>Password</Label>
             {mode === "login" ? (
               <Link
-                href={
-                  next === DEFAULT_AFTER_LOGIN_PATH
-                    ? FORGOT_PASSWORD_PATH
-                    : `${FORGOT_PASSWORD_PATH}?${new URLSearchParams({ next }).toString()}`
-                }
+                href={forgotPasswordPathWithNext(next)}
                 className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
               >
                 Forgot password?

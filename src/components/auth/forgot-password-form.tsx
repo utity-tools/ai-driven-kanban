@@ -58,7 +58,8 @@ export function ForgotPasswordForm({ next }: { next: string }) {
       </Button>
 
       <p role="status" className="text-sm text-muted-foreground">
-        {state.notice ?? ""}
+        {/* Cleared while sending, so a repeat answer is announced again. */}
+        {pending ? "" : (state.notice ?? "")}
       </p>
     </form>
   );

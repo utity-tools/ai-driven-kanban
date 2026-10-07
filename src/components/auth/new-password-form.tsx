@@ -10,7 +10,13 @@ import { Label } from "@/components/ui/label";
 import type { NewPasswordFormState } from "@/lib/auth/recovery";
 import { PASSWORD_MIN_LENGTH } from "@/lib/auth/schemas";
 
-export function NewPasswordForm({ next }: { next: string }) {
+type Props = {
+  next: string;
+  /** The account's email, so password managers save the new password against it. */
+  email: string | null;
+};
+
+export function NewPasswordForm({ next, email }: Props) {
   const [state, formAction, pending] = useActionState<NewPasswordFormState, FormData>(
     updatePassword,
     {},
@@ -22,6 +28,9 @@ export function NewPasswordForm({ next }: { next: string }) {
   return (
     <form action={formAction} noValidate className="grid gap-4">
       <input type="hidden" name="next" value={next} />
+      {email ? (
+        <input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
+      ) : null}
 
       {state.error ? (
         <Alert variant="destructive">

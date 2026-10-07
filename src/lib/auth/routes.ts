@@ -32,6 +32,13 @@ export function loginPathWithNext(nextPath: string): string {
   return `${LOGIN_PATH}?${params.toString()}`;
 }
 
+/** Builds `/forgot-password?next=<path>`, or the plain path when `next` is unsafe or the default. */
+export function forgotPasswordPathWithNext(next: unknown): string {
+  const safe = sanitizeNextPath(next);
+  if (safe === DEFAULT_AFTER_LOGIN_PATH) return FORGOT_PASSWORD_PATH;
+  return `${FORGOT_PASSWORD_PATH}?${new URLSearchParams({ next: safe }).toString()}`;
+}
+
 /** Builds `/signup?next=<path>`, or plain `/signup` when `next` is unsafe or the default. */
 export function signupPathWithNext(next: unknown): string {
   const safe = sanitizeNextPath(next);
