@@ -5,6 +5,9 @@ export const MARK_PATHS = [
   "M75,20L90,20Q105,20 105,35L105,85Q105,100 90,100L75,100Z",
 ] as const;
 
+/** The mark's outline on the 120-unit grid: three 30-unit columns, 80 units tall. */
+export const MARK_BOUNDS = { x: 15, y: 20, width: 90, height: 80, column: 30 } as const;
+
 /** Tight viewBox around the mark (x 15-105, y 20-100) with room for the widest stroke (4 units per side). */
 export const MARK_VIEW_BOX = { x: 11, y: 16, width: 98, height: 88 } as const;
 
