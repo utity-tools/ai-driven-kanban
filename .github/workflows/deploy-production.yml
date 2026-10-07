@@ -95,7 +95,7 @@ jobs:
     timeout-minutes: 20
     environment:
       name: production-deploy
-      url: https://ai-driven-kanban.vercel.app
+      url: https://kanban.utitytools.com
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       # Not secret: they identify the project, the token authorises.

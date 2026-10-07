@@ -59,7 +59,7 @@ Stop the database when you are not using it: `pnpm db:stop`.
 ```
  local                  CI                      preview (per PR)          production
  ─────                  ──                      ────────────────          ──────────
- pnpm dev               GitHub Actions          Vercel preview URL        ai-driven-kanban.vercel.app
+ pnpm dev               GitHub Actions          Vercel preview URL        kanban.utitytools.com
  Supabase in Docker     ephemeral Postgres      Supabase kanban-staging   Supabase kanban-prod
 ```
 
@@ -110,11 +110,47 @@ Local projects read these from `supabase/config.toml`; hosted projects need them
 
 - **Authentication → Sign In / Providers → Allow anonymous sign-ins: on**. Demo mode depends on it ([ADR 0009](adr/0009-demo-mode-with-anonymous-users.md)).
 - **Authentication → URL Configuration:** Site URL is the app's URL (production:
-  `https://ai-driven-kanban.vercel.app`), and every URL the app redirects back to is in the
+  `https://kanban.utitytools.com`), and every URL the app redirects back to is in the
   redirect URLs allow-list ([ADR 0005](adr/0005-authentication.md)).
 - **GitHub provider:** one GitHub OAuth App per Supabase project, with callback
   `https://<project-ref>.supabase.co/auth/v1/callback`; paste its client ID and secret in
   **Authentication → Sign In / Providers → GitHub**.
+- **Custom SMTP (Resend):** **Authentication → Emails → SMTP Settings**: host `smtp.resend.com`,
+  port `465`, user `resend`, password = a Resend API key with sending access restricted to the
+  `kanban.utitytools.com` domain (one key per project), sender
+  `no-reply@kanban.utitytools.com` / "AI-Driven Kanban". **Authentication → Rate Limits**: 30
+  emails per hour.
+- **Email confirmation** ([ADR 0022](adr/0022-email-confirmation.md)), in this order:
+  1. Deploy the app code first (it works with confirmation on or off).
+  2. **Authentication → Emails → Templates → Confirm sign up**: subject
+     `Confirm your email for AI-Driven Kanban`, body = `supabase/templates/confirmation.html`
+     pasted as is. Paste it again whenever the file changes.
+  3. **Authentication → Sign In / Providers → Email → Confirm email: on**.
+  4. Sign up with a real inbox and check that the link opens `/auth/confirm` on the same origin.
+
+  The template builds the link from the `emailRedirectTo` the app sends, so the Site URL must
+  not end in `/`, and every origin that can send sign-ups must be in the redirect allow-list,
+  or links fall back to the Site URL.
+
+  **Keep the allow-list narrow.** The emailed token goes to any allow-listed URL a sign-up
+  request names, and anyone can make that request. Production lists only
+  `https://kanban.utitytools.com/**`. Staging lists only this project's previews, scoped to
+  the team (`https://ai-driven-kanban-*-utity-tools-projects.vercel.app/**`), plus localhost.
+  Never use `https://*.vercel.app/**`.
+
+### Production domain
+
+Production is served at `https://kanban.utitytools.com`. `utitytools.com` is registered with
+Cloudflare Registrar and its DNS lives in Cloudflare; other projects get their own subdomains.
+
+- **Cloudflare DNS:** `CNAME kanban` → the target Vercel shows for the domain
+  (`vercel domains inspect kanban.utitytools.com`), **DNS only** (grey cloud). Proxying it through
+  Cloudflare breaks Vercel's certificate issuance and caching.
+- **Vercel:** the domain is attached to the project as a Production domain; Vercel issues the
+  certificate. `ai-driven-kanban.vercel.app` redirects to it with a 308, so old links keep working.
+- **Supabase `kanban-prod`:** Site URL and redirect allow-list use the custom domain (see above).
+  Add a new domain there **before** redirecting to it: GitHub sign-in sends users back to the
+  origin they started on, and Supabase falls back to the Site URL for any origin it does not allow.
 
 ### Hosted Realtime settings (every Supabase cloud project)
 

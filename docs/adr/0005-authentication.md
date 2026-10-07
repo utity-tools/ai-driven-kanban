@@ -51,3 +51,5 @@ not enough to rely on confirmation emails for sign-ups.
 - A failing trigger would block sign-up, so `handle_new_user` stays minimal and is covered by
   pgTAP tests.
   Extended in [ADR 0006](0006-public-profiles.md) to create the user's profile first.
+  Email confirmation enabled in [ADR 0022](0022-email-confirmation.md), which supersedes the
+  "No email confirmation in v0.1" decision above.

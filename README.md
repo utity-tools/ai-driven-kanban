@@ -10,7 +10,7 @@ bottlenecks are detected with deterministic, tested logic and surfaced in real t
 
 > **Status:** v0.1 is live: boards, auth, RLS, drag and drop and a one-click demo. Next up: v0.2
 > (AI task decomposition).
-> Live: [ai-driven-kanban.vercel.app](https://ai-driven-kanban.vercel.app) (try the demo, no sign-up needed)
+> Live: [kanban.utitytools.com](https://kanban.utitytools.com) (try the demo, no sign-up needed)
 
 ## Stack
 

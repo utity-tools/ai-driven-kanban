@@ -6,3 +6,4 @@ playwright-report
 test-results
 supabase/.temp
 src/lib/db/types.ts
+supabase/templates
