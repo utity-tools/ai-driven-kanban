@@ -9,6 +9,11 @@ create extension if not exists pgtap with schema extensions;
 
 select plan(32);
 
+-- The cap checks below were sized for these limits; pin them so tuning the hosted values (a
+-- migration, see 20261007154701_launch_ai_cost_limits.sql) does not change what they prove.
+-- Rolled back with the rest of the test.
+update private.ai_limits set global_daily_cost_usd = 0.25, cost_per_call_usd = 0.006 where id;
+
 -- ---------------------------------------------------------------------------
 -- Shape: columns, functions, privileges
 -- ---------------------------------------------------------------------------

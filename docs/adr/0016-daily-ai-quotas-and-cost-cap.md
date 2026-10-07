@@ -1,6 +1,6 @@
 # 0016. Daily AI quotas and a global cost cap
 
-- **Status:** accepted, amended by [0021](0021-ai-call-observability.md) (the cap now counts real costs, downward only)
+- **Status:** accepted, amended by [0021](0021-ai-call-observability.md) (the cap now counts real costs, downward only) and [0024](0024-launch-ai-cost-limits.md) (launch limits: $0.02 per call, $0.40/day)
 - **Date:** 2026-09-28
 
 ## Context

@@ -6,7 +6,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(26);
+select plan(28);
 
 -- ---------------------------------------------------------------------------
 -- Shape: tables, RLS, privileges
@@ -64,9 +64,20 @@ select results_eq(
     select demo_daily_calls, user_daily_calls, global_daily_cost_usd, cost_per_call_usd
     from private.ai_limits
   $$,
-  $$ values (3, 20, 0.25::numeric(10, 4), 0.006::numeric(10, 6)) $$,
+  $$ values (3, 20, 0.40::numeric(10, 4), 0.02::numeric(10, 6)) $$,
   'private.ai_limits has exactly one row with the documented defaults'
 );
+
+-- Fresh databases get the same values as the hosted ones (20261007154701).
+select col_default_is('private', 'ai_limits', 'global_daily_cost_usd', '0.40',
+  'private.ai_limits.global_daily_cost_usd defaults to 0.40');
+select col_default_is('private', 'ai_limits', 'cost_per_call_usd', '0.02',
+  'private.ai_limits.cost_per_call_usd defaults to 0.02');
+
+-- The checks below were sized for these limits; pin them so tuning the hosted values (a
+-- migration, see 20261007154701_launch_ai_cost_limits.sql) does not change what they prove.
+-- Rolled back with the rest of the test.
+update private.ai_limits set global_daily_cost_usd = 0.25, cost_per_call_usd = 0.006 where id;
 
 -- ---------------------------------------------------------------------------
 -- Fixtures
