@@ -3,14 +3,16 @@
 [![CI](https://github.com/utity-tools/ai-driven-kanban/actions/workflows/ci.yml/badge.svg)](https://github.com/utity-tools/ai-driven-kanban/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A Kanban board where AI works like a teammate under human supervision: when you create a task,
-a language model proposes technical subtasks, estimates and dependencies. You review every
+A Kanban board where AI works like a teammate under human supervision: on any card, a language
+model proposes technical subtasks with estimates, and the cards that block it. You review every
 proposal (accept, edit or reject) before anything is saved. Blocked tasks, dependency cycles and
 bottlenecks are detected with deterministic, tested logic and surfaced in real time.
 
-> **Status:** v0.1 is live: boards, auth, RLS, drag and drop and a one-click demo. Next up: v0.2
-> (AI task decomposition).
-> Live: [kanban.utitytools.com](https://kanban.utitytools.com) (try the demo, no sign-up needed)
+> **Status:** released and live at [kanban.utitytools.com](https://kanban.utitytools.com): boards
+> with drag and drop, auth (email confirmation, password reset, GitHub), Realtime collaboration,
+> card dependencies with blocked badges and a bottlenecks view, and AI-proposed subtasks and
+> blockers that you review before anything is saved. Try it with the one-click demo, no sign-up
+> needed.
 
 ## Stack
 
@@ -25,22 +27,28 @@ bottlenecks are detected with deterministic, tested logic and surfaced in real t
 ## Roadmap
 
 - [x] **v0.1** Board, auth, RLS, drag and drop, demo mode, deploy
-- [ ] **v0.2** AI task decomposition with streaming and human review
-- [ ] **v0.3** Dependency graph, deterministic alerts, Realtime
-- [ ] **v0.4** AI evals and observability panel (cost, latency, acceptance rate)
+- [x] **v0.2** AI task decomposition with streaming, human review and daily quotas
+- [x] **v0.3** Card dependencies (cycle checks, blocked badges, bottlenecks), invites, Realtime
+      and AI-proposed blockers
+- [x] **v0.4** AI evals and observability (cost, latency, tokens, outcomes)
+- [x] **Launch** Custom domain, email confirmation and password reset, AI live in production
 
 ## AI: privacy and limits
 
-- **What is sent:** when you click **Suggest with AI**, the card's title and description, and
-  nothing else, are sent through [Vercel AI Gateway](https://vercel.com/ai-gateway) to the model
-  provider (Anthropic, Claude Haiku 4.5 by default). Don't put secrets or personal data in cards
-  you ask the AI about.
-- **What is stored:** nothing from the model until you accept it. Accepted subtasks are saved
-  like any other subtask. For quotas and monitoring, the app records metadata about each call
+- **What is sent:** when you click **Suggest with AI** (subtasks), the card's title, description
+  and existing subtask titles; when you click **Suggest blockers with AI**, the card's title,
+  description and column, plus the titles, columns and done state of up to 100 other cards on
+  the board. Nothing else. It goes through [Vercel AI Gateway](https://vercel.com/ai-gateway) to
+  the model provider (Anthropic, Claude Haiku 4.5 by default). Don't put secrets or personal
+  data in cards on a board where you use the AI.
+- **What is stored:** nothing from the model until you accept it. Accepted subtasks and blockers
+  are saved like any others. For quotas and monitoring, the app records metadata about each call
   (who, when, which feature, model, tokens, cost, duration and how it ended), never the card
   text or the response ([observability](docs/observability.md)).
-- **Limits:** 20 suggestions a day per account and 3 per demo session, plus a global daily
-  budget. All reset at midnight UTC ([ADR 0016](docs/adr/0016-daily-ai-quotas-and-cost-cap.md)).
+- **Limits:** 20 suggestions a day per account and 3 per demo session (subtasks and blockers
+  combined), plus a global daily budget. All reset at midnight UTC
+  ([ADR 0016](docs/adr/0016-daily-ai-quotas-and-cost-cap.md),
+  [ADR 0024](docs/adr/0024-launch-ai-cost-limits.md)).
 
 ## Getting started
 
