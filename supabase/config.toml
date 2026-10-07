@@ -225,7 +225,9 @@ double_confirm_changes = true
 # ADR 0022: on in every project. Locally the emails land in Mailpit (port 54324).
 enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
-secure_password_change = false
+# ADR 0023: on everywhere, so a session older than 24h can't change the password through the
+# Auth API without a reauthentication nonce. Reset sessions are fresh, so the reset flow is unaffected.
+secure_password_change = true
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 max_frequency = "1s"
 # Number of characters used in the email OTP.

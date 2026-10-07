@@ -18,23 +18,35 @@ a stolen session cookie would be enough to lock the owner out of their account.
 
 - **Request (`/forgot-password`, linked from sign-in):** `resetPasswordForEmail` with
   `redirectTo` = `/auth/reset?next=…` on the current origin. The answer is the same whether or
-  not the email has an account. Only rate limits and outages are reported, and outages are
-  logged with code and status only.
+  not the email has an account, and only outages are reported.
+  - Rate limits get the neutral answer too. Verified locally: a second request within
+    `max_frequency` returns 429 for an existing account but 200 for an unknown email, so
+    "too many emails" would reveal that the account exists. The same fix applies to the sign-up
+    resend (amending ADR 0022).
+  - Rate limits are logged as warnings (`auth.reset_request_rate_limited`,
+    `auth.resend_rate_limited`), so an exhausted quota is still visible. Outages are logged as
+    errors. Both log code and status only.
 - **Email:** `supabase/templates/recovery.html`, built from `RedirectTo` / `SiteURL` in the same
   way as the confirmation template.
 - **Link page (`/auth/reset`):** a button only, so mail scanners can't spend the token. The
   button calls `verifyOtp({ type: "recovery", token_hash })`, which opens a session, and then
   redirects to `/reset-password?next=…`.
-- **New password (`/reset-password`):** only a session opened by an emailed link **within the
-  last 15 minutes** may use it. The check reads the Supabase-signed JWT `amr` claim (method `otp`
+- **New password (`/reset-password`):** in the app, only a session opened by an emailed link
+  **within the last 15 minutes** may use it. The check reads the Supabase-signed JWT `amr` claim (method `otp`
   plus its timestamp). It runs on the page and again in the Server Action.
   - Verified locally: a password sign-in is `password`; recovery and sign-up confirmation are
     both `otp`. GitHub is `oauth`, and demo users are refused.
   - A just-confirmed sign-up also qualifies. That is intended: it proves the same thing a reset
     link proves, namely control of the email.
 - After `updateUser({ password })`, the action calls `signOut({ scope: "others" })`, so a reset
-  also ends sessions an attacker may hold. The user stays signed in on this device and goes to
-  `next`.
+  also ends sessions an attacker may hold. Supabase may already do this on a password change;
+  the explicit call is a safety net. The user stays signed in on this device and goes to `next`.
+- **Supabase "Secure password change" is on** (`secure_password_change` locally, plus the
+  hosted toggle). The gate above only limits what the app's UI allows. Session cookies are
+  readable by the browser client, so someone who steals one could call the Auth API's
+  `PUT /user` directly. With this setting on, GoTrue requires a reauthentication nonce from
+  sessions older than 24 hours. Reset sessions are seconds old, so the reset flow is
+  unaffected.
 
 ## Alternatives considered
 
@@ -63,4 +75,7 @@ a stolen session cookie would be enough to lock the owner out of their account.
 - A GitHub-only account that gets a reset link ends up with an email + password sign-in as
   well. That is acceptable: it still requires control of the email. This can't be tested
   locally, because GitHub sign-in only exists on the hosted projects.
+- **Accepted residual risk:** a session cookie stolen within 24 hours of its sign-in can still
+  change the password through the Auth API directly. The real defence there is not having the
+  cookie stolen: the CSP and no third-party scripts in the app.
 - The quota abuse and confirm-link CSRF trade-offs from ADR 0022 apply here unchanged.

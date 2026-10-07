@@ -145,6 +145,9 @@ Local projects read these from `supabase/config.toml`; hosted projects need them
   the body. Then test it: open `/forgot-password`, request a link, and check that it opens
   `/auth/reset` on the same origin and ends on `/boards` with the new password. The same
   allow-list rules apply.
+- **Secure password change: on.** It's in **Authentication → Sign In / Providers → Email**.
+- **Email OTP expiration: 3600 seconds**, in the same panel. Both templates say "The link
+  expires in 1 hour", so change them too if you change this.
 
 ### Production domain
 
