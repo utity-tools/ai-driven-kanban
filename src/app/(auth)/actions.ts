@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { confirmEmailSchema, confirmErrorMessage, type ConfirmFormState } from "@/lib/auth/confirm";
 import { authErrorToFormState } from "@/lib/auth/errors";
 import { getRequestOrigin } from "@/lib/auth/origin";
 import { sanitizeNextPath } from "@/lib/auth/redirect";
@@ -63,4 +64,25 @@ export async function signInWithGitHub(formData: FormData): Promise<void> {
   if (error || !data.url) redirect(failure);
 
   redirect(data.url);
+}
+
+/** Spends the confirmation token from the email link and signs the user in. See ADR 0022. */
+export async function confirmEmail(
+  _prev: ConfirmFormState,
+  formData: FormData,
+): Promise<ConfirmFormState> {
+  const parsed = confirmEmailSchema.safeParse({
+    tokenHash: formData.get("token_hash"),
+    next: formData.get("next"),
+  });
+  if (!parsed.success) return { error: confirmErrorMessage(null) };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({
+    type: "email",
+    token_hash: parsed.data.tokenHash,
+  });
+  if (error) return { error: confirmErrorMessage(error) };
+
+  redirect(parsed.data.next);
 }
