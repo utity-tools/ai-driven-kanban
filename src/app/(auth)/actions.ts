@@ -3,7 +3,15 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { confirmEmailSchema, confirmErrorMessage, type ConfirmFormState } from "@/lib/auth/confirm";
+import {
+  buildEmailRedirectTo,
+  confirmEmailSchema,
+  confirmErrorMessage,
+  type ConfirmFormState,
+  type ResendFormState,
+  resendConfirmationSchema,
+  resendOutcome,
+} from "@/lib/auth/confirm";
 import { authErrorToFormState } from "@/lib/auth/errors";
 import { getRequestOrigin } from "@/lib/auth/origin";
 import { sanitizeNextPath } from "@/lib/auth/redirect";
@@ -23,7 +31,10 @@ export async function login(_prev: AuthFormState, formData: FormData): Promise<A
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) return authErrorToFormState(error, parsed.data.email);
+  if (error) {
+    const state = authErrorToFormState(error, parsed.data.email);
+    return error.code === "email_not_confirmed" ? { ...state, unconfirmed: true } : state;
+  }
 
   redirect(sanitizeNextPath(formData.get("next")));
 }
@@ -32,18 +43,20 @@ export async function signup(_prev: AuthFormState, formData: FormData): Promise<
   const parsed = validateCredentials(signupSchema, readCredentials(formData));
   if (!parsed.success) return parsed.state;
 
+  const next = sanitizeNextPath(formData.get("next"));
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp(parsed.data);
+  const { data, error } = await supabase.auth.signUp({
+    ...parsed.data,
+    options: { emailRedirectTo: await confirmRedirectTo(next) },
+  });
   if (error) return authErrorToFormState(error, parsed.data.email);
+  // No session means the project requires email confirmation (ADR 0022). An
+  // existing email gets this same response: Supabase returns an obfuscated user.
   if (!data.session) {
-    // Only reachable if email confirmation gets enabled for this project.
-    return {
-      formError: "Check your email to confirm your account, then sign in.",
-      email: parsed.data.email,
-    };
+    return { confirmationSentTo: parsed.data.email, email: parsed.data.email };
   }
 
-  redirect(sanitizeNextPath(formData.get("next")));
+  redirect(next);
 }
 
 export async function signInWithGitHub(formData: FormData): Promise<void> {
@@ -85,4 +98,34 @@ export async function confirmEmail(
   if (error) return { error: confirmErrorMessage(error) };
 
   redirect(parsed.data.next);
+}
+
+/** Sends the sign-up confirmation email again. Same answer for every email, except rate limits. */
+export async function resendConfirmation(
+  _prev: ResendFormState,
+  formData: FormData,
+): Promise<ResendFormState> {
+  const parsed = resendConfirmationSchema.safeParse({
+    email: formData.get("email"),
+    next: formData.get("next"),
+  });
+  if (!parsed.success) return { error: "Enter a valid email address." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: parsed.data.email,
+    options: { emailRedirectTo: await confirmRedirectTo(parsed.data.next) },
+  });
+  return resendOutcome(error);
+}
+
+/**
+ * Confirm page on the current origin, so links from Vercel previews come back
+ * to the same preview. Without a usable origin, Supabase falls back to the
+ * project's Site URL (the email template handles both).
+ */
+async function confirmRedirectTo(next: string): Promise<string | undefined> {
+  const origin = getRequestOrigin(await headers());
+  return origin ? buildEmailRedirectTo(origin, next) : undefined;
 }

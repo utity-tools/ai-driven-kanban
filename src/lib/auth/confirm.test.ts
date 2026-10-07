@@ -6,6 +6,9 @@ import {
   confirmEmailSchema,
   confirmErrorMessage,
   parseConfirmLink,
+  RESEND_NOTICE,
+  resendConfirmationSchema,
+  resendOutcome,
 } from "./confirm";
 
 const HASH = "a".repeat(56);
@@ -95,4 +98,33 @@ describe("confirmErrorMessage", () => {
       "We couldn't confirm your email. Sign in to get a new link.",
     );
   });
+});
+
+describe("resendConfirmationSchema", () => {
+  it("trims the email and sanitises next", () => {
+    expect(
+      resendConfirmationSchema.safeParse({ email: " a@example.com ", next: "//evil" }).data,
+    ).toEqual({ email: "a@example.com", next: "/boards" });
+  });
+
+  it("rejects an invalid email", () => {
+    expect(resendConfirmationSchema.safeParse({ email: "nope" }).success).toBe(false);
+  });
+});
+
+describe("resendOutcome", () => {
+  it.each([
+    [{ code: "over_email_send_rate_limit" }],
+    [{ code: "over_request_rate_limit" }],
+    [{ status: 429 }],
+  ])("reports rate limiting (%j)", (error) => {
+    expect(resendOutcome(error).error).toMatch(/too many emails/i);
+  });
+
+  it.each([[null], [{ code: "user_not_found" }], [{ code: "email_address_invalid", status: 400 }]])(
+    "answers with the same notice otherwise (%j)",
+    (error) => {
+      expect(resendOutcome(error)).toEqual({ notice: RESEND_NOTICE });
+    },
+  );
 });

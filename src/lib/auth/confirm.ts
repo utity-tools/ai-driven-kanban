@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { sanitizeNextPath } from "./redirect";
+import { emailSchema } from "./schemas";
 
 /** Page the confirmation email links to (see supabase/templates/confirmation.html). */
 export const CONFIRM_PATH = "/auth/confirm";
@@ -18,6 +19,34 @@ export type ConfirmEmailInput = z.infer<typeof confirmEmailSchema>;
 
 /** State returned by the confirm Server Action to `useActionState`. */
 export type ConfirmFormState = { error?: string };
+
+export const resendConfirmationSchema = z.object({
+  email: emailSchema,
+  next: z.unknown().transform((value) => sanitizeNextPath(value)),
+});
+
+/** State returned by the resend Server Action to `useActionState`. */
+export type ResendFormState = { notice?: string; error?: string };
+
+export const RESEND_NOTICE =
+  "If that account still needs confirming, a new link is on its way. Check your inbox and spam folder.";
+
+/**
+ * Outcome of a resend. Only rate limits are reported: every other result,
+ * including "no such account" or "already confirmed", gets the same notice so
+ * the form can't be used to find out which emails have accounts.
+ */
+export function resendOutcome(
+  error: { code?: string | undefined; status?: number | undefined } | null,
+): ResendFormState {
+  const rateLimited =
+    error?.code === "over_email_send_rate_limit" ||
+    error?.code === "over_request_rate_limit" ||
+    error?.status === 429;
+  return rateLimited
+    ? { error: "Too many emails requested. Wait a few minutes and try again." }
+    : { notice: RESEND_NOTICE };
+}
 
 /**
  * Reads the confirm link's query (`token_hash`, `type`, `next`). Returns `null`

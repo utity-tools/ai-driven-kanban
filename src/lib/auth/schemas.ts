@@ -4,19 +4,20 @@ export const PASSWORD_MIN_LENGTH = 8;
 // bcrypt (used by Supabase Auth) ignores bytes beyond 72.
 export const PASSWORD_MAX_LENGTH = 72;
 
-const email = z
+/** A trimmed, valid email address. */
+export const emailSchema = z
   .string({ error: "Enter your email address." })
   .trim()
   .min(1, { error: "Enter your email address." })
   .pipe(z.email({ error: "Enter a valid email address." }));
 
 export const loginSchema = z.object({
-  email,
+  email: emailSchema,
   password: z.string({ error: "Enter your password." }).min(1, { error: "Enter your password." }),
 });
 
 export const signupSchema = z.object({
-  email,
+  email: emailSchema,
   password: z
     .string({ error: "Enter a password." })
     .min(PASSWORD_MIN_LENGTH, {
@@ -38,6 +39,10 @@ export type AuthFormState = {
   formError?: string;
   /** Echoed back so the email survives React's form reset after an action. */
   email?: string;
+  /** Sign-up succeeded but needs email confirmation: the address the link went to. */
+  confirmationSentTo?: string;
+  /** Sign-in was refused because the email is not confirmed yet (offer a resend). */
+  unconfirmed?: boolean;
 };
 
 /** Reads the credential fields from FormData without trusting their types. */
