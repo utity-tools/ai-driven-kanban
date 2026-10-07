@@ -45,6 +45,10 @@ reach the browser; the data is protected by Row Level Security, not by hiding th
   ([ADR 0022](adr/0022-email-confirmation.md)).
 - **One-time links are spent by a POST, never a GET:** mail scanners that prefetch links can't use
   them up. Pages whose URL carries a token are `noindex` and send no `Referer`.
+- **Password reset needs a fresh email-verified session:** `/reset-password` accepts only a
+  session opened by an emailed link in the last 15 minutes (the signed JWT `amr` claim), never a
+  normal signed-in session. Each reset revokes the user's other sessions
+  ([ADR 0023](adr/0023-password-reset.md)).
 - **Redirects after auth** only accept same-origin relative paths (`sanitizeNextPath`).
 - **Supabase redirect allow-lists stay narrow:** the production domain only on `kanban-prod`;
   team-scoped preview URLs and localhost on `kanban-staging`. A wildcard such as

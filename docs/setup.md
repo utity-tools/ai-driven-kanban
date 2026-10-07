@@ -133,10 +133,18 @@ Local projects read these from `supabase/config.toml`; hosted projects need them
   or links fall back to the Site URL.
 
   **Keep the allow-list narrow.** The emailed token goes to any allow-listed URL a sign-up
-  request names, and anyone can make that request. Production lists only
-  `https://kanban.utitytools.com/**`. Staging lists only this project's previews, scoped to
+  request names, and anyone can make that request. Production lists only its own domains:
+  `https://kanban.utitytools.com/**`, plus the old `https://ai-driven-kanban.vercel.app/**`,
+  which redirects to it. Staging lists only this project's previews, scoped to
   the team (`https://ai-driven-kanban-*-utity-tools-projects.vercel.app/**`), plus localhost.
   Never use `https://*.vercel.app/**`.
+
+- **Password reset** ([ADR 0023](adr/0023-password-reset.md)): after the app code is deployed,
+  open **Authentication → Emails → Templates → Reset password**. Use the subject
+  `Reset your password for AI-Driven Kanban` and paste `supabase/templates/recovery.html` as
+  the body. Then test it: open `/forgot-password`, request a link, and check that it opens
+  `/auth/reset` on the same origin and ends on `/boards` with the new password. The same
+  allow-list rules apply.
 
 ### Production domain
 
