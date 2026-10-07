@@ -89,8 +89,12 @@ a page where the user has to click a button.
   into "Check your email" would hide that outage from every new user.
 - **Email quota abuse:** sign-up and resend are unauthenticated and share the project's 30
   emails/hour. Throwaway sign-ups from a few IPs could use that up and block real sign-ups for
-  the hour. This is an accepted risk for a portfolio project. The fix, if it happens, is
-  Supabase CAPTCHA (Cloudflare Turnstile) on sign-up and resend.
+  the hour. This is an accepted risk for a portfolio project. Supabase's CAPTCHA can't be
+  limited to sign-up: it also applies to password sign-in and anonymous sign-in, so it would add
+  friction to the one-click demo. It can't be done in app code either, because the Supabase
+  Auth API is public. **Trigger to revisit:** when sign-ups fail with
+  `over_email_send_rate_limit` from traffic we don't recognise, or Resend shows an unexplained
+  spike in sends, enable Supabase CAPTCHA (Cloudflare Turnstile) in its own ADR.
 - **Confirm-link CSRF:** someone could send a victim a link that carries the sender's own
   unconfirmed token. Pressing "Confirm email" would sign the victim into the sender's new
   account. This is accepted: it needs a deliberate click, the header then shows who is signed
