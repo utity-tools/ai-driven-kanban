@@ -34,7 +34,7 @@ export function lockupMetrics(): LockupMetrics {
 /**
  * Distance in em from the center of a `line-height: 1` text box to the center of the
  * wordmark's capitals (positive is down). Near zero, so `align-items: center` centers the mark
- * on the capitals.
+ * on the capitals. Not used at runtime: its test guards that assumption if the metrics change.
  */
 export function capCenterOffset(): number {
   const { ascent, descent, capHeight } = WORDMARK_FONT_METRICS;

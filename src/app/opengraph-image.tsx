@@ -4,24 +4,27 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
 import { WORDMARK_TRACKING, lockupMetrics } from "@/lib/brand/lockup";
-import { MARK_PATHS, MARK_VIEW_BOX } from "@/lib/brand/mark";
+import { MARK_PATHS, MARK_VIEW_BOX, markStrokeWidth } from "@/lib/brand/mark";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand/site";
 
 export const alt = `${SITE_NAME}: ${SITE_TAGLINE}`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+// The font is read from disk at build time: fail the build rather than render per request.
+export const dynamic = "force-static";
 
 const WORDMARK_SIZE = 128;
 const TAGLINE_SIZE = 56;
 
+// Satori reads woff, not woff2.
+const bricolage = readFile(
+  join(
+    process.cwd(),
+    "node_modules/@fontsource/bricolage-grotesque/files/bricolage-grotesque-latin-700-normal.woff",
+  ),
+);
+
 export default async function OpenGraphImage() {
-  // Satori reads woff, not woff2. Read at build time: the image is prerendered.
-  const bricolage = await readFile(
-    join(
-      process.cwd(),
-      "node_modules/@fontsource/bricolage-grotesque/files/bricolage-grotesque-latin-700-normal.woff",
-    ),
-  );
   const { markWidth, gap } = lockupMetrics();
   const markPx = markWidth * WORDMARK_SIZE;
 
@@ -57,7 +60,7 @@ export default async function OpenGraphImage() {
           viewBox={`${MARK_VIEW_BOX.x} ${MARK_VIEW_BOX.y} ${MARK_VIEW_BOX.width} ${MARK_VIEW_BOX.height}`}
           fill="none"
           stroke="#EDEEEA"
-          strokeWidth={6}
+          strokeWidth={markStrokeWidth(markPx)}
           strokeLinejoin="round"
         >
           {MARK_PATHS.map((d) => (
@@ -72,7 +75,7 @@ export default async function OpenGraphImage() {
     </div>,
     {
       ...size,
-      fonts: [{ name: "Bricolage Grotesque", data: bricolage, weight: 700, style: "normal" }],
+      fonts: [{ name: "Bricolage Grotesque", data: await bricolage, weight: 700, style: "normal" }],
     },
   );
 }

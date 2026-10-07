@@ -9,7 +9,7 @@ const { markWidth, gap } = lockupMetrics();
 type BrandLockupProps = {
   /**
    * Font size of the wordmark in px, used only to pick the mark's stroke. Set the actual size
-   * with a text class: the lockup is sized in em.
+   * with a text class: the lockup is sized in em. With responsive classes, pass the largest size.
    */
   size: number;
   className?: string;
