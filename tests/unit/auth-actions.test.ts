@@ -115,6 +115,31 @@ describe("signup", () => {
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
+  it.each(["user_already_exists", "email_exists"])(
+    "answers a taken email (%s) exactly like a new one",
+    async (code) => {
+      mocks.auth.signUp.mockResolvedValue({
+        data: { session: null, user: null },
+        error: { code, status: 422 },
+      });
+
+      const state = await signup({}, form({ ...CREDENTIALS, next: "/boards" }));
+
+      expect(state).toEqual({ confirmationSentTo: CREDENTIALS.email, email: CREDENTIALS.email });
+    },
+  );
+
+  it("still reports other sign-up errors", async () => {
+    mocks.auth.signUp.mockResolvedValue({
+      data: { session: null, user: null },
+      error: { code: "weak_password", status: 422 },
+    });
+
+    const state = await signup({}, form({ ...CREDENTIALS, next: "/boards" }));
+
+    expect(state.fieldErrors?.password).toBeDefined();
+  });
+
   it("still signs in directly when the project doesn't require confirmation", async () => {
     mocks.auth.signUp.mockResolvedValue({ data: { session: {}, user: {} }, error: null });
 

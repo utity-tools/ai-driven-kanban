@@ -49,10 +49,13 @@ export async function signup(_prev: AuthFormState, formData: FormData): Promise<
     ...parsed.data,
     options: { emailRedirectTo: await confirmRedirectTo(next) },
   });
-  if (error) return authErrorToFormState(error, parsed.data.email);
-  // No session means the project requires email confirmation (ADR 0022). An
-  // existing email gets this same response: Supabase returns an obfuscated user.
-  if (!data.session) {
+  // Never reveal that an account exists (ADR 0022): a taken email gets the same
+  // "check your email" answer as a new one. Supabase rejects already-confirmed
+  // emails with this error and re-sends the link for unconfirmed ones.
+  const emailTaken = error?.code === "user_already_exists" || error?.code === "email_exists";
+  if (error && !emailTaken) return authErrorToFormState(error, parsed.data.email);
+  // No session means the project requires email confirmation.
+  if (emailTaken || !data.session) {
     return { confirmationSentTo: parsed.data.email, email: parsed.data.email };
   }
 

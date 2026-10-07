@@ -128,7 +128,7 @@ function CheckYourEmail({ email, next }: { email: string; next: string }) {
         <p className="text-sm text-muted-foreground">
           We sent a confirmation link to{" "}
           <span className="font-medium text-foreground">{email}</span>. Open it to finish creating
-          your account.
+          your account. Already have an account? Sign in instead.
         </p>
       </div>
       <ResendConfirmationForm email={email} next={next} />

@@ -37,9 +37,12 @@ a page where the user has to click a button.
   `verifyOtp({ type: "email", token_hash })` (this sets the session cookie in whatever browser
   is used), and redirects to the sanitised `next`.
 - **Sign-up:** when Supabase returns no session, the form shows "Check your email" with a
-  resend button. A new account and an existing one get the same response, because Supabase
-  returns an obfuscated user for an existing email.
-- **Login:** `email_not_confirmed` shows a resend button.
+  resend button. A new account and an existing one get the same response. Supabase re-sends the
+  link for an unconfirmed email, but rejects an already-confirmed one with
+  `user_already_exists`, so the app maps that error to the same "Check your email" state (the
+  copy adds "Already have an account? Sign in instead").
+- **Login:** `email_not_confirmed` shows a resend button. Supabase only returns it when the
+  password is correct, so it reveals nothing to someone without the password.
 - **Resend:** the same response every time, except for rate limits.
 - **Unchanged:** GitHub OAuth, demo mode (anonymous users), and the default board trigger.
 - **Rollout:** the code handles both states (confirmation on or off), so it ships first. Each
@@ -64,5 +67,10 @@ a page where the user has to click a button.
 - The hosted email template lives in the dashboard. Changes to the repo copy have to be pasted
   there by hand (documented in `docs/setup.md`).
 - E2E tests read confirmation emails from the local Mailpit, so CI now starts Mailpit too.
+- The sign-up response time still differs a little between a new email (an email is sent) and a
+  confirmed one (nothing is sent). We accept that: the per-IP auth rate limit makes probing it
+  slow, and it is far weaker than an explicit "already exists" message.
+- Until confirmation is turned on in a project, signing up with a taken email there shows
+  "Check your email" without sending one. The copy points those users to sign in.
 - Users who signed up before confirmation was turned on remain confirmed. No backfill is needed.
 - Partially supersedes ADR 0005 ("No email confirmation in v0.1").
