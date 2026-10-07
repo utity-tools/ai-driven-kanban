@@ -44,16 +44,13 @@ export const RESEND_NOTICE =
   "If that account still needs confirming, a new link is on its way. Check your inbox and spam folder.";
 
 /**
- * Outcome of a resend. Only rate limits and outages are reported, and neither
- * is about the account: every other result, including "no such account" or
- * "already confirmed", gets the same notice so the form can't be used to find
- * out which emails have accounts.
+ * Outcome of a resend. Only outages are reported. Rate limits get the same
+ * notice as a send: Supabase limits emails per existing address but answers
+ * 200 for unknown ones, so "too many emails" would reveal that the account
+ * exists. The action logs them instead (ADR 0023).
  */
 export function resendOutcome(error: AuthErrorLike): ResendFormState {
-  if (isRateLimited(error)) {
-    return { error: "Too many emails requested. Wait a few minutes and try again." };
-  }
-  if (isServerFailure(error)) {
+  if (!isRateLimited(error) && isServerFailure(error)) {
     return { error: "We couldn't send the email right now. Try again in a few minutes." };
   }
   return { notice: RESEND_NOTICE };

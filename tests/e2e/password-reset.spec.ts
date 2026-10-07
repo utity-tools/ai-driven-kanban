@@ -18,16 +18,12 @@ async function signedOutPage(browser: Browser): Promise<Page> {
   return context.newPage();
 }
 
-/** Asks for a reset link from /forgot-password, retrying past Supabase's per-address email spacing. */
+/** Asks for a reset link from /forgot-password and waits for the neutral answer. */
 async function requestReset(page: Page, email: string): Promise<void> {
   await page.goto("/forgot-password");
   await page.getByLabel("Email").fill(email);
-  await expect(async () => {
-    await page.getByRole("button", { name: "Send reset link" }).click();
-    await expect(page.getByRole("status")).toContainText("If an account exists for that email", {
-      timeout: 1_000,
-    });
-  }).toPass({ intervals: [1_000], timeout: 10_000 });
+  await page.getByRole("button", { name: "Send reset link" }).click();
+  await expect(page.getByRole("status")).toContainText("If an account exists for that email");
 }
 
 test("a forgotten password is reset from the emailed link", async ({ page, browser }) => {

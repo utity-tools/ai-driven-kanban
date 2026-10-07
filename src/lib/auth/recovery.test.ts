@@ -67,8 +67,14 @@ describe("resetRequestOutcome", () => {
     },
   );
 
-  it("reports rate limits and outages", () => {
-    expect(resetRequestOutcome({ code: "over_email_send_rate_limit" }).error).toMatch(/too many/i);
+  it.each([[{ code: "over_email_send_rate_limit", status: 429 }], [{ status: 429 }]])(
+    "hides rate limits (%j): Supabase only applies them to existing accounts",
+    (error) => {
+      expect(resetRequestOutcome(error)).toEqual({ notice: RESET_REQUEST_NOTICE });
+    },
+  );
+
+  it("reports outages", () => {
     expect(resetRequestOutcome({ status: 500 }).error).toMatch(/couldn't send/);
   });
 });

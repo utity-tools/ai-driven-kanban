@@ -271,7 +271,8 @@ describe("resendConfirmation", () => {
     log.mockRestore();
   });
 
-  it("reports rate limits", async () => {
+  it("answers a rate limit like a send, and logs it without the email", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     mocks.auth.resend.mockResolvedValue({
       data: {},
       error: { code: "over_email_send_rate_limit", status: 429 },
@@ -279,7 +280,14 @@ describe("resendConfirmation", () => {
 
     const state = await resendConfirmation({}, form({ email: "a@example.com" }));
 
-    expect(state.error).toMatch(/too many emails/i);
+    expect(state.notice).toBeDefined();
+    expect(state.error).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith("auth.resend_rate_limited", {
+      code: "over_email_send_rate_limit",
+      status: 429,
+    });
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("a@example.com");
+    warn.mockRestore();
   });
 
   it("rejects an invalid email without calling Supabase", async () => {
@@ -312,6 +320,24 @@ describe("requestPasswordReset", () => {
     const refused = await requestPasswordReset({}, form({ email: "a@example.com" }));
 
     expect(refused).toEqual(ok);
+  });
+
+  it("answers an existing account's rate limit like an unknown email", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    mocks.auth.resetPasswordForEmail.mockResolvedValueOnce({ data: {}, error: null });
+    const unknown = await requestPasswordReset({}, form({ email: "a@example.com" }));
+    mocks.auth.resetPasswordForEmail.mockResolvedValueOnce({
+      data: {},
+      error: { code: "over_email_send_rate_limit", status: 429 },
+    });
+    const limited = await requestPasswordReset({}, form({ email: "a@example.com" }));
+
+    expect(limited).toEqual(unknown);
+    expect(warn).toHaveBeenCalledWith("auth.reset_request_rate_limited", {
+      code: "over_email_send_rate_limit",
+      status: 429,
+    });
+    warn.mockRestore();
   });
 
   it("rejects an invalid email without calling Supabase", async () => {

@@ -8,6 +8,7 @@ import {
   confirmEmailSchema,
   confirmFailure,
   type ConfirmFormState,
+  isRateLimited,
   isServerFailure,
   type ResendFormState,
   resendConfirmationSchema,
@@ -122,7 +123,7 @@ export async function confirmEmail(
   redirect(parsed.data.next);
 }
 
-/** Sends the sign-up confirmation email again. Same answer for every email, except rate limits. */
+/** Sends the sign-up confirmation email again. Same answer for every email, except outages. */
 export async function resendConfirmation(
   _prev: ResendFormState,
   formData: FormData,
@@ -139,11 +140,14 @@ export async function resendConfirmation(
     email: parsed.data.email,
     options: { emailRedirectTo: await confirmRedirectTo(parsed.data.next) },
   });
-  if (error) logAuthFailure("auth.resend_failed", error);
+  if (error) {
+    logAuthFailure("auth.resend_failed", error);
+    logHiddenRateLimit("auth.resend_rate_limited", error);
+  }
   return resendOutcome(error);
 }
 
-/** Emails a password reset link. Same answer for every email, except rate limits/outages. */
+/** Emails a password reset link. Same answer for every email, except outages. */
 export async function requestPasswordReset(
   _prev: ForgotPasswordFormState,
   formData: FormData,
@@ -161,7 +165,10 @@ export async function requestPasswordReset(
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
     redirectTo: await confirmRedirectTo(parsed.data.next, RECOVERY_PATH),
   });
-  if (error) logAuthFailure("auth.reset_request_failed", error);
+  if (error) {
+    logAuthFailure("auth.reset_request_failed", error);
+    logHiddenRateLimit("auth.reset_request_rate_limited", error);
+  }
   return { ...resetRequestOutcome(error), email: parsed.data.email };
 }
 
@@ -242,4 +249,15 @@ function logAuthFailure(
   error: { code?: string | undefined; status?: number | undefined },
 ): void {
   if (isServerFailure(error)) console.error(event, { code: error.code, status: error.status });
+}
+
+/**
+ * Logs rate limits the user isn't told about (resend, reset), so an exhausted
+ * project email quota still shows up in the logs.
+ */
+function logHiddenRateLimit(
+  event: string,
+  error: { code?: string | undefined; status?: number | undefined },
+): void {
+  if (isRateLimited(error)) console.warn(event, { code: error.code, status: error.status });
 }

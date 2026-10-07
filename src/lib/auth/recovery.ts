@@ -56,14 +56,12 @@ export function parseRecoveryLink(params: Record<string, unknown>): ConfirmEmail
 }
 
 /**
- * Outcome of a reset request. Like resend, only rate limits and outages are
- * reported: "no such account" gets the same notice as a real send.
+ * Outcome of a reset request. Like resend, only outages are reported; rate
+ * limits get the neutral notice, because Supabase only rate-limits addresses
+ * that have an account (ADR 0023).
  */
 export function resetRequestOutcome(error: AuthErrorLike): ForgotPasswordFormState {
-  if (isRateLimited(error)) {
-    return { error: "Too many emails requested. Wait a few minutes and try again." };
-  }
-  if (isServerFailure(error)) {
+  if (!isRateLimited(error) && isServerFailure(error)) {
     return { error: "We couldn't send the email right now. Try again in a few minutes." };
   }
   return { notice: RESET_REQUEST_NOTICE };

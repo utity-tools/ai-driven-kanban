@@ -146,8 +146,8 @@ describe("resendOutcome", () => {
     [{ code: "over_email_send_rate_limit" }],
     [{ code: "over_request_rate_limit" }],
     [{ status: 429 }],
-  ])("reports rate limiting (%j)", (error) => {
-    expect(resendOutcome(error).error).toMatch(/too many emails/i);
+  ])("hides rate limiting (%j): it only happens for existing addresses", (error) => {
+    expect(resendOutcome(error)).toEqual({ notice: RESEND_NOTICE });
   });
 
   it("reports an outage without saying anything about the account", () => {

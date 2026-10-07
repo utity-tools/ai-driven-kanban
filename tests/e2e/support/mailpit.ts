@@ -57,3 +57,21 @@ export function resetLink(email: string, options?: { after?: string }): Promise<
 export async function latestEmailId(email: string): Promise<string | undefined> {
   return (await latestMessageId(email)) ?? undefined;
 }
+
+/**
+ * True once an email newer than `after` reached `email`, waiting up to
+ * `timeout` ms. For retrying an action Supabase may silently rate-limit.
+ */
+export async function newEmailArrived(
+  email: string,
+  after: string | undefined,
+  timeout = 2_000,
+): Promise<boolean> {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const id = await latestMessageId(email);
+    if (id !== null && id !== after) return true;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  return false;
+}
