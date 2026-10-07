@@ -2,6 +2,7 @@ import { ShieldCheckIcon, SquareKanbanIcon, TagIcon } from "lucide-react";
 import Link from "next/link";
 import type { ComponentType } from "react";
 
+import { BrandLockup } from "@/components/brand/brand-lockup";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { GitHubIcon } from "@/components/icons/github-icon";
 import { BoardPreview } from "@/components/landing/board-preview";
@@ -57,10 +58,9 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-4 px-4">
           <Link
             href="/"
-            className="flex items-center gap-2 rounded-md font-heading font-bold tracking-[-0.02em] outline-none focus-visible:ring-3 focus-visible:ring-ring"
+            className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring"
           >
-            <BrandMark size={22} />
-            AI-Driven Kanban
+            <BrandLockup size={22} className="text-[22px]" />
           </Link>
           <a
             href={REPO_URL}
@@ -83,12 +83,8 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             <p className="w-fit rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground">
               Human-in-the-loop AI planning
             </p>
-            <BrandMark size={52} />
-            <h1
-              id="hero-heading"
-              className="font-heading text-4xl font-bold tracking-[-0.02em] text-balance sm:text-5xl"
-            >
-              AI-Driven Kanban
+            <h1 id="hero-heading">
+              <BrandLockup size={60} className="text-5xl sm:text-6xl" />
             </h1>
             <p className="max-w-xl text-lg text-pretty text-muted-foreground">
               A Kanban board where AI proposes subtasks, estimates and dependencies, and a human

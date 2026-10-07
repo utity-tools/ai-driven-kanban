@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { signOut } from "@/app/(app)/actions";
 import { PendingSubmitButton } from "@/components/auth/pending-submit-button";
-import { BrandMark } from "@/components/brand/brand-mark";
+import { BrandLockup } from "@/components/brand/brand-lockup";
 import { getCurrentUser } from "@/lib/auth/session";
 import { userDisplayLabel } from "@/lib/auth/user";
 
@@ -18,10 +18,9 @@ export async function AppHeader() {
         <div className="flex h-14 w-full items-center justify-between gap-4 px-4">
           <Link
             href="/boards"
-            className="flex items-center gap-2 rounded-md font-heading font-bold tracking-[-0.02em] outline-none focus-visible:ring-3 focus-visible:ring-ring"
+            className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring"
           >
-            <BrandMark size={22} />
-            AI-Driven Kanban
+            <BrandLockup size={22} className="text-[22px]" />
           </Link>
           {user ? (
             <div className="flex min-w-0 items-center gap-3">
