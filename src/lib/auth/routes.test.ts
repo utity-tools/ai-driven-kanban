@@ -28,11 +28,11 @@ describe("isPublicPath", () => {
 });
 
 describe("isAuthPage", () => {
-  it("matches only login, signup and forgot-password", () => {
+  it("matches only login and signup", () => {
     expect(isAuthPage("/login")).toBe(true);
     expect(isAuthPage("/signup/")).toBe(true);
-    expect(isAuthPage("/forgot-password")).toBe(true);
-    // A recovered session must reach it while signed in.
+    // Both must stay reachable while signed in (ADR 0023).
+    expect(isAuthPage("/forgot-password")).toBe(false);
     expect(isAuthPage("/reset-password")).toBe(false);
     expect(isAuthPage("/auth/callback")).toBe(false);
     expect(isAuthPage("/")).toBe(false);

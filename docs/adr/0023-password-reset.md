@@ -52,7 +52,10 @@ a stolen session cookie would be enough to lock the owner out of their account.
 ## Consequences
 
 - Forgotten passwords are recoverable without support. Every reset also signs out other
-  devices.
+  devices: their refresh tokens are revoked, but an access token already issued stays valid
+  until it expires (`jwt_expiry`, 1 hour at most).
+- `/forgot-password` stays reachable while signed in. Signed-in users are not sent to /boards
+  from it, because a user whose reset link was already used may need a new one.
 - A 15-minute window: a user who opens the link and walks away has to request a new one.
 - The hosted "Reset password" template must be pasted into each Supabase project, like the
   confirmation template (`docs/setup.md`). Until then, the default template's link doesn't match
