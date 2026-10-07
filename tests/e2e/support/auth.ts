@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { expect, type Page } from "@playwright/test";
 
+import { confirmationLink } from "./mailpit";
+
 /** Seeded accounts (see supabase/seed.sql). */
 export const ALICE = { email: "alice@example.com", password: "password123" } as const;
 /** Editor (not owner) on Alice's "Demo board". */
@@ -50,11 +52,33 @@ export async function signIn(
   await submitCredentials(page, credentials, "Sign in");
 }
 
-/** Signs up a brand-new user from /signup and waits for the boards page. */
-export async function signUpNewUser(page: Page): Promise<{ email: string; password: string }> {
-  const credentials = { email: uniqueEmail(), password: `pw-${randomUUID()}` };
-  await page.goto("/signup");
+/** Fresh credentials for a user that doesn't exist yet. */
+export function newCredentials(): { email: string; password: string } {
+  return { email: uniqueEmail(), password: `pw-${randomUUID()}` };
+}
+
+/** Submits /signup and waits for "Check your email" (sign-up requires confirmation, ADR 0022). */
+export async function startSignUp(
+  page: Page,
+  credentials: { email: string; password: string },
+  { next }: { next?: string } = {},
+): Promise<void> {
+  await page.goto(next ? `/signup?${new URLSearchParams({ next }).toString()}` : "/signup");
   await submitCredentials(page, credentials, "Create account");
+  await expect(page.getByRole("heading", { level: 2, name: "Check your email" })).toBeVisible();
+}
+
+/** Opens the confirmation link from the email in Mailpit and presses "Confirm email". */
+export async function confirmEmail(page: Page, email: string): Promise<void> {
+  await page.goto(await confirmationLink(email));
+  await page.getByRole("button", { name: "Confirm email" }).click();
+}
+
+/** Signs up a brand-new user from /signup, confirms the email and waits for the boards page. */
+export async function signUpNewUser(page: Page): Promise<{ email: string; password: string }> {
+  const credentials = newCredentials();
+  await startSignUp(page, credentials);
+  await confirmEmail(page, credentials.email);
   await expect(page).toHaveURL("/boards");
   await expect(page.getByRole("heading", { level: 1, name: "Your boards" })).toBeVisible();
   return credentials;
