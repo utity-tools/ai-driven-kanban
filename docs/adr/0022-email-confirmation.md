@@ -44,6 +44,16 @@ a page where the user has to click a button.
 - **Login:** `email_not_confirmed` shows a resend button. Supabase only returns it when the
   password is correct, so it reveals nothing to someone without the password.
 - **Resend:** the same response every time, except for rate limits.
+- **Redirect allow list is security-critical:** the token goes to whatever allow-listed
+  `RedirectTo` the sign-up request names, and anyone can call Supabase's sign-up API directly.
+  A pattern such as `https://*.vercel.app/**` would let an attacker sign up a victim's address
+  with a link pointing at their own site, receive the token when the victim clicks, and confirm
+  an account they hold the password for. Production allows only its own domain. Staging
+  allows only this project's own preview URLs (scoped to the Vercel team) and localhost.
+- **Outages are logged** (`auth.signup_failed`, `auth.confirm_failed`, `auth.resend_failed`, with
+  code and status only). Resend and the confirm page say "try again" for them, which reveals
+  nothing about the account. On the confirm page, rate limits and outages keep the button,
+  because the token was not spent.
 - **Unchanged:** GitHub OAuth, demo mode (anonymous users), and the default board trigger.
 - **Rollout:** the code handles both states (confirmation on or off), so it ships first. Each
   hosted project then gets the template and **Confirm email** turned on: staging first, then
@@ -72,5 +82,18 @@ a page where the user has to click a button.
   slow, and it is far weaker than an explicit "already exists" message.
 - Until confirmation is turned on in a project, signing up with a taken email there shows
   "Check your email" without sending one. The copy points those users to sign in.
+- **Rate limit as a small signal:** Supabase spaces emails to one address (`max_frequency`, 60s
+  hosted). Signing up again with an unconfirmed address within that window answers "Too many
+  attempts", which tells someone that address signed up in the last minute. We keep the honest
+  message: the same error also means the project-wide email quota is exhausted, and turning it
+  into "Check your email" would hide that outage from every new user.
+- **Email quota abuse:** sign-up and resend are unauthenticated and share the project's 30
+  emails/hour. Throwaway sign-ups from a few IPs could use that up and block real sign-ups for
+  the hour. This is an accepted risk for a portfolio project. The fix, if it happens, is
+  Supabase CAPTCHA (Cloudflare Turnstile) on sign-up and resend.
+- **Confirm-link CSRF:** someone could send a victim a link that carries the sender's own
+  unconfirmed token. Pressing "Confirm email" would sign the victim into the sender's new
+  account. This is accepted: it needs a deliberate click, the header then shows who is signed
+  in, and the account holds nothing of the victim's.
 - Users who signed up before confirmation was turned on remain confirmed. No backfill is needed.
 - Partially supersedes ADR 0005 ("No email confirmation in v0.1").

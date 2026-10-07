@@ -46,6 +46,10 @@ reach the browser; the data is protected by Row Level Security, not by hiding th
 - **One-time links are spent by a POST, never a GET:** mail scanners that prefetch links can't use
   them up. Pages whose URL carries a token are `noindex` and send no `Referer`.
 - **Redirects after auth** only accept same-origin relative paths (`sanitizeNextPath`).
+- **Supabase redirect allow-lists stay narrow:** the production domain only on `kanban-prod`;
+  team-scoped preview URLs and localhost on `kanban-staging`. A wildcard such as
+  `*.vercel.app` would let an attacker receive confirmation tokens
+  ([ADR 0022](adr/0022-email-confirmation.md), [setup](setup.md#hosted-auth-settings-every-supabase-cloud-project)).
 
 ## Automated safeguards
 

@@ -129,8 +129,14 @@ Local projects read these from `supabase/config.toml`; hosted projects need them
   4. Sign up with a real inbox and check that the link opens `/auth/confirm` on the same origin.
 
   The template builds the link from the `emailRedirectTo` the app sends, so the Site URL must
-  not end in `/`, and every origin that can send sign-ups (production, the Vercel preview
-  pattern on staging) must be in the redirect allow-list, or links fall back to the Site URL.
+  not end in `/`, and every origin that can send sign-ups must be in the redirect allow-list,
+  or links fall back to the Site URL.
+
+  **Keep the allow-list narrow.** The emailed token goes to any allow-listed URL a sign-up
+  request names, and anyone can make that request. Production lists only
+  `https://kanban.utitytools.com/**`. Staging lists only this project's previews, scoped to
+  the team (`https://ai-driven-kanban-*-utity-tools-projects.vercel.app/**`), plus localhost.
+  Never use `https://*.vercel.app/**`.
 
 ### Production domain
 
