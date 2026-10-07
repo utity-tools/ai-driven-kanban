@@ -1,15 +1,19 @@
+import type { CSSProperties } from "react";
+
 import { MARK_PATHS, MARK_VIEW_BOX, markStrokeWidth } from "@/lib/brand/mark";
 
 type BrandMarkProps = {
   /** Rendered width in px. */
   size?: number;
   className?: string;
+  /** Merged over the defaults; a CSS `width` overrides `size` (the stroke still follows `size`). */
+  style?: CSSProperties;
   /** Accessible name. Without it the mark is decorative and hidden from assistive technology. */
   title?: string;
 };
 
 /** The board mark: a rounded rectangle split into three columns. Inherits `currentColor`. */
-export function BrandMark({ size = 24, className, title }: BrandMarkProps) {
+export function BrandMark({ size = 24, className, style, title }: BrandMarkProps) {
   const { x, y, width, height } = MARK_VIEW_BOX;
 
   return (
@@ -23,7 +27,7 @@ export function BrandMark({ size = 24, className, title }: BrandMarkProps) {
       strokeWidth={markStrokeWidth(size)}
       strokeLinejoin="round"
       // Auto height follows the viewBox ratio when a parent (shadcn buttons) sets only a width.
-      style={{ height: "auto" }}
+      style={{ height: "auto", ...style }}
       className={className}
       role={title ? "img" : undefined}
       aria-hidden={title ? undefined : true}

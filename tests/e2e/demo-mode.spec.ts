@@ -49,7 +49,7 @@ const BANNER_TEXT = "You're exploring a demo. Your changes are kept for 7 days, 
 const BOARD_PATH = /^\/boards\/[0-9a-f-]{36}$/;
 
 function hero(page: Page) {
-  return page.getByRole("main").getByRole("region", { name: "AI-Driven Kanban" });
+  return page.getByRole("main").getByRole("region", { name: "ackboard" });
 }
 
 function demoBanner(page: Page) {
@@ -70,7 +70,7 @@ test.describe("landing page, signed out", () => {
     await page.goto("/");
 
     await expect(page).toHaveURL("/");
-    await expect(page.getByRole("heading", { level: 1, name: "AI-Driven Kanban" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "ackboard" })).toBeVisible();
     const cta = hero(page);
     await expect(cta.getByRole("button", { name: "Try the demo" })).toBeVisible();
     await expect(cta.getByRole("link", { name: "Create account" })).toHaveAttribute(
