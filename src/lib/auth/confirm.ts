@@ -13,9 +13,15 @@ export const CONFIRM_PATH = "/auth/confirm";
 // doesn't lock users out, but limited to URL-safe characters.
 const tokenHash = z.string().regex(/^[A-Za-z0-9_-]{16,256}$/);
 
+/** A `next` form/query field: always a safe same-origin path, even when missing. */
+export const nextPathField = z
+  .unknown()
+  .optional()
+  .transform((value) => sanitizeNextPath(value));
+
 export const confirmEmailSchema = z.object({
   tokenHash,
-  next: z.unknown().transform((value) => sanitizeNextPath(value)),
+  next: nextPathField,
 });
 
 export type ConfirmEmailInput = z.infer<typeof confirmEmailSchema>;
@@ -28,7 +34,7 @@ export type ConfirmFormState = { error?: string; retryable?: boolean };
 
 export const resendConfirmationSchema = z.object({
   email: emailSchema,
-  next: z.unknown().transform((value) => sanitizeNextPath(value)),
+  next: nextPathField,
 });
 
 /** State returned by the resend Server Action to `useActionState`. */
@@ -38,28 +44,28 @@ export const RESEND_NOTICE =
   "If that account still needs confirming, a new link is on its way. Check your inbox and spam folder.";
 
 /**
- * Outcome of a resend. Only rate limits and outages are reported, and neither
- * is about the account: every other result, including "no such account" or
- * "already confirmed", gets the same notice so the form can't be used to find
- * out which emails have accounts.
+ * Outcome of a resend. Only outages are reported. Rate limits get the same
+ * notice as a send: Supabase limits emails per existing address but answers
+ * 200 for unknown ones, so "too many emails" would reveal that the account
+ * exists. The action logs them instead (ADR 0023).
  */
 export function resendOutcome(error: AuthErrorLike): ResendFormState {
-  if (isRateLimited(error)) {
-    return { error: "Too many emails requested. Wait a few minutes and try again." };
-  }
-  if (isServerFailure(error)) {
+  if (!isRateLimited(error) && isServerFailure(error)) {
     return { error: "We couldn't send the email right now. Try again in a few minutes." };
   }
   return { notice: RESEND_NOTICE };
 }
 
 /**
- * Reads the confirm link's query (`token_hash`, `type`, `next`). Returns `null`
- * when the link is malformed, so the page can say so without calling Supabase.
- * Only `type=email` is accepted: it is the only one our template emits.
+ * Reads an emailed link's query (`token_hash`, `type`, `next`). Returns `null`
+ * when the link is malformed or of another type, so the page can say so without
+ * calling Supabase. Our templates emit one type each.
  */
-export function parseConfirmLink(params: Record<string, unknown>): ConfirmEmailInput | null {
-  if (single(params.type) !== "email") return null;
+export function parseEmailLink(
+  params: Record<string, unknown>,
+  type: "email" | "recovery",
+): ConfirmEmailInput | null {
+  if (single(params.type) !== type) return null;
   const result = confirmEmailSchema.safeParse({
     tokenHash: single(params.token_hash),
     next: single(params.next),
@@ -67,13 +73,22 @@ export function parseConfirmLink(params: Record<string, unknown>): ConfirmEmailI
   return result.success ? result.data : null;
 }
 
+/** Reads the sign-up confirmation link (`type=email`). */
+export function parseConfirmLink(params: Record<string, unknown>): ConfirmEmailInput | null {
+  return parseEmailLink(params, "email");
+}
+
 /**
- * The `emailRedirectTo` for sign-up and resend: the confirm page on the app's own
- * origin, carrying `next`. It always has a query string, which the email template
- * relies on to append `&token_hash=…`.
+ * The redirect for an emailed link: a page on the app's own origin (the confirm
+ * page by default, or the password reset page), carrying `next`. It always has a
+ * query string, which the email templates rely on to append `&token_hash=…`.
  */
-export function buildEmailRedirectTo(origin: string, next: unknown): string {
-  const url = new URL(CONFIRM_PATH, origin);
+export function buildEmailRedirectTo(
+  origin: string,
+  next: unknown,
+  path: string = CONFIRM_PATH,
+): string {
+  const url = new URL(path, origin);
   url.searchParams.set("next", sanitizeNextPath(next));
   return url.toString();
 }

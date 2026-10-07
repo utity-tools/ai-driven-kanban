@@ -3,8 +3,12 @@ import { DEFAULT_AFTER_LOGIN_PATH, sanitizeNextPath } from "./redirect";
 export const LOGIN_PATH = "/login";
 export const SIGNUP_PATH = "/signup";
 
+export const FORGOT_PASSWORD_PATH = "/forgot-password";
+
+// Signed-in users are sent to /boards from these. Not /forgot-password: a
+// signed-in user (e.g. one whose reset link was already used) may need a link.
 const AUTH_PAGES = new Set([LOGIN_PATH, SIGNUP_PATH]);
-const PUBLIC_PATHS = new Set(["/", LOGIN_PATH, SIGNUP_PATH]);
+const PUBLIC_PATHS = new Set(["/", LOGIN_PATH, SIGNUP_PATH, FORGOT_PASSWORD_PATH]);
 // API routes authenticate themselves and return a JSON 401/403: redirecting
 // them to /login here would turn a fetch() call into an HTML page.
 const PUBLIC_PREFIXES = ["/auth/", "/api/"];
@@ -26,6 +30,13 @@ export function isPublicPath(pathname: string): boolean {
 export function loginPathWithNext(nextPath: string): string {
   const params = new URLSearchParams({ next: nextPath });
   return `${LOGIN_PATH}?${params.toString()}`;
+}
+
+/** Builds `/forgot-password?next=<path>`, or the plain path when `next` is unsafe or the default. */
+export function forgotPasswordPathWithNext(next: unknown): string {
+  const safe = sanitizeNextPath(next);
+  if (safe === DEFAULT_AFTER_LOGIN_PATH) return FORGOT_PASSWORD_PATH;
+  return `${FORGOT_PASSWORD_PATH}?${new URLSearchParams({ next: safe }).toString()}`;
 }
 
 /** Builds `/signup?next=<path>`, or plain `/signup` when `next` is unsafe or the default. */

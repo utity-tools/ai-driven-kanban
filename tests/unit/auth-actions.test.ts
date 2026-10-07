@@ -11,6 +11,10 @@ const mocks = vi.hoisted(() => ({
     signUp: vi.fn(),
     signInWithPassword: vi.fn(),
     resend: vi.fn(),
+    resetPasswordForEmail: vi.fn(),
+    updateUser: vi.fn(),
+    signOut: vi.fn(),
+    getClaims: vi.fn(),
   },
 }));
 
@@ -24,8 +28,18 @@ class RedirectSignal extends Error {
 vi.mock("@/lib/db/server", () => ({ createClient: mocks.createClient }));
 vi.mock("next/headers", () => ({ headers: mocks.headers }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+// session.ts is server-only; the real module runs here against the mocked client.
+vi.mock("server-only", () => ({}));
 
-import { confirmEmail, login, resendConfirmation, signup } from "@/app/(auth)/actions";
+import {
+  confirmEmail,
+  login,
+  requestPasswordReset,
+  resendConfirmation,
+  signup,
+  updatePassword,
+  verifyRecovery,
+} from "@/app/(auth)/actions";
 
 const HASH = "f".repeat(56);
 
@@ -257,7 +271,8 @@ describe("resendConfirmation", () => {
     log.mockRestore();
   });
 
-  it("reports rate limits", async () => {
+  it("answers a rate limit like a send, and logs it without the email", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     mocks.auth.resend.mockResolvedValue({
       data: {},
       error: { code: "over_email_send_rate_limit", status: 429 },
@@ -265,7 +280,14 @@ describe("resendConfirmation", () => {
 
     const state = await resendConfirmation({}, form({ email: "a@example.com" }));
 
-    expect(state.error).toMatch(/too many emails/i);
+    expect(state.notice).toBeDefined();
+    expect(state.error).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith("auth.resend_rate_limited", {
+      code: "over_email_send_rate_limit",
+      status: 429,
+    });
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("a@example.com");
+    warn.mockRestore();
   });
 
   it("rejects an invalid email without calling Supabase", async () => {
@@ -273,5 +295,142 @@ describe("resendConfirmation", () => {
 
     expect(state.error).toBeDefined();
     expect(mocks.auth.resend).not.toHaveBeenCalled();
+  });
+});
+
+describe("requestPasswordReset", () => {
+  it("emails a link back to the reset page on this origin, keeping next", async () => {
+    mocks.auth.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
+
+    const state = await requestPasswordReset({}, form({ email: "a@example.com", next: "/x" }));
+
+    expect(mocks.auth.resetPasswordForEmail).toHaveBeenCalledWith("a@example.com", {
+      redirectTo: "https://kanban.example/auth/reset?next=%2Fx",
+    });
+    expect(state.notice).toMatch(/if an account exists/i);
+  });
+
+  it("answers the same when Supabase refuses for an account-specific reason", async () => {
+    mocks.auth.resetPasswordForEmail.mockResolvedValueOnce({ data: {}, error: null });
+    const ok = await requestPasswordReset({}, form({ email: "a@example.com" }));
+    mocks.auth.resetPasswordForEmail.mockResolvedValueOnce({
+      data: {},
+      error: { code: "user_not_found", status: 400 },
+    });
+    const refused = await requestPasswordReset({}, form({ email: "a@example.com" }));
+
+    expect(refused).toEqual(ok);
+  });
+
+  it("answers an existing account's rate limit like an unknown email", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    mocks.auth.resetPasswordForEmail.mockResolvedValueOnce({ data: {}, error: null });
+    const unknown = await requestPasswordReset({}, form({ email: "a@example.com" }));
+    mocks.auth.resetPasswordForEmail.mockResolvedValueOnce({
+      data: {},
+      error: { code: "over_email_send_rate_limit", status: 429 },
+    });
+    const limited = await requestPasswordReset({}, form({ email: "a@example.com" }));
+
+    expect(limited).toEqual(unknown);
+    expect(warn).toHaveBeenCalledWith("auth.reset_request_rate_limited", {
+      code: "over_email_send_rate_limit",
+      status: 429,
+    });
+    warn.mockRestore();
+  });
+
+  it("rejects an invalid email without calling Supabase", async () => {
+    const state = await requestPasswordReset({}, form({ email: "nope" }));
+
+    expect(state).toEqual({ fieldError: "Enter a valid email address.", email: "nope" });
+    expect(mocks.auth.resetPasswordForEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe("verifyRecovery", () => {
+  it("spends the recovery token and asks for the new password, keeping next", async () => {
+    mocks.auth.verifyOtp.mockResolvedValue({ data: {}, error: null });
+
+    const path = await redirectOf(verifyRecovery({}, form({ token_hash: HASH, next: "/x" })));
+
+    expect(mocks.auth.verifyOtp).toHaveBeenCalledWith({ type: "recovery", token_hash: HASH });
+    expect(path).toBe("/reset-password?next=%2Fx");
+  });
+
+  it("explains a used link and offers no retry", async () => {
+    mocks.auth.verifyOtp.mockResolvedValue({
+      data: {},
+      error: { code: "otp_expired", status: 403 },
+    });
+
+    const state = await verifyRecovery({}, form({ token_hash: HASH }));
+
+    expect(state).toEqual({
+      error: "This link has expired or was already used. Request a new one.",
+      retryable: false,
+    });
+  });
+});
+
+describe("updatePassword", () => {
+  const now = () => Math.floor(Date.now() / 1000);
+  const claims = (method: string, secondsAgo = 0) => ({
+    data: {
+      claims: {
+        sub: "u1",
+        email: "a@example.com",
+        amr: [{ method, timestamp: now() - secondsAgo }],
+      },
+    },
+    error: null,
+  });
+
+  it("sets the password for a fresh recovery session and signs out other sessions", async () => {
+    mocks.auth.getClaims.mockResolvedValue(claims("otp", 30));
+    mocks.auth.updateUser.mockResolvedValue({ data: {}, error: null });
+    mocks.auth.signOut.mockResolvedValue({ error: null });
+
+    const path = await redirectOf(
+      updatePassword({}, form({ password: "new-long-pass-1", next: "/x" })),
+    );
+
+    expect(mocks.auth.updateUser).toHaveBeenCalledWith({ password: "new-long-pass-1" });
+    expect(mocks.auth.signOut).toHaveBeenCalledWith({ scope: "others" });
+    expect(path).toBe("/x");
+  });
+
+  it.each([
+    ["a password sign-in", claims("password")],
+    ["a GitHub sign-in", claims("oauth")],
+    ["an expired recovery", claims("otp", 16 * 60)],
+    ["no session", { data: null, error: { code: "no_session" } }],
+  ])("refuses %s without touching the password", async (_label, result) => {
+    mocks.auth.getClaims.mockResolvedValue(result);
+
+    const state = await updatePassword({}, form({ password: "new-long-pass-1" }));
+
+    expect(state.error).toMatch(/expired/);
+    expect(mocks.auth.updateUser).not.toHaveBeenCalled();
+  });
+
+  it("validates the new password before anything else", async () => {
+    const state = await updatePassword({}, form({ password: "short" }));
+
+    expect(state).toEqual({ fieldError: "Use at least 8 characters." });
+    expect(mocks.auth.getClaims).not.toHaveBeenCalled();
+  });
+
+  it("maps a reused password to the field", async () => {
+    mocks.auth.getClaims.mockResolvedValue(claims("otp"));
+    mocks.auth.updateUser.mockResolvedValue({
+      data: {},
+      error: { code: "same_password", status: 422 },
+    });
+
+    const state = await updatePassword({}, form({ password: "new-long-pass-1" }));
+
+    expect(state.fieldError).toMatch(/different/);
+    expect(mocks.auth.signOut).not.toHaveBeenCalled();
   });
 });

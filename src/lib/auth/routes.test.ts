@@ -7,6 +7,7 @@ import {
   isPublicPath,
   loginPathWithNext,
   signupPathWithNext,
+  forgotPasswordPathWithNext,
 } from "./routes";
 
 describe("isPublicPath", () => {
@@ -14,13 +15,14 @@ describe("isPublicPath", () => {
     "/",
     "/login",
     "/signup",
+    "/forgot-password",
     "/login/",
     "/auth/callback",
     "/auth/anything/else",
     "/api/cards/1/decompose",
   ])("treats %s as public", (path) => expect(isPublicPath(path)).toBe(true));
 
-  it.each(["/boards", "/boards/1", "/authx", "/loginx", "/settings"])(
+  it.each(["/boards", "/boards/1", "/authx", "/loginx", "/settings", "/reset-password"])(
     "treats %s as protected",
     (path) => expect(isPublicPath(path)).toBe(false),
   );
@@ -30,6 +32,9 @@ describe("isAuthPage", () => {
   it("matches only login and signup", () => {
     expect(isAuthPage("/login")).toBe(true);
     expect(isAuthPage("/signup/")).toBe(true);
+    // Both must stay reachable while signed in (ADR 0023).
+    expect(isAuthPage("/forgot-password")).toBe(false);
+    expect(isAuthPage("/reset-password")).toBe(false);
     expect(isAuthPage("/auth/callback")).toBe(false);
     expect(isAuthPage("/")).toBe(false);
   });
@@ -90,4 +95,14 @@ describe("signupPathWithNext", () => {
       expect(signupPathWithNext(value)).toBe("/signup");
     },
   );
+});
+
+describe("forgotPasswordPathWithNext", () => {
+  it("keeps a non-default next", () => {
+    expect(forgotPasswordPathWithNext("/invite/abc")).toBe("/forgot-password?next=%2Finvite%2Fabc");
+  });
+
+  it.each([undefined, "/boards", "https://evil.example"])("is the plain path for %j", (next) => {
+    expect(forgotPasswordPathWithNext(next)).toBe("/forgot-password");
+  });
 });

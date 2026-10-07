@@ -15,13 +15,14 @@ async function latestMessageId(email: string): Promise<string | null> {
 }
 
 /**
- * Waits for the newest confirmation email sent to `email` and returns its link
- * (the app's /auth/confirm page). Pass `after` to wait for a new email, e.g. a
- * resend, instead of returning the one already there.
+ * Waits for the newest email sent to `email` and returns its link to the given
+ * app page (e.g. /auth/confirm or /auth/reset). Pass `after` to wait for a new
+ * email, e.g. a resend, instead of returning the one already there.
  */
-export async function confirmationLink(
+async function emailLink(
   email: string,
-  { after }: { after?: string } = {},
+  path: string,
+  { after }: { after?: string | undefined } = {},
 ): Promise<string> {
   let id: string | null = null;
   await expect
@@ -30,19 +31,47 @@ export async function confirmationLink(
         id = await latestMessageId(email);
         return id !== null && id !== after;
       },
-      { message: `confirmation email for ${email}`, timeout: 10_000 },
+      { message: `email with a ${path} link for ${email}`, timeout: 10_000 },
     )
     .toBe(true);
 
   const response = await fetch(`${MAILPIT_URL}/api/v1/message/${id}`);
   if (!response.ok) throw new Error(`Mailpit message failed (${response.status})`);
   const { HTML } = (await response.json()) as { HTML: string };
-  const href = /href="([^"]*\/auth\/confirm\?[^"]*)"/.exec(HTML)?.[1];
-  if (!href) throw new Error(`no confirmation link in the email to ${email}`);
+  const href = new RegExp(`href="([^"]*${path}\\?[^"]*)"`).exec(HTML)?.[1];
+  if (!href) throw new Error(`no ${path} link in the newest email to ${email}`);
   return href.replaceAll("&amp;", "&");
 }
 
-/** ID of the newest email to `email`, to wait for a newer one with `confirmationLink`. */
+/** The sign-up confirmation link (ADR 0022). */
+export function confirmationLink(email: string, options?: { after?: string }): Promise<string> {
+  return emailLink(email, "/auth/confirm", options);
+}
+
+/** The password reset link (ADR 0023). Pass `after` so the sign-up email isn't picked up. */
+export function resetLink(email: string, options?: { after?: string }): Promise<string> {
+  return emailLink(email, "/auth/reset", options);
+}
+
+/** ID of the newest email to `email`, to wait for a newer one (`after`). */
 export async function latestEmailId(email: string): Promise<string | undefined> {
   return (await latestMessageId(email)) ?? undefined;
+}
+
+/**
+ * True once an email newer than `after` reached `email`, waiting up to
+ * `timeout` ms. For retrying an action Supabase may silently rate-limit.
+ */
+export async function newEmailArrived(
+  email: string,
+  after: string | undefined,
+  timeout = 2_000,
+): Promise<boolean> {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const id = await latestMessageId(email);
+    if (id !== null && id !== after) return true;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  return false;
 }

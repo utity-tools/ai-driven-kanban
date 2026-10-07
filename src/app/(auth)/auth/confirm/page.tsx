@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { ConfirmEmailForm } from "@/components/auth/confirm-email-form";
+import { EmailLinkForm } from "@/components/auth/email-link-form";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { parseConfirmLink } from "@/lib/auth/confirm";
-import { LOGIN_PATH } from "@/lib/auth/routes";
+import { LOGIN_PATH, loginPathWithNext } from "@/lib/auth/routes";
 
 import { confirmEmail } from "../../actions";
 
@@ -41,7 +41,14 @@ export default async function ConfirmEmailPage({ searchParams }: PageProps<"/aut
       </CardHeader>
       <CardContent className="grid gap-4">
         {link ? (
-          <ConfirmEmailForm action={confirmEmail} tokenHash={link.tokenHash} next={link.next} />
+          <EmailLinkForm
+            action={confirmEmail}
+            tokenHash={link.tokenHash}
+            next={link.next}
+            submitLabel="Confirm email"
+            pendingLabel="Confirming…"
+            fallback={{ href: loginPathWithNext(link.next), label: "Go to sign in" }}
+          />
         ) : (
           <>
             <p className="text-sm text-muted-foreground">

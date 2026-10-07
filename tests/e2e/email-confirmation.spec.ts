@@ -8,7 +8,7 @@ import {
   signIn,
   startSignUp,
 } from "./support/auth";
-import { confirmationLink, latestEmailId } from "./support/mailpit";
+import { confirmationLink, latestEmailId, newEmailArrived } from "./support/mailpit";
 
 // Sign-up requires email confirmation (ADR 0022). Emails are read from the local Mailpit.
 
@@ -51,13 +51,13 @@ test("an unconfirmed user can't sign in until confirming a resent link", async (
   });
 
   await test.step("resending sends a new email", async () => {
-    // Supabase spaces emails to one address (max_frequency, 1s locally): retry past it.
+    // Supabase spaces emails to one address (max_frequency, 1s locally) and the
+    // app answers a rate limit like a send, so retry until a new email arrives.
     await expect(async () => {
       await page.getByRole("button", { name: "Resend confirmation email" }).click();
-      await expect(page.getByRole("status")).toContainText("a new link is on its way", {
-        timeout: 1_000,
-      });
-    }).toPass({ intervals: [1_000], timeout: 10_000 });
+      await expect(page.getByRole("status")).toContainText("a new link is on its way");
+      expect(await newEmailArrived(credentials.email, firstEmail)).toBe(true);
+    }).toPass({ intervals: [1_000], timeout: 15_000 });
   });
 
   await test.step("the new link confirms the account", async () => {

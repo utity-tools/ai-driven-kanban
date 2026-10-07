@@ -225,7 +225,9 @@ double_confirm_changes = true
 # ADR 0022: on in every project. Locally the emails land in Mailpit (port 54324).
 enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
-secure_password_change = false
+# ADR 0023: on everywhere, so a session older than 24h can't change the password through the
+# Auth API without a reauthentication nonce. Reset sessions are fresh, so the reset flow is unaffected.
+secure_password_change = true
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 max_frequency = "1s"
 # Number of characters used in the email OTP.
@@ -247,6 +249,11 @@ otp_expiry = 3600
 [auth.email.template.confirmation]
 subject = "Confirm your email for AI-Driven Kanban"
 content_path = "./supabase/templates/confirmation.html"
+
+# Password reset (ADR 0023). Hosted projects need the same template pasted in the dashboard.
+[auth.email.template.recovery]
+subject = "Reset your password for AI-Driven Kanban"
+content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

@@ -40,11 +40,18 @@ reach the browser; the data is protected by Row Level Security, not by hiding th
 
 ## Authentication
 
-- **No account enumeration:** sign-up, resend and the confirm page answer the same whether or
-  not an email has an account; only rate limits are reported
-  ([ADR 0022](adr/0022-email-confirmation.md)).
+- **No account enumeration:** sign-up, resend, forgot-password and the emailed-link pages answer
+  the same whether or not an email has an account. Resend and forgot-password hide rate limits
+  too, because Supabase only applies them to existing accounts
+  ([ADR 0022](adr/0022-email-confirmation.md), [ADR 0023](adr/0023-password-reset.md)).
 - **One-time links are spent by a POST, never a GET:** mail scanners that prefetch links can't use
   them up. Pages whose URL carries a token are `noindex` and send no `Referer`.
+- **Password reset needs a fresh email-verified session:** `/reset-password` accepts only a
+  session opened by an emailed link in the last 15 minutes (the signed JWT `amr` claim), never a
+  normal signed-in session. Each reset revokes the user's other sessions.
+- **Secure password change** is on in every project: through the Auth API, sessions older than
+  24 hours need a reauthentication nonce to change the password
+  ([ADR 0023](adr/0023-password-reset.md)).
 - **Redirects after auth** only accept same-origin relative paths (`sanitizeNextPath`).
 - **Supabase redirect allow-lists stay narrow:** the production domain only on `kanban-prod`;
   team-scoped preview URLs and localhost on `kanban-staging`. A wildcard such as

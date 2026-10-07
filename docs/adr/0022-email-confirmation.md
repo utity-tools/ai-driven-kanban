@@ -43,7 +43,9 @@ a page where the user has to click a button.
   copy adds "Already have an account? Sign in instead").
 - **Login:** `email_not_confirmed` shows a resend button. Supabase only returns it when the
   password is correct, so it reveals nothing to someone without the password.
-- **Resend:** the same response every time, except for rate limits.
+- **Resend:** the same response every time, except for outages. Rate limits were reported at
+  first; [ADR 0023](0023-password-reset.md) hides them, because Supabase only rate-limits
+  addresses that have an account.
 - **Redirect allow list is security-critical:** the token goes to whatever allow-listed
   `RedirectTo` the sign-up request names, and anyone can call Supabase's sign-up API directly.
   A pattern such as `https://*.vercel.app/**` would let an attacker sign up a victim's address

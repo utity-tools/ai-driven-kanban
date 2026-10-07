@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DEFAULT_AFTER_LOGIN_PATH } from "@/lib/auth/redirect";
-import { LOGIN_PATH } from "@/lib/auth/routes";
+import { forgotPasswordPathWithNext, LOGIN_PATH } from "@/lib/auth/routes";
 import { type AuthFormState, PASSWORD_MIN_LENGTH } from "@/lib/auth/schemas";
 
 import { ResendConfirmationForm } from "./resend-confirmation-form";
@@ -94,7 +94,17 @@ export function CredentialsForm({ mode, action, next }: Props) {
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor={ids.password}>Password</Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor={ids.password}>Password</Label>
+            {mode === "login" ? (
+              <Link
+                href={forgotPasswordPathWithNext(next)}
+                className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              >
+                Forgot password?
+              </Link>
+            ) : null}
+          </div>
           <Input
             id={ids.password}
             name="password"
