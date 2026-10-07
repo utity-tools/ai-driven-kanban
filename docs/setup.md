@@ -115,6 +115,22 @@ Local projects read these from `supabase/config.toml`; hosted projects need them
 - **GitHub provider:** one GitHub OAuth App per Supabase project, with callback
   `https://<project-ref>.supabase.co/auth/v1/callback`; paste its client ID and secret in
   **Authentication → Sign In / Providers → GitHub**.
+- **Custom SMTP (Resend):** **Authentication → Emails → SMTP Settings**: host `smtp.resend.com`,
+  port `465`, user `resend`, password = a Resend API key with sending access restricted to the
+  `kanban.utitytools.com` domain (one key per project), sender
+  `no-reply@kanban.utitytools.com` / "AI-Driven Kanban". **Authentication → Rate Limits**: 30
+  emails per hour.
+- **Email confirmation** ([ADR 0022](adr/0022-email-confirmation.md)), in this order:
+  1. Deploy the app code first (it works with confirmation on or off).
+  2. **Authentication → Emails → Templates → Confirm sign up**: subject
+     `Confirm your email for AI-Driven Kanban`, body = `supabase/templates/confirmation.html`
+     pasted as is. Paste it again whenever the file changes.
+  3. **Authentication → Sign In / Providers → Email → Confirm email: on**.
+  4. Sign up with a real inbox and check that the link opens `/auth/confirm` on the same origin.
+
+  The template builds the link from the `emailRedirectTo` the app sends, so the Site URL must
+  not end in `/`, and every origin that can send sign-ups (production, the Vercel preview
+  pattern on staging) must be in the redirect allow-list, or links fall back to the Site URL.
 
 ### Production domain
 
