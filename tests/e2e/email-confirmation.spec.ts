@@ -36,6 +36,8 @@ test("opening the link doesn't confirm: only pressing the button does", async ({
 test("an unconfirmed user can't sign in until confirming a resent link", async ({ page }) => {
   const credentials = newCredentials();
   await startSignUp(page, credentials);
+  // Wait for the first email to be indexed, so the resent one is told apart from it.
+  await confirmationLink(credentials.email);
   const firstEmail = await latestEmailId(credentials.email);
 
   await test.step("sign-in is refused with an offer to resend", async () => {

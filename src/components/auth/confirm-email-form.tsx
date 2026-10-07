@@ -18,7 +18,8 @@ type Props = {
 export function ConfirmEmailForm({ action, tokenHash, next }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
 
-  if (state.error) {
+  // A spent or invalid token can't be retried: send the user to sign in for a new link.
+  if (state.error && !state.retryable) {
     return (
       <div className="grid gap-4">
         <Alert variant="destructive">
@@ -35,7 +36,12 @@ export function ConfirmEmailForm({ action, tokenHash, next }: Props) {
   }
 
   return (
-    <form action={formAction}>
+    <form action={formAction} className="grid gap-4">
+      {state.error ? (
+        <Alert variant="destructive">
+          <AlertDescription className="text-destructive">{state.error}</AlertDescription>
+        </Alert>
+      ) : null}
       <input type="hidden" name="token_hash" value={tokenHash} />
       <input type="hidden" name="next" value={next} />
       <Button type="submit" size="lg" className="w-full" disabled={pending} aria-disabled={pending}>

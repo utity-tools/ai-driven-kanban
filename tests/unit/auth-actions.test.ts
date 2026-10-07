@@ -82,6 +82,23 @@ describe("confirmEmail", () => {
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
+  it("keeps the button and logs only code and status when Supabase fails", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.auth.verifyOtp.mockResolvedValue({
+      data: {},
+      error: { code: "unexpected_failure", status: 500, message: "db down" },
+    });
+
+    const state = await confirmEmail({}, form({ token_hash: HASH, next: "/boards" }));
+
+    expect(state.retryable).toBe(true);
+    expect(log).toHaveBeenCalledWith("auth.confirm_failed", {
+      code: "unexpected_failure",
+      status: 500,
+    });
+    log.mockRestore();
+  });
+
   it("rejects a malformed token without calling Supabase", async () => {
     const state = await confirmEmail({}, form({ token_hash: "<x>", next: "/boards" }));
 
@@ -220,6 +237,24 @@ describe("resendConfirmation", () => {
     const refused = await resendConfirmation({}, form({ email: "a@example.com" }));
 
     expect(refused).toEqual(ok);
+  });
+
+  it("reports an outage and logs it without the email", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.auth.resend.mockResolvedValue({
+      data: {},
+      error: { code: "unexpected_failure", status: 500 },
+    });
+
+    const state = await resendConfirmation({}, form({ email: "a@example.com" }));
+
+    expect(state.error).toMatch(/couldn't send the email right now/);
+    expect(log).toHaveBeenCalledWith("auth.resend_failed", {
+      code: "unexpected_failure",
+      status: 500,
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain("a@example.com");
+    log.mockRestore();
   });
 
   it("reports rate limits", async () => {

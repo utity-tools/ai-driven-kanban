@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useId, useRef } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DEFAULT_AFTER_LOGIN_PATH } from "@/lib/auth/redirect";
+import { LOGIN_PATH } from "@/lib/auth/routes";
 import { type AuthFormState, PASSWORD_MIN_LENGTH } from "@/lib/auth/schemas";
 
 import { ResendConfirmationForm } from "./resend-confirmation-form";
@@ -121,14 +124,34 @@ export function CredentialsForm({ mode, action, next }: Props) {
 }
 
 function CheckYourEmail({ email, next }: { email: string; next: string }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const loginHref =
+    next === DEFAULT_AFTER_LOGIN_PATH
+      ? LOGIN_PATH
+      : `${LOGIN_PATH}?${new URLSearchParams({ next }).toString()}`;
+
+  // The submit button that had focus is gone: keep keyboard users in place.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
   return (
     <div className="grid gap-4">
       <div role="status" className="grid gap-1">
-        <h2 className="font-medium">Check your email</h2>
+        <h2 ref={headingRef} tabIndex={-1} className="font-medium outline-none">
+          Check your email
+        </h2>
         <p className="text-sm text-muted-foreground">
           We sent a confirmation link to{" "}
           <span className="font-medium text-foreground">{email}</span>. Open it to finish creating
-          your account. Already have an account? Sign in instead.
+          your account. Already have an account?{" "}
+          <Link
+            href={loginHref}
+            className="font-medium text-foreground underline underline-offset-4"
+          >
+            Sign in instead
+          </Link>
+          .
         </p>
       </div>
       <ResendConfirmationForm email={email} next={next} />

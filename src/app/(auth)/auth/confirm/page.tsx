@@ -20,6 +20,9 @@ export const metadata: Metadata = {
  * Landing page of the confirmation email. It never spends the token on GET:
  * mail scanners open links before users do, so confirming takes a button press
  * (a Server Action POST). See ADR 0022.
+ *
+ * Lives in the (auth) group for its layout; the OAuth callback route handler
+ * shares the /auth segment from src/app/auth/callback. Paths never collide.
  */
 export default async function ConfirmEmailPage({ searchParams }: PageProps<"/auth/confirm">) {
   const link = parseConfirmLink(await searchParams);

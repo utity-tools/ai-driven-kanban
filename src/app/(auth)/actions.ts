@@ -6,8 +6,9 @@ import { redirect } from "next/navigation";
 import {
   buildEmailRedirectTo,
   confirmEmailSchema,
-  confirmErrorMessage,
+  confirmFailure,
   type ConfirmFormState,
+  isServerFailure,
   type ResendFormState,
   resendConfirmationSchema,
   resendOutcome,
@@ -53,7 +54,10 @@ export async function signup(_prev: AuthFormState, formData: FormData): Promise<
   // "check your email" answer as a new one. Supabase rejects already-confirmed
   // emails with this error and re-sends the link for unconfirmed ones.
   const emailTaken = error?.code === "user_already_exists" || error?.code === "email_exists";
-  if (error && !emailTaken) return authErrorToFormState(error, parsed.data.email);
+  if (error && !emailTaken) {
+    logAuthFailure("auth.signup_failed", error);
+    return authErrorToFormState(error, parsed.data.email);
+  }
   // No session means the project requires email confirmation.
   if (emailTaken || !data.session) {
     return { confirmationSentTo: parsed.data.email, email: parsed.data.email };
@@ -91,14 +95,17 @@ export async function confirmEmail(
     tokenHash: formData.get("token_hash"),
     next: formData.get("next"),
   });
-  if (!parsed.success) return { error: confirmErrorMessage(null) };
+  if (!parsed.success) return confirmFailure({ code: "invalid_input", status: 400 });
 
   const supabase = await createClient();
   const { error } = await supabase.auth.verifyOtp({
     type: "email",
     token_hash: parsed.data.tokenHash,
   });
-  if (error) return { error: confirmErrorMessage(error) };
+  if (error) {
+    logAuthFailure("auth.confirm_failed", error);
+    return confirmFailure(error);
+  }
 
   redirect(parsed.data.next);
 }
@@ -120,6 +127,7 @@ export async function resendConfirmation(
     email: parsed.data.email,
     options: { emailRedirectTo: await confirmRedirectTo(parsed.data.next) },
   });
+  if (error) logAuthFailure("auth.resend_failed", error);
   return resendOutcome(error);
 }
 
@@ -131,4 +139,15 @@ export async function resendConfirmation(
 async function confirmRedirectTo(next: string): Promise<string | undefined> {
   const origin = getRequestOrigin(await headers());
   return origin ? buildEmailRedirectTo(origin, next) : undefined;
+}
+
+/**
+ * Logs Supabase/SMTP outages so silently failing sign-ups show up in the logs.
+ * Only the error code and status: never the email or the token.
+ */
+function logAuthFailure(
+  event: string,
+  error: { code?: string | undefined; status?: number | undefined },
+): void {
+  if (isServerFailure(error)) console.error(event, { code: error.code, status: error.status });
 }

@@ -4,10 +4,11 @@ import {
   buildEmailRedirectTo,
   CONFIRM_PATH,
   confirmEmailSchema,
-  confirmErrorMessage,
+  confirmFailure,
   parseConfirmLink,
   RESEND_NOTICE,
   resendConfirmationSchema,
+  isServerFailure,
   resendOutcome,
 } from "./confirm";
 
@@ -81,22 +82,50 @@ describe("buildEmailRedirectTo", () => {
   });
 });
 
-describe("confirmErrorMessage", () => {
-  it("explains an expired or used link", () => {
-    expect(confirmErrorMessage({ code: "otp_expired" })).toMatch(/expired or was already used/);
+describe("confirmFailure", () => {
+  it("explains an expired or used link, which can't be retried", () => {
+    expect(confirmFailure({ code: "otp_expired", status: 403 })).toEqual({
+      error: "This link has expired or was already used. Sign in to get a new one.",
+      retryable: false,
+    });
   });
 
-  it("maps rate limiting", () => {
-    expect(confirmErrorMessage({ code: "over_request_rate_limit" })).toMatch(/too many attempts/i);
+  it.each([[{ code: "over_request_rate_limit" }], [{ status: 429 }]])(
+    "keeps the button for rate limits (%j): the token wasn't spent",
+    (error) => {
+      expect(confirmFailure(error)).toMatchObject({ retryable: true });
+      expect(confirmFailure(error).error).toMatch(/too many attempts/i);
+    },
+  );
+
+  it.each([[{ status: 500 }], [{ code: "unexpected_failure" }]])(
+    "keeps the button for outages (%j)",
+    (error) => {
+      expect(confirmFailure(error)).toEqual({
+        error: "We couldn't confirm your email right now. Try again.",
+        retryable: true,
+      });
+    },
+  );
+
+  it("falls back to a generic, non-retryable message without leaking details", () => {
+    expect(confirmFailure({ code: "validation_failed", status: 400 })).toEqual({
+      error: "We couldn't confirm your email. Sign in to get a new link.",
+      retryable: false,
+    });
+  });
+});
+
+describe("isServerFailure", () => {
+  it("is true for 5xx and errors without a status (network)", () => {
+    expect(isServerFailure({ status: 500 })).toBe(true);
+    expect(isServerFailure({ code: "unexpected_failure" })).toBe(true);
   });
 
-  it("falls back to a generic message without leaking details", () => {
-    expect(confirmErrorMessage({ code: "unexpected_failure" })).toBe(
-      "We couldn't confirm your email. Sign in to get a new link.",
-    );
-    expect(confirmErrorMessage(null)).toBe(
-      "We couldn't confirm your email. Sign in to get a new link.",
-    );
+  it("is false for client errors and no error", () => {
+    expect(isServerFailure({ status: 400 })).toBe(false);
+    expect(isServerFailure({ status: 429 })).toBe(false);
+    expect(isServerFailure(null)).toBe(false);
   });
 });
 
@@ -121,10 +150,15 @@ describe("resendOutcome", () => {
     expect(resendOutcome(error).error).toMatch(/too many emails/i);
   });
 
-  it.each([[null], [{ code: "user_not_found" }], [{ code: "email_address_invalid", status: 400 }]])(
-    "answers with the same notice otherwise (%j)",
-    (error) => {
-      expect(resendOutcome(error)).toEqual({ notice: RESEND_NOTICE });
-    },
-  );
+  it("reports an outage without saying anything about the account", () => {
+    expect(resendOutcome({ status: 500 }).error).toMatch(/couldn't send the email right now/);
+  });
+
+  it.each([
+    [null],
+    [{ code: "user_not_found", status: 400 }],
+    [{ code: "email_address_invalid", status: 400 }],
+  ])("answers with the same notice otherwise (%j)", (error) => {
+    expect(resendOutcome(error)).toEqual({ notice: RESEND_NOTICE });
+  });
 });
