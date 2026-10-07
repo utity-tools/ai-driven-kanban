@@ -37,7 +37,12 @@ accounts.
 
 ## Consequences
 
-- The worst day costs $0.40 (~$12/month), whatever users do.
+- For typical text the worst day costs $0.40 (~$12/month). The estimates assume ~3 chars per
+  token: adversarial card text (CJK, emoji, random Unicode) can reach ~1 token per char and cost
+  more than $0.02 per call, which the cap undercounts by design (ADR 0021), so 20 such calls could
+  cost about $1. The AI Gateway's own spend limit is the hard backstop and must be set before
+  launch.
+- The margin is thin (~$0.019 against $0.02): any growth of a prompt uses it up.
 - Real calls cost far less (about $0.0014 in the evals) and completed calls are charged their
   real cost, so the cap allows many more than 20 real calls a day.
 - Any change that grows a prompt's worst case (larger limits, more context, another model) must
