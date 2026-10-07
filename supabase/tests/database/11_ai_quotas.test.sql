@@ -64,9 +64,14 @@ select results_eq(
     select demo_daily_calls, user_daily_calls, global_daily_cost_usd, cost_per_call_usd
     from private.ai_limits
   $$,
-  $$ values (3, 20, 0.25::numeric(10, 4), 0.006::numeric(10, 6)) $$,
+  $$ values (3, 20, 0.40::numeric(10, 4), 0.02::numeric(10, 6)) $$,
   'private.ai_limits has exactly one row with the documented defaults'
 );
+
+-- The checks below were sized for these limits; pin them so tuning the hosted values (a
+-- migration, see 20261007154701_launch_ai_cost_limits.sql) does not change what they prove.
+-- Rolled back with the rest of the test.
+update private.ai_limits set global_daily_cost_usd = 0.25, cost_per_call_usd = 0.006 where id;
 
 -- ---------------------------------------------------------------------------
 -- Fixtures
