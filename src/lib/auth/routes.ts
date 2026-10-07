@@ -3,8 +3,10 @@ import { DEFAULT_AFTER_LOGIN_PATH, sanitizeNextPath } from "./redirect";
 export const LOGIN_PATH = "/login";
 export const SIGNUP_PATH = "/signup";
 
-const AUTH_PAGES = new Set([LOGIN_PATH, SIGNUP_PATH]);
-const PUBLIC_PATHS = new Set(["/", LOGIN_PATH, SIGNUP_PATH]);
+export const FORGOT_PASSWORD_PATH = "/forgot-password";
+
+const AUTH_PAGES = new Set([LOGIN_PATH, SIGNUP_PATH, FORGOT_PASSWORD_PATH]);
+const PUBLIC_PATHS = new Set(["/", LOGIN_PATH, SIGNUP_PATH, FORGOT_PASSWORD_PATH]);
 // API routes authenticate themselves and return a JSON 401/403: redirecting
 // them to /login here would turn a fetch() call into an HTML page.
 const PUBLIC_PREFIXES = ["/auth/", "/api/"];

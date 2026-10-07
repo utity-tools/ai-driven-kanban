@@ -14,22 +14,26 @@ describe("isPublicPath", () => {
     "/",
     "/login",
     "/signup",
+    "/forgot-password",
     "/login/",
     "/auth/callback",
     "/auth/anything/else",
     "/api/cards/1/decompose",
   ])("treats %s as public", (path) => expect(isPublicPath(path)).toBe(true));
 
-  it.each(["/boards", "/boards/1", "/authx", "/loginx", "/settings"])(
+  it.each(["/boards", "/boards/1", "/authx", "/loginx", "/settings", "/reset-password"])(
     "treats %s as protected",
     (path) => expect(isPublicPath(path)).toBe(false),
   );
 });
 
 describe("isAuthPage", () => {
-  it("matches only login and signup", () => {
+  it("matches only login, signup and forgot-password", () => {
     expect(isAuthPage("/login")).toBe(true);
     expect(isAuthPage("/signup/")).toBe(true);
+    expect(isAuthPage("/forgot-password")).toBe(true);
+    // A recovered session must reach it while signed in.
+    expect(isAuthPage("/reset-password")).toBe(false);
     expect(isAuthPage("/auth/callback")).toBe(false);
     expect(isAuthPage("/")).toBe(false);
   });
