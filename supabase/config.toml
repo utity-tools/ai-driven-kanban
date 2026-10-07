@@ -248,6 +248,11 @@ otp_expiry = 3600
 subject = "Confirm your email for AI-Driven Kanban"
 content_path = "./supabase/templates/confirmation.html"
 
+# Password reset (ADR 0023). Hosted projects need the same template pasted in the dashboard.
+[auth.email.template.recovery]
+subject = "Reset your password for AI-Driven Kanban"
+content_path = "./supabase/templates/recovery.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"
