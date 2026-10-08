@@ -49,7 +49,7 @@ const BANNER_TEXT = "You're exploring a demo. Your changes are kept for 7 days, 
 const BOARD_PATH = /^\/boards\/[0-9a-f-]{36}$/;
 
 function hero(page: Page) {
-  return page.getByRole("main").getByRole("region", { name: "ackboard" });
+  return page.getByRole("main").getByRole("region", { name: "AI proposes. You ack." });
 }
 
 function demoBanner(page: Page) {
@@ -70,14 +70,21 @@ test.describe("landing page, signed out", () => {
     await page.goto("/");
 
     await expect(page).toHaveURL("/");
-    await expect(page.getByRole("heading", { level: 1, name: "ackboard" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "AI proposes. You ack." }),
+    ).toBeVisible();
     const cta = hero(page);
     await expect(cta.getByRole("button", { name: "Try the demo" })).toBeVisible();
     await expect(cta.getByRole("link", { name: "Create account" })).toHaveAttribute(
       "href",
       "/signup",
     );
-    await expect(cta.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
+    // Sign in lives in the site header only.
+    await expect(cta.getByRole("link", { name: "Sign in" })).toHaveCount(0);
+    await expect(page.getByRole("banner").getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/login",
+    );
     await expect(cta.getByRole("button", { name: "Continue the demo" })).toHaveCount(0);
     await expect(cta.getByRole("link", { name: "Go to your boards" })).toHaveCount(0);
     await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
@@ -115,6 +122,9 @@ test.describe("landing page, permanent user", () => {
     );
     await expect(cta.getByRole("button", { name: "Try the demo" })).toHaveCount(0);
     await expect(cta.getByRole("button", { name: "Continue the demo" })).toHaveCount(0);
+    const header = page.getByRole("banner");
+    await expect(header.getByRole("link", { name: "Go to your boards" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Sign in" })).toHaveCount(0);
 
     await cta.getByRole("link", { name: "Go to your boards" }).click();
     await expect(page).toHaveURL("/boards");
@@ -199,6 +209,9 @@ test.describe("demo session", () => {
       await expect(cta.getByRole("link", { name: "Sign in" })).toHaveCount(0);
       // Sign-up from the landing page goes through a sign-out (a button, not a link).
       await expect(cta.getByRole("button", { name: "Create an account" })).toBeVisible();
+      const header = page.getByRole("banner");
+      await expect(header.getByRole("button", { name: "Continue the demo" })).toBeVisible();
+      await expect(header.getByRole("link", { name: "Sign in" })).toHaveCount(0);
 
       await cta.getByRole("button", { name: "Continue the demo" }).click();
 

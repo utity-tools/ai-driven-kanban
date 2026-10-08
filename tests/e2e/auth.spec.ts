@@ -23,7 +23,9 @@ test.describe("signed out", () => {
     await page.goto("/");
 
     await expect(page).toHaveURL("/");
-    await expect(page.getByRole("heading", { level: 1, name: "ackboard" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "AI proposes. You ack." }),
+    ).toBeVisible();
   });
 
   test("login page offers GitHub sign-in", async ({ page }) => {

@@ -8,6 +8,13 @@ import { PendingSubmitButton } from "@/components/auth/pending-submit-button";
 import { DEMO_ERROR_PATH, launchDemo } from "@/lib/auth/demo";
 import { createClient } from "@/lib/db/client";
 
+/**
+ * The landing page renders several launchers (header, hero, closing band), each with its own
+ * pending state. A second click on another one while a launch runs joins that launch instead
+ * of starting another, which could create a second anonymous user and demo board.
+ */
+let inFlight: Promise<string> | null = null;
+
 type Props = {
   /** The visitor already has an anonymous session ("Continue the demo"). */
   hasDemoSession: boolean;
@@ -23,7 +30,7 @@ export function DemoLauncher({ hasDemoSession, className }: Props) {
   const router = useRouter();
 
   async function launch() {
-    const path = await launchDemo(
+    inFlight ??= launchDemo(
       {
         signInAnonymously: async () => {
           const { error } = await createClient().auth.signInAnonymously();
@@ -32,7 +39,10 @@ export function DemoLauncher({ hasDemoSession, className }: Props) {
         openDemo,
       },
       { hasDemoSession },
-    );
+    ).finally(() => {
+      inFlight = null;
+    });
+    const path = await inFlight;
     if (path === DEMO_ERROR_PATH) router.replace(path);
     else router.push(path);
   }
