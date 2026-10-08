@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AuthHeading } from "@/components/auth/auth-heading";
 import { CredentialsForm } from "@/components/auth/credentials-form";
 import { GitHubSignInForm } from "@/components/auth/github-sign-in-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { loginPageErrorMessage } from "@/lib/auth/errors";
 import { DEFAULT_AFTER_LOGIN_PATH, sanitizeNextPath } from "@/lib/auth/redirect";
 import { SIGNUP_PATH } from "@/lib/auth/routes";
@@ -23,22 +23,17 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       : `${SIGNUP_PATH}?${new URLSearchParams({ next }).toString()}`;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <h1 className="text-lg">Sign in</h1>
-        </CardTitle>
-        <CardDescription>Welcome back. Sign in to see your boards.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-6">
+    <>
+      <AuthHeading title="Sign in" description="Welcome back. Sign in to see your boards." />
+      <div className="grid gap-6">
         {pageError ? (
           <Alert variant="destructive">
             <AlertDescription className="text-destructive">{pageError}</AlertDescription>
           </Alert>
         ) : null}
-        <GitHubSignInForm next={next} />
-        <Divider />
         <CredentialsForm mode="login" action={login} next={next} />
+        <Divider />
+        <GitHubSignInForm next={next} />
         <p className="text-center text-sm text-muted-foreground">
           New here?{" "}
           <Link
@@ -48,8 +43,8 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             Create an account
           </Link>
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </>
   );
 }
 

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AuthHeading } from "@/components/auth/auth-heading";
 import { EmailLinkForm } from "@/components/auth/email-link-form";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { parseConfirmLink } from "@/lib/auth/confirm";
 import { LOGIN_PATH, loginPathWithNext } from "@/lib/auth/routes";
 
@@ -28,18 +28,16 @@ export default async function ConfirmEmailPage({ searchParams }: PageProps<"/aut
   const link = parseConfirmLink(await searchParams);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <h1 className="text-lg">Confirm your email</h1>
-        </CardTitle>
-        <CardDescription>
-          {link
+    <>
+      <AuthHeading
+        title="Confirm your email"
+        description={
+          link
             ? "One last step: confirm your email address to start using your boards."
-            : "This confirmation link is incomplete or invalid."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
+            : "This confirmation link is incomplete or invalid."
+        }
+      />
+      <div className="grid gap-4">
         {link ? (
           <EmailLinkForm
             action={confirmEmail}
@@ -51,7 +49,7 @@ export default async function ConfirmEmailPage({ searchParams }: PageProps<"/aut
           />
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-center text-sm text-balance text-muted-foreground">
               Open the link from your latest email again, or sign in to get a new one.
             </p>
             <Link href={LOGIN_PATH} className={buttonVariants({ size: "lg" })}>
@@ -59,7 +57,7 @@ export default async function ConfirmEmailPage({ searchParams }: PageProps<"/aut
             </Link>
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </>
   );
 }

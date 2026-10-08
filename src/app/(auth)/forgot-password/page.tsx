@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AuthHeading } from "@/components/auth/auth-heading";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { sanitizeNextPath } from "@/lib/auth/redirect";
 import { loginPathWithNext } from "@/lib/auth/routes";
 
@@ -12,16 +12,12 @@ export default async function ForgotPasswordPage({ searchParams }: PageProps<"/f
   const next = sanitizeNextPath((await searchParams).next);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <h1 className="text-lg">Forgot your password?</h1>
-        </CardTitle>
-        <CardDescription>
-          Enter your account&apos;s email and we&apos;ll send you a link to choose a new one.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-6">
+    <>
+      <AuthHeading
+        title="Forgot your password?"
+        description="Enter your account's email and we'll send you a link to choose a new one."
+      />
+      <div className="grid gap-6">
         <ForgotPasswordForm next={next} />
         <p className="text-center text-sm text-muted-foreground">
           Remembered it?{" "}
@@ -32,7 +28,7 @@ export default async function ForgotPasswordPage({ searchParams }: PageProps<"/f
             Sign in
           </Link>
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </>
   );
 }
