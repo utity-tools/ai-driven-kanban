@@ -255,7 +255,7 @@ test("a demo visitor is asked to create an account to join", async ({ boardPage,
   await demo.goto("/");
   await demo
     .getByRole("main")
-    .getByRole("region", { name: "ackboard" })
+    .getByRole("region", { name: "AI proposes. You ack." })
     .getByRole("button", { name: "Try the demo" })
     .click();
   await expect(demo.getByRole("banner")).toContainText("Signed in as Demo visitor");
