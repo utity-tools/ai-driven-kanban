@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AuthHeading } from "@/components/auth/auth-heading";
 import { EmailLinkForm } from "@/components/auth/email-link-form";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { parseRecoveryLink } from "@/lib/auth/recovery";
 import { FORGOT_PASSWORD_PATH } from "@/lib/auth/routes";
 
@@ -24,18 +24,16 @@ export default async function ResetLinkPage({ searchParams }: PageProps<"/auth/r
   const link = parseRecoveryLink(await searchParams);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <h1 className="text-lg">Reset your password</h1>
-        </CardTitle>
-        <CardDescription>
-          {link
+    <>
+      <AuthHeading
+        title="Reset your password"
+        description={
+          link
             ? "Continue to choose a new password for your account."
-            : "This reset link is incomplete or invalid."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
+            : "This reset link is incomplete or invalid."
+        }
+      />
+      <div className="grid gap-4">
         {link ? (
           <EmailLinkForm
             action={verifyRecovery}
@@ -50,7 +48,7 @@ export default async function ResetLinkPage({ searchParams }: PageProps<"/auth/r
             Request a new link
           </Link>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </>
   );
 }

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AuthHeading } from "@/components/auth/auth-heading";
 import { CredentialsForm } from "@/components/auth/credentials-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEFAULT_AFTER_LOGIN_PATH, sanitizeNextPath } from "@/lib/auth/redirect";
 import { LOGIN_PATH } from "@/lib/auth/routes";
 
@@ -19,14 +19,12 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
       : `${LOGIN_PATH}?${new URLSearchParams({ next }).toString()}`;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <h1 className="text-lg">Create your account</h1>
-        </CardTitle>
-        <CardDescription>You&apos;ll get a board to start with right away.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-6">
+    <>
+      <AuthHeading
+        title="Create your account"
+        description="You'll get a board to start with right away."
+      />
+      <div className="grid gap-6">
         <CredentialsForm mode="signup" action={signup} next={next} />
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
@@ -37,7 +35,7 @@ export default async function SignupPage({ searchParams }: PageProps<"/signup">)
             Sign in
           </Link>
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </>
   );
 }
