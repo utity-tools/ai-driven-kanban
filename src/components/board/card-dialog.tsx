@@ -130,7 +130,7 @@ export function CardDialog() {
     >
       <DialogContent
         finalFocus={finalFocus}
-        className="max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto p-5 sm:max-w-xl"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto p-5 sm:max-w-3xl sm:p-8"
       >
         {card ? (
           <CardDetails

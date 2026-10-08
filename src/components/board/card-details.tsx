@@ -54,10 +54,11 @@ export function CardDetails({ card, onArchive, onRestore }: Props) {
   const { blockedBy, blocks } = cardDependencies(view, card.id);
   const hasDependencies = blockedBy.length > 0 || blocks.length > 0;
 
+  // From sm, content sits right of an icon gutter that section headings hang into.
   return (
-    <>
+    <div className="grid gap-6 sm:gap-8 sm:pl-9">
       <DialogHeader className="pr-8">
-        <DialogTitle className="font-heading text-lg leading-snug font-bold break-words">
+        <DialogTitle className="font-heading text-xl leading-tight font-bold break-words sm:text-2xl">
           {editable ? (
             <InlineEdit
               value={card.title}
@@ -104,14 +105,14 @@ export function CardDetails({ card, onArchive, onRestore }: Props) {
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="flex flex-wrap gap-x-8 gap-y-4 empty:hidden">
         {card.labels.length > 0 ? (
-          <Field icon={<TagIcon />} title="Labels">
+          <Field icon={<TagIcon />} title="Labels" compact>
             <LabelList labels={card.labels} />
           </Field>
         ) : null}
         {due ? (
-          <Field icon={<CalendarIcon />} title="Due date">
+          <Field icon={<CalendarIcon />} title="Due date" compact>
             <div className="flex flex-wrap items-center gap-3">
               <DueBadge due={due} showStatus className="w-fit" />
               {editable ? <DoneCheckbox card={card} /> : null}
@@ -119,7 +120,7 @@ export function CardDetails({ card, onArchive, onRestore }: Props) {
           </Field>
         ) : null}
         {card.assignees.length > 0 ? (
-          <Field icon={<UsersIcon />} title="Assignees" className="sm:col-span-2">
+          <Field icon={<UsersIcon />} title="Assignees" compact>
             <ul className="flex flex-wrap gap-x-4 gap-y-2">
               {card.assignees.map((person) => (
                 <li key={person.id} className="flex items-center gap-2 text-sm">
@@ -167,27 +168,40 @@ export function CardDetails({ card, onArchive, onRestore }: Props) {
           </Button>
         </div>
       ) : null}
-    </>
+    </div>
   );
 }
 
+/**
+ * A titled block of the modal. Sections hang their icon into the gutter from sm (the
+ * negative margin matches the content's sm:pl-9); compact ones are the small metadata row.
+ */
 function Field({
   icon,
   title,
-  className,
+  compact = false,
   children,
 }: {
   icon: ReactNode;
   title: string;
-  className?: string;
+  compact?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section className={className}>
-      <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase [&_svg]:size-3.5">
-        <span aria-hidden>{icon}</span>
-        {title}
-      </h3>
+    <section className={compact ? "grid content-start gap-2" : "grid gap-3"}>
+      {compact ? (
+        <h3 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground [&_svg]:size-3.5">
+          <span aria-hidden>{icon}</span>
+          {title}
+        </h3>
+      ) : (
+        <h3 className="flex items-center gap-2 text-base font-semibold sm:-ml-9 sm:gap-4 [&_svg]:size-5 [&_svg]:text-muted-foreground">
+          <span aria-hidden className="flex">
+            {icon}
+          </span>
+          {title}
+        </h3>
+      )}
       {children}
     </section>
   );
