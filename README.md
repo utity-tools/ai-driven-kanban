@@ -41,6 +41,9 @@ bottlenecks are detected with deterministic, tested logic and surfaced in real t
   the board. Nothing else. It goes through [Vercel AI Gateway](https://vercel.com/ai-gateway) to
   the model provider (Anthropic, Claude Haiku 4.5 by default). Don't put secrets or personal
   data in cards on a board where you use the AI.
+- **No training:** every call asks the Gateway to route only to providers that don't train on
+  the data you send; if none is available, the call fails instead
+  ([ADR 0025](docs/adr/0025-disallow-prompt-training.md)).
 - **What is stored:** nothing from the model until you accept it. Accepted subtasks and blockers
   are saved like any others. For quotas and monitoring, the app records metadata about each call
   (who, when, which feature, model, tokens, cost, duration and how it ended), never the card
