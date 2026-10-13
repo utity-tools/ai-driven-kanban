@@ -2,7 +2,7 @@
 
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CircleCheckIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 
 import { renameColumn, setColumnDone } from "@/lib/boards/actions";
 import { describeDue } from "@/lib/boards/due-date";
@@ -22,13 +22,26 @@ export const COLUMN_ITEM_CLASS = "flex w-68 shrink-0 snap-start scroll-ml-4";
 
 /**
  * Columns side by side, scrolling horizontally (with snap points on touch
- * screens). Columns and cards are ordered lists: order is meaningful.
+ * screens, except while `dragging`: snapping fights the drag's auto-scroll and
+ * makes it jitter). Columns and cards are ordered lists: order is meaningful.
  */
-export function ColumnsList({ children }: { children: ReactNode }) {
+export function ColumnsList({
+  children,
+  dragging = false,
+  ref,
+}: {
+  children: ReactNode;
+  dragging?: boolean;
+  ref?: Ref<HTMLOListElement>;
+}) {
   return (
     <ol
+      ref={ref}
       aria-label="Columns"
-      className="relative flex flex-1 snap-x snap-mandatory items-start gap-3 overflow-x-auto px-4 pb-4 sm:snap-none"
+      className={cn(
+        "relative flex flex-1 items-start gap-3 overflow-x-auto px-4 pb-4 sm:snap-none",
+        dragging ? "snap-none" : "snap-x snap-mandatory",
+      )}
     >
       {children}
     </ol>
