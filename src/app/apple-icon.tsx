@@ -1,11 +1,17 @@
 import { ImageResponse } from "next/og";
 
-import { MARK_PATHS } from "@/lib/brand/mark";
+import { markShapes } from "@/components/brand/mark-shapes";
+import { MARK_VIEW_BOX } from "@/lib/brand/mark";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
+/** The cream mark on a full-bleed orange tile: iOS rounds the corners itself. */
+const MARK_SIZE = 112;
+
 export default function AppleIcon() {
+  const { x, y, width, height } = MARK_VIEW_BOX;
+
   return new ImageResponse(
     <div
       style={{
@@ -14,21 +20,16 @@ export default function AppleIcon() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#0E0F0D",
+        background: "#FF6B1A",
       }}
     >
       <svg
-        width={101}
-        height={91}
-        viewBox="11 16 98 88"
-        fill="none"
-        stroke="#EDEEEA"
-        strokeWidth={5}
-        strokeLinejoin="round"
+        width={MARK_SIZE}
+        height={MARK_SIZE}
+        viewBox={`${x} ${y} ${width} ${height}`}
+        fill="#EDEEEA"
       >
-        {MARK_PATHS.map((d) => (
-          <path key={d} d={d} />
-        ))}
+        {markShapes("ack-gap")}
       </svg>
     </div>,
     size,

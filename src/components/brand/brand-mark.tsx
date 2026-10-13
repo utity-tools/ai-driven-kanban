@@ -1,20 +1,27 @@
-import type { CSSProperties } from "react";
+import { type CSSProperties, useId } from "react";
 
-import { MARK_PATHS, MARK_VIEW_BOX, markStrokeWidth } from "@/lib/brand/mark";
+import { MARK_VIEW_BOX } from "@/lib/brand/mark";
+
+import { markShapes } from "./mark-shapes";
 
 type BrandMarkProps = {
   /** Rendered width in px. */
   size?: number;
   className?: string;
-  /** Merged over the defaults; a CSS `width` overrides `size` (the stroke still follows `size`). */
+  /** Merged over the defaults; a CSS `width` overrides `size`. */
   style?: CSSProperties;
   /** Accessible name. Without it the mark is decorative and hidden from assistive technology. */
   title?: string;
 };
 
-/** The board mark: a rounded rectangle split into three columns. Inherits `currentColor`. */
+/**
+ * The brand mark: three tilted, filled columns. Inherits `currentColor`. The gap around the
+ * middle column is a mask (unique per instance), so it shows whatever is behind the mark.
+ */
 export function BrandMark({ size = 24, className, style, title }: BrandMarkProps) {
   const { x, y, width, height } = MARK_VIEW_BOX;
+  // useId() output has characters (":", "«") that are unsafe in url(#…): keep word characters.
+  const maskId = `brand-mark-gap-${useId().replace(/\W/g, "")}`;
 
   return (
     <svg
@@ -22,10 +29,7 @@ export function BrandMark({ size = 24, className, style, title }: BrandMarkProps
       viewBox={`${x} ${y} ${width} ${height}`}
       width={size}
       height={(size * height) / width}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={markStrokeWidth(size)}
-      strokeLinejoin="round"
+      fill="currentColor"
       // Auto height follows the viewBox ratio when a parent (shadcn buttons) sets only a width.
       style={{ height: "auto", ...style }}
       className={className}
@@ -34,9 +38,7 @@ export function BrandMark({ size = 24, className, style, title }: BrandMarkProps
       focusable="false"
     >
       {title ? <title>{title}</title> : null}
-      {MARK_PATHS.map((d) => (
-        <path key={d} d={d} />
-      ))}
+      {markShapes(maskId)}
     </svg>
   );
 }

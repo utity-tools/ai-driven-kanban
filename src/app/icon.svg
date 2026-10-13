@@ -1,9 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="11 16 98 88" width="32" height="29" fill="none" stroke-width="5" stroke-linejoin="round">
-  <style>
-    path { stroke: #151614; }
-    @media (prefers-color-scheme: dark) { path { stroke: #EDEEEA; } }
-  </style>
-  <path d="M30,20L45,20L45,100L30,100Q15,100 15,85L15,35Q15,20 30,20Z"/>
-  <path d="M45,20L75,20L75,100L45,100Z"/>
-  <path d="M75,20L90,20Q105,20 105,35L105,85Q105,100 90,100L75,100Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="32" height="32">
+  <!-- App icon and favicon: the cream mark on an orange tile (landing handoff, logo kit). -->
+  <rect width="512" height="512" rx="112" fill="#FF6B1A"/>
+  <svg x="96" y="96" width="320" height="320" viewBox="5 1 112 112">
+    <defs>
+      <mask id="ack-gap" maskUnits="userSpaceOnUse" x="5" y="1" width="112" height="112">
+        <rect x="5" y="1" width="112" height="112" fill="#fff"/>
+        <path d="M61.7,5.9L73.7,6.5Q79.7,6.8 79.4,12.9L75.1,93.8Q74.3,108.8 59.3,108L45.3,107.3Q42.3,107.1 42.5,104.1L47,19.2Q47.7,5.2 61.7,5.9Z" fill="#000" stroke="#000" stroke-width="6" stroke-linejoin="round"/>
+      </mask>
+    </defs>
+    <g fill="#EDEEEA">
+      <path d="M21.9,26.1L25.4,25.9Q35.4,25.2 36.1,35.2L40.2,92.9Q40.5,97 36.4,97.2L25.5,98Q13.5,98.8 12.7,86.9L9.4,40.5Q8.5,27.1 21.9,26.1Z" mask="url(#ack-gap)"/>
+      <path d="M95,29.4L102.9,30.3Q114.9,31.5 113.6,43.4L108,96.2Q107.1,105.1 98.2,104.1L95.2,103.8Q83.2,102.6 84.5,90.6L90.6,33Q91,29 95,29.4Z" mask="url(#ack-gap)"/>
+      <path d="M61.7,5.9L73.7,6.5Q79.7,6.8 79.4,12.9L75.1,93.8Q74.3,108.8 59.3,108L45.3,107.3Q42.3,107.1 42.5,104.1L47,19.2Q47.7,5.2 61.7,5.9Z"/>
+    </g>
+  </svg>
 </svg>

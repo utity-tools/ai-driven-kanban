@@ -39,7 +39,7 @@ export function SiteHeader({ visitor }: { visitor: Visitor }) {
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <SectionContainer className="grid h-14 grid-cols-[auto_1fr] items-center gap-4 md:grid-cols-[1fr_auto_1fr]">
         <Link href="/" className={focusRing}>
-          <BrandLockup size={22} className="text-[22px]" />
+          <BrandLockup className="text-[22px]" />
         </Link>
         <nav aria-label="Main" className="hidden md:block">
           <ul className="flex items-center gap-6">
