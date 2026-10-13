@@ -1,5 +1,5 @@
 import { REVIEW_SPOTLIGHT } from "./content";
-import { MediaPlaceholder } from "./media-placeholder";
+import { LandingVideo } from "./landing-video";
 import { SectionContainer } from "./section-container";
 
 /** The review step in focus: copy on one side, a product mock on the other. */
@@ -21,7 +21,11 @@ export function ReviewSpotlight() {
             {REVIEW_SPOTLIGHT.body}
           </p>
         </div>
-        <MediaPlaceholder className="aspect-[4/3]" />
+        <LandingVideo
+          name={REVIEW_SPOTLIGHT.video}
+          sizes="(min-width: 1024px) 50vw, 100vw"
+          className="aspect-[4/3]"
+        />
       </SectionContainer>
     </section>
   );
