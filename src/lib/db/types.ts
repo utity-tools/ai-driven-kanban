@@ -9,6 +9,7 @@ export type Database = {
                   Row: {
                     "board_id": string,"created_at": string,"id": string,"is_done": boolean,"position": string,"title": string,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "board_id": string,"created_at"?: string,"id"?: string,"is_done"?: boolean,"position": string,"title": string,"updated_at"?: string
                   }
@@ -28,6 +29,7 @@ isOneToOne: false
                   Row: {
                     "accepted_at": string | null,"accepted_by": string | null,"board_id": string,"created_at": string,"created_by": string,"expires_at": string,"id": string,"role": Database["public"]['Enums']["board_role"],"token_hash": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "accepted_at"?: string | null,"accepted_by"?: string | null,"board_id": string,"created_at"?: string,"created_by"?: string,"expires_at"?: string,"id"?: string,"role": Database["public"]['Enums']["board_role"],"token_hash": string
                   }
@@ -47,6 +49,7 @@ isOneToOne: false
                   Row: {
                     "board_id": string,"color": string,"created_at": string,"id": string,"name": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "board_id": string,"color": string,"created_at"?: string,"id"?: string,"name"?: string
                   }
@@ -66,6 +69,7 @@ isOneToOne: false
                   Row: {
                     "board_id": string,"created_at": string,"role": Database["public"]['Enums']["board_role"],"user_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "board_id": string,"created_at"?: string,"role": Database["public"]['Enums']["board_role"],"user_id": string
                   }
@@ -91,6 +95,7 @@ isOneToOne: false
                   Row: {
                     "created_at": string,"id": string,"owner_id": string,"title": string,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "created_at"?: string,"id"?: string,"owner_id"?: string,"title": string,"updated_at"?: string
                   }
@@ -104,6 +109,7 @@ isOneToOne: false
                   Row: {
                     "board_id": string,"card_id": string,"user_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "board_id": string,"card_id": string,"user_id": string
                   }
@@ -135,6 +141,7 @@ isOneToOne: false
                   Row: {
                     "blocked_card_id": string,"blocker_card_id": string,"board_id": string,"created_at": string,"created_by": string | null,"source": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "blocked_card_id": string,"blocker_card_id": string,"board_id": string,"created_at"?: string,"created_by"?: string | null,"source"?: string
                   }
@@ -160,6 +167,7 @@ isOneToOne: false
                   Row: {
                     "board_id": string,"card_id": string,"label_id": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "board_id": string,"card_id": string,"label_id": string
                   }
@@ -185,6 +193,7 @@ isOneToOne: false
                   Row: {
                     "board_id": string,"card_id": string,"completed_at": string | null,"created_at": string,"created_by": string | null,"estimate": number | null,"id": string,"position": string,"source": string,"title": string,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "board_id": string,"card_id": string,"completed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"estimate"?: number | null,"id"?: string,"position": string,"source"?: string,"title": string,"updated_at"?: string
                   }
@@ -204,6 +213,7 @@ isOneToOne: false
                   Row: {
                     "archived_at": string | null,"board_id": string,"column_id": string,"completed_at": string | null,"created_at": string,"created_by": string | null,"description": string | null,"due_on": string | null,"id": string,"position": string,"title": string,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "archived_at"?: string | null,"board_id": string,"column_id": string,"completed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"due_on"?: string | null,"id"?: string,"position": string,"title": string,"updated_at"?: string
                   }
@@ -223,6 +233,7 @@ isOneToOne: false
                   Row: {
                     "avatar_url": string | null,"created_at": string,"display_name": string | null,"email": string | null,"id": string,"updated_at": string
                   }
+                  ComputedFields: never
                   Insert: {
                     "avatar_url"?: string | null,"created_at"?: string,"display_name"?: string | null,"email"?: string | null,"id": string,"updated_at"?: string
                   }
