@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
 import { WORDMARK_TRACKING, lockupMetrics } from "@/lib/brand/lockup";
-import { MARK_PATHS, MARK_VIEW_BOX, markStrokeWidth } from "@/lib/brand/mark";
+import { markShapes } from "@/components/brand/mark-shapes";
+import { MARK_VIEW_BOX } from "@/lib/brand/mark";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand/site";
 
 export const alt = `${SITE_NAME}: ${SITE_TAGLINE}`;
@@ -58,14 +59,9 @@ export default async function OpenGraphImage() {
           width={markPx}
           height={(markPx * MARK_VIEW_BOX.height) / MARK_VIEW_BOX.width}
           viewBox={`${MARK_VIEW_BOX.x} ${MARK_VIEW_BOX.y} ${MARK_VIEW_BOX.width} ${MARK_VIEW_BOX.height}`}
-          fill="none"
-          stroke="#EDEEEA"
-          strokeWidth={markStrokeWidth(markPx)}
-          strokeLinejoin="round"
+          fill="#FF6B1A"
         >
-          {MARK_PATHS.map((d) => (
-            <path key={d} d={d} />
-          ))}
+          {markShapes("ack-gap")}
         </svg>
         {SITE_NAME}
       </div>

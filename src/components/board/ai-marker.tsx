@@ -7,7 +7,7 @@ export function AiMarker({ label = "Proposed by AI" }: { label?: string }) {
     <Badge variant="outline" title={label} className="text-muted-foreground">
       {/* In a span: the badge forces a square size on direct svg children. */}
       <span aria-hidden className="inline-flex">
-        <BrandMark size={12} className="text-ai" />
+        <BrandMark size={16} className="text-ai" />
       </span>
       <span aria-hidden>AI</span>
       <span className="sr-only">{label}</span>

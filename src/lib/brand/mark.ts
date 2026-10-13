@@ -1,50 +1,37 @@
-/** Brand mark geometry (120-unit grid, rest state). */
+/**
+ * Brand mark geometry (120-unit grid): three tilted, filled columns, the open pose of the
+ * "Thinking" animation (frame 15 of `public/brand/thinking.svg`). Left, middle, right.
+ */
 export const MARK_PATHS = [
-  "M30,20L45,20L45,100L30,100Q15,100 15,85L15,35Q15,20 30,20Z",
-  "M45,20L75,20L75,100L45,100Z",
-  "M75,20L90,20Q105,20 105,35L105,85Q105,100 90,100L75,100Z",
+  "M21.9,26.1L25.4,25.9Q35.4,25.2 36.1,35.2L40.2,92.9Q40.5,97 36.4,97.2L25.5,98Q13.5,98.8 12.7,86.9L9.4,40.5Q8.5,27.1 21.9,26.1Z",
+  "M61.7,5.9L73.7,6.5Q79.7,6.8 79.4,12.9L75.1,93.8Q74.3,108.8 59.3,108L45.3,107.3Q42.3,107.1 42.5,104.1L47,19.2Q47.7,5.2 61.7,5.9Z",
+  "M95,29.4L102.9,30.3Q114.9,31.5 113.6,43.4L108,96.2Q107.1,105.1 98.2,104.1L95.2,103.8Q83.2,102.6 84.5,90.6L90.6,33Q91,29 95,29.4Z",
 ] as const;
 
-/** The mark's outline on the 120-unit grid: three 30-unit columns, 80 units tall. */
-export const MARK_BOUNDS = { x: 15, y: 20, width: 90, height: 80, column: 30 } as const;
+/**
+ * Width of the knockout around the middle column, in grid units (3 per side): a mask, not a
+ * stroke, so the columns read as three on any background.
+ */
+export const MARK_GAP = 6;
 
-/** Tight viewBox around the mark (x 15-105, y 20-100) with room for the widest stroke (4 units per side). */
-export const MARK_VIEW_BOX = { x: 11, y: 16, width: 98, height: 88 } as const;
+/** The mark's extremes on the grid (path points, control points included). */
+export const MARK_BOUNDS = { x: 8.5, y: 5.2, width: 106.4, height: 103.6 } as const;
 
-/** Rendered stroke (px) at reference widths; the stroke thins as the mark shrinks. */
-const STROKE_STOPS: readonly (readonly [width: number, stroke: number])[] = [
-  [20, 1.25],
-  [32, 1.6],
-  [48, 2],
-  [120, 6],
-];
+/** Width of the middle column on the grid (x 42.3-79.7): the lockup's gap. */
+export const MARK_COLUMN = 37.4;
 
-/** Rendered stroke width in px for a mark `size` px wide. */
-export function markStrokePx(size: number): number {
-  const first = STROKE_STOPS[0]!;
-  const last = STROKE_STOPS[STROKE_STOPS.length - 1]!;
-  if (size <= first[0]) return first[1];
-  if (size >= last[0]) return size * 0.05;
+/** Square viewBox around the mark (x 5-117, y 1-113). */
+export const MARK_VIEW_BOX = { x: 5, y: 1, width: 112, height: 112 } as const;
 
-  for (let i = 1; i < STROKE_STOPS.length; i++) {
-    const [w1, s1] = STROKE_STOPS[i]!;
-    const [w0, s0] = STROKE_STOPS[i - 1]!;
-    if (size <= w1) return s0 + ((size - w0) / (w1 - w0)) * (s1 - s0);
-  }
-  return last[1];
-}
-
-/** Stroke width in viewBox units, so it renders as `markStrokePx(size)` on screen. */
-export function markStrokeWidth(size: number): number {
-  return (markStrokePx(size) * MARK_VIEW_BOX.width) / size;
-}
-
-/** Side of the square viewBox of `public/brand/thinking.svg` (-4 -4 128 128). */
-const THINKING_VIEW_BOX_SIZE = 128;
+/**
+ * Side of the square viewBox of `public/brand/thinking.svg` (-1 -5 124 124): centered on the
+ * static mark's viewBox, with room for every frame of the animation.
+ */
+const THINKING_VIEW_BOX_SIZE = 124;
 
 /**
  * Side in px of the animated "Thinking" image whose mark matches a static `BrandMark` of
- * `markSize` px wide: the image's viewBox is wider than the mark, so it needs a larger box.
+ * `markSize` px: the image's viewBox is wider than the mark's, so it needs a larger box.
  */
 export function thinkingImageSize(markSize: number): number {
   return Math.round((markSize * THINKING_VIEW_BOX_SIZE) / MARK_VIEW_BOX.width);

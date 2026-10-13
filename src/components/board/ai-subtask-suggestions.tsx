@@ -230,7 +230,7 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
               onPointerEnter={preloadThinkingMark}
               onFocus={preloadThinkingMark}
             >
-              <BrandMark size={14} className="text-ai" />
+              <BrandMark size={16} className="size-4 text-ai" />
               Suggest with AI
             </Button>
             {remaining !== null ? (
@@ -252,9 +252,9 @@ export function AiSubtaskSuggestions({ cardId, subtasks, available }: Props) {
               ref={headingRef}
               id={headingId}
               tabIndex={-1}
-              className="flex items-center gap-1.5 text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&_svg]:size-3.5"
+              className="flex items-center gap-1.5 text-sm font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&_svg]:size-4"
             >
-              <BrandMark size={14} className="text-ai" />
+              <BrandMark size={16} className="text-ai" />
               AI suggestions
             </h4>
             {streaming ? (

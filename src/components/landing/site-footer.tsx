@@ -19,7 +19,7 @@ export function SiteFooter({ visitor }: { visitor: Visitor }) {
       <SectionContainer className="grid gap-10 py-12">
         <div className="grid gap-10 md:grid-cols-[1fr_auto] md:gap-20">
           <div className="grid content-start gap-3">
-            <BrandLockup size={22} className="text-[22px]" />
+            <BrandLockup className="text-[22px]" />
             <p className="text-sm text-muted-foreground">
               The kanban where AI proposes and you decide.
             </p>

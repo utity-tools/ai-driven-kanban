@@ -18,7 +18,7 @@ export function AuthHeading({ title, description }: AuthHeadingProps) {
         aria-label={`${SITE_NAME} home`}
         className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <BrandMark size={40} />
+        <BrandMark size={40} className="text-ai" />
       </Link>
       <div className="grid gap-1">
         <h1 className="font-heading text-3xl font-bold tracking-tight text-balance">{title}</h1>

@@ -20,7 +20,7 @@ export async function AppHeader() {
             href="/boards"
             className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring"
           >
-            <BrandLockup size={22} className="text-[22px]" />
+            <BrandLockup className="text-[22px]" />
           </Link>
           {user ? (
             <div className="flex min-w-0 items-center gap-3">

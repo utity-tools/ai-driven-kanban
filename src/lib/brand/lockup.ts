@@ -1,10 +1,13 @@
-import { MARK_BOUNDS, MARK_VIEW_BOX } from "./mark";
+import { MARK_BOUNDS, MARK_COLUMN, MARK_VIEW_BOX } from "./mark";
 
 /** Bricolage Grotesque 700 vertical metrics, in em (measured in the browser). */
 export const WORDMARK_FONT_METRICS = { ascent: 0.93, descent: 0.27, capHeight: 0.66 } as const;
 
-/** The mark is 1.1x the wordmark's cap height (brand book, horizontal lockup). */
-const MARK_TO_CAP = 1.1;
+/**
+ * The mark's outline is 1.7x the wordmark's cap height (landing handoff: a 34px mark next to a
+ * 28px wordmark).
+ */
+const MARK_TO_CAP = 1.7;
 
 /** Letter-spacing of the wordmark, in em. */
 export const WORDMARK_TRACKING = -0.045;
@@ -12,13 +15,13 @@ export const WORDMARK_TRACKING = -0.045;
 export type LockupMetrics = {
   /** Width of the mark's `<svg>` (viewBox included), in em of the wordmark. */
   markWidth: number;
-  /** Space between the `<svg>` and the wordmark, in em; the mark's outline sits one column away. */
+  /** Space between the `<svg>` and the wordmark, in em; the mark's outline sits one column away (the middle one). */
   gap: number;
 };
 
 /**
- * Horizontal lockup geometry, in em of the wordmark's font size: the mark's outline is 1.1x the
- * cap height and one column (c) away from the wordmark. Center both on a `line-height: 1` box:
+ * Horizontal lockup geometry, in em of the wordmark's font size: the mark's outline is 1.7x the
+ * cap height and one column (the middle one) away from the wordmark. Center both on a `line-height: 1` box:
  * see `capCenterOffset`.
  */
 export function lockupMetrics(): LockupMetrics {
@@ -27,7 +30,7 @@ export function lockupMetrics(): LockupMetrics {
 
   return {
     markWidth: MARK_VIEW_BOX.width * unit,
-    gap: (MARK_BOUNDS.column - rightPadding) * unit,
+    gap: (MARK_COLUMN - rightPadding) * unit,
   };
 }
 
