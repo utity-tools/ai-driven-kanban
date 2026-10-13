@@ -13,16 +13,20 @@ const COLUMNS = [
 const ACCEPTED = "Split the checkout form into steps";
 const DISCARDED = "Validate the payload with Zod";
 
+/** Turns a loop animation off with reduced motion or inside a paused MotionScope. */
+const STILL = "motion-reduce:animate-none in-data-[motion-paused]:animate-none";
+
 const cardClass =
   "rounded-lg border bg-card px-2 py-1.5 text-xs leading-snug text-card-foreground shadow-xs";
 
 /**
  * A row that fades in and out with the preview loop (see the `preview-*` keyframes) while
  * keeping its space, so the frame never changes height. `className` holds its resting state
- * and its animation: with reduced motion the animation is off and the resting state shows.
+ * and its animation: with reduced motion, or paused, the animation is off and the resting state
+ * shows.
  */
 function LoopRow({ className, children }: { className: string; children: ReactNode }) {
-  return <div className={cn("motion-reduce:animate-none", className)}>{children}</div>;
+  return <div className={cn(STILL, className)}>{children}</div>;
 }
 
 function Proposal({
@@ -40,8 +44,8 @@ function Proposal({
         <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/60 px-2 py-1.5 text-xs">
           <span className="truncate">{title}</span>
           <span className="flex shrink-0 gap-1 text-muted-foreground">
-            <CheckIcon className={cn("size-3.5 motion-reduce:animate-none", iconClass.ack)} />
-            <XIcon className={cn("size-3.5 motion-reduce:animate-none", iconClass.nack)} />
+            <CheckIcon className={cn("size-3.5", STILL, iconClass.ack)} />
+            <XIcon className={cn("size-3.5", STILL, iconClass.nack)} />
           </span>
         </div>
       </div>
@@ -52,7 +56,8 @@ function Proposal({
 /**
  * Decorative illustration of the product in the hero frame, as a 6s loop: the AI thinks, two
  * proposals stream into the review box, the first is acked and lands in To do as a card, the
- * second is discarded. With reduced motion it shows the end state (the acked card in To do).
+ * second is discarded. With reduced motion, or paused, it shows the end state (the acked card
+ * in To do).
  * Hidden from assistive technology: the page says the same thing in words.
  */
 export function BoardPreview() {

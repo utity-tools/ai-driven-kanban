@@ -144,6 +144,35 @@ test.describe("landing page, signed out", () => {
     await expect(page.getByRole("button", { name: "Pause animation" })).toHaveCount(0);
   });
 
+  test("the hero animations can be paused, and the toggle hides with reduced motion", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const hero = page.getByRole("region", { name: "AI proposes. You ack." });
+    const thinking = hero.locator('img[src="/brand/thinking.svg"]');
+    const loopRows = hero.locator('[class*="animate-preview"]');
+
+    await expect(thinking.first()).toBeVisible();
+    await expect(loopRows).toHaveCount(5);
+    await expect(loopRows.first()).not.toHaveCSS("animation-name", "none");
+    await hero.getByRole("button", { name: "Pause animation" }).click();
+    await expect(hero.getByRole("button", { name: "Play animation" })).toBeVisible();
+    // The SMIL marks give way to the static mark, and the CSS loop stops on its resting state.
+    await expect(thinking).toHaveCount(2);
+    for (const mark of await thinking.all()) await expect(mark).toBeHidden();
+    await expect(hero.locator("svg.text-ai")).toHaveCount(2);
+    for (const mark of await hero.locator("svg.text-ai").all()) await expect(mark).toBeVisible();
+    for (const row of await loopRows.all()) {
+      await expect(row).toHaveCSS("animation-name", "none");
+    }
+
+    await hero.getByRole("button", { name: "Play animation" }).click();
+    await expect(thinking.first()).toBeVisible();
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(hero.getByRole("button", { name: /animation$/ })).toHaveCount(0);
+  });
+
   test("loads the YouTube promo only after the visitor presses play", async ({ page }) => {
     const youtubeRequests: string[] = [];
     // Never reach YouTube from CI: record the requests and abort them.
