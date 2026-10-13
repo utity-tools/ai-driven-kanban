@@ -29,10 +29,13 @@ export const MARK_VIEW_BOX = { x: 5, y: 1, width: 112, height: 112 } as const;
  */
 const THINKING_VIEW_BOX_SIZE = 124;
 
+/** Image box over mark width (124/112): an em-sized mark scales its image by this. */
+export const THINKING_IMAGE_RATIO = THINKING_VIEW_BOX_SIZE / MARK_VIEW_BOX.width;
+
 /**
  * Side in px of the animated "Thinking" image whose mark matches a static `BrandMark` of
  * `markSize` px: the image's viewBox is wider than the mark's, so it needs a larger box.
  */
 export function thinkingImageSize(markSize: number): number {
-  return Math.round((markSize * THINKING_VIEW_BOX_SIZE) / MARK_VIEW_BOX.width);
+  return Math.round(markSize * THINKING_IMAGE_RATIO);
 }

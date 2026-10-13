@@ -2,8 +2,9 @@ import Link from "next/link";
 
 import { BrandLockup } from "@/components/brand/brand-lockup";
 import type { Visitor } from "@/lib/auth/demo";
+import { SITE_TAGLINE } from "@/lib/brand/site";
 
-import { FOOTER_COLUMNS } from "./content";
+import { CREDIT, FOOTER_COLUMNS } from "./content";
 import { ExternalLink } from "./external-link";
 import { SectionContainer } from "./section-container";
 
@@ -20,9 +21,7 @@ export function SiteFooter({ visitor }: { visitor: Visitor }) {
         <div className="grid gap-10 md:grid-cols-[1fr_auto] md:gap-20">
           <div className="grid content-start gap-3">
             <BrandLockup className="text-[22px]" />
-            <p className="text-sm text-muted-foreground">
-              The kanban where AI proposes and you decide.
-            </p>
+            <p className="text-sm text-muted-foreground">{SITE_TAGLINE}</p>
           </div>
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 sm:gap-16">
             {columns.map(({ heading, links }) => (
@@ -47,6 +46,7 @@ export function SiteFooter({ visitor }: { visitor: Visitor }) {
             ))}
           </div>
         </div>
+        <p className="border-t pt-6 text-sm text-muted-foreground">{CREDIT}</p>
       </SectionContainer>
     </footer>
   );

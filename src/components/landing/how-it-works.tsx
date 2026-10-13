@@ -18,7 +18,7 @@ export function HowItWorks() {
         >
           How it works
         </h2>
-        <ol className="grid gap-4 md:grid-cols-2">
+        <ol className="grid gap-4 md:grid-cols-3">
           {STEPS.map(({ eyebrow, title, description, ai }) => (
             <li
               key={title}
