@@ -183,3 +183,13 @@ export const FOOTER_COLUMNS: {
     ],
   },
 ];
+
+/** The promo on YouTube; the embed loads only when the visitor presses play (see PromoVideo). */
+export const PROMO_VIDEO = {
+  eyebrow: "See it in action",
+  title: "From a card to an acked plan in 28 seconds.",
+  youtubeId: "-wruYYEdhg4",
+  playLabel: "Watch the 28s demo",
+  frameTitle: "ackboard demo video",
+  watchLabel: "Watch on YouTube",
+};

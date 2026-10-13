@@ -89,6 +89,10 @@ sign-in form redirects through both. Vercel adds `Strict-Transport-Security` in 
 Styles are not restricted (Tailwind, Radix and dnd-kit use inline styles). A new third-party
 script must receive the nonce from the `x-nonce` request header, or the CSP blocks it.
 
+The only third-party frame is the landing page's promo video
+(`https://www.youtube-nocookie.com`). It mounts only after the visitor presses play; until then the
+page requests nothing from YouTube, and the frame receives only the origin as referrer.
+
 ## If a secret leaks
 
 1. **Revoke or rotate it at the source first** (Supabase, Vercel, GitHub). Removing it from the
