@@ -14,6 +14,7 @@ import {
   PROMPT_VERSION,
 } from "./prompts/decompose-v3";
 import { decompositionProposalSchema } from "./schemas";
+import { GATEWAY_PROVIDER_OPTIONS } from "./gateway-options";
 import { type AiCallResult, trackCall } from "./track-call";
 
 /**
@@ -66,6 +67,7 @@ export function streamDecomposition({
     prompt: buildDecomposeUserMessage(card),
     output: Output.object({ schema: decompositionProposalSchema }),
     maxOutputTokens: MAX_DECOMPOSITION_OUTPUT_TOKENS,
+    providerOptions: GATEWAY_PROVIDER_OPTIONS,
     abortSignal,
     ...tracker,
   });

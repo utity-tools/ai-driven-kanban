@@ -78,4 +78,18 @@ describe("streamDecomposition", () => {
 
     expect(model.doStreamCalls[0]?.maxOutputTokens).toBe(MAX_DECOMPOSITION_OUTPUT_TOKENS);
   });
+
+  it("asks the Gateway to route only to providers that don't train on prompts", async () => {
+    const model = mockModel(JSON.stringify({ subtasks: [{ title: "Only one", estimate: 1 }] }));
+
+    const result = streamDecomposition({
+      model,
+      card: { title: "Privacy", description: null, existingSubtasks: [] },
+    });
+    await result.output;
+
+    expect(model.doStreamCalls[0]?.providerOptions).toEqual({
+      gateway: { disallowPromptTraining: true },
+    });
+  });
 });

@@ -11,6 +11,7 @@ import {
   PROMPT_VERSION,
 } from "./prompts/dependencies-v1";
 import { dependencyProposalSchema } from "./schemas";
+import { GATEWAY_PROVIDER_OPTIONS } from "./gateway-options";
 import { type AiCallResult, trackCall } from "./track-call";
 
 /** Upper bound on generated tokens per call: ten short rationales fit in ~500. */
@@ -57,6 +58,7 @@ export function streamDependencySuggestions({
     prompt: buildDependenciesUserMessage({ target, candidates }),
     output: Output.object({ schema: dependencyProposalSchema }),
     maxOutputTokens: MAX_DEPENDENCY_OUTPUT_TOKENS,
+    providerOptions: GATEWAY_PROVIDER_OPTIONS,
     abortSignal,
     ...tracker,
   });

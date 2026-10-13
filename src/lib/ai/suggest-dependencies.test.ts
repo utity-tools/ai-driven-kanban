@@ -75,4 +75,13 @@ describe("streamDependencySuggestions", () => {
     expect(call?.maxOutputTokens).toBe(MAX_DEPENDENCY_OUTPUT_TOKENS);
     expect(JSON.stringify(call?.prompt)).toContain("c1 | column: To do | open | Search API");
   });
+
+  it("asks the Gateway to route only to providers that don't train on prompts", async () => {
+    const model = mockModel(JSON.stringify({ dependencies: [] }));
+    const result = streamDependencySuggestions({ model, target, candidates });
+    await result.output;
+    expect(model.doStreamCalls[0]?.providerOptions).toEqual({
+      gateway: { disallowPromptTraining: true },
+    });
+  });
 });

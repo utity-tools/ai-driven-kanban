@@ -116,6 +116,11 @@ export const FAQ: { question: string; answer: string }[] = [
       'Short for acknowledge. Engineers use it to say "seen it, approved". In ackboard, nothing the AI suggests is saved until you ack it.',
   },
   {
+    question: "Is my data used to train AI models?",
+    answer:
+      "No. Your cards' text is sent to the model only when you ask for a draft, and only to providers that don't train on it.",
+  },
+  {
     question: "Is it free?",
     answer:
       "Yes. ackboard is a portfolio project. AI drafts have a daily limit to keep costs in check.",
