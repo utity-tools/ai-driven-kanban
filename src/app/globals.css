@@ -17,6 +17,11 @@
   /* Positive outcomes (an accepted proposal); AA on background, card and popover. */
   --color-success: var(--success);
   --animate-accept-snap: accept-snap 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-preview-accepted: preview-accepted 6s ease-in-out infinite;
+  --animate-preview-discarded: preview-discarded 6s ease-in-out infinite;
+  --animate-preview-landed: preview-landed 6s ease-in-out infinite;
+  --animate-preview-ack: preview-ack 6s ease-in-out infinite;
+  --animate-preview-nack: preview-nack 6s ease-in-out infinite;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -140,6 +145,93 @@
   }
   50% {
     scale: 1.025;
+  }
+}
+
+/*
+ * The landing's board preview, a 6s loop: two proposals stream in, the first is acked and
+ * lands in To do as a card, the second is discarded. Only opacity and a small slide change:
+ * every row keeps its space, so the frame's height (and the page below it) never moves.
+ * Without the animation (reduced motion) the elements keep their resting styles: the
+ * accepted card in To do, one proposal left.
+ */
+@keyframes preview-accepted {
+  0%,
+  10% {
+    opacity: 0;
+    translate: 0 4px;
+  }
+  16%,
+  46% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  54%,
+  100% {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+
+@keyframes preview-discarded {
+  0%,
+  20% {
+    opacity: 0;
+    translate: 0 4px;
+  }
+  26%,
+  64% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  72%,
+  100% {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+
+@keyframes preview-landed {
+  0%,
+  50% {
+    opacity: 0;
+    translate: 0 4px;
+  }
+  58%,
+  92% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  100% {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+
+/* The check (then the cross) lights up just before its row leaves. */
+@keyframes preview-ack {
+  0%,
+  36%,
+  50%,
+  100% {
+    color: inherit;
+  }
+  40%,
+  46% {
+    color: var(--ai);
+  }
+}
+
+@keyframes preview-nack {
+  0%,
+  54%,
+  68%,
+  100% {
+    color: inherit;
+  }
+  58%,
+  64% {
+    color: var(--ai);
   }
 }
 
