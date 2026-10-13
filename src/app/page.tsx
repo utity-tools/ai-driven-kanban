@@ -5,6 +5,7 @@ import { Hero } from "@/components/landing/hero";
 import { HowItsBuilt } from "@/components/landing/how-its-built";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { Problem } from "@/components/landing/problem";
+import { PromoVideo } from "@/components/landing/promo-video";
 import { ReviewSpotlight } from "@/components/landing/review-spotlight";
 import { SiteFooter } from "@/components/landing/site-footer";
 import { SiteHeader } from "@/components/landing/site-header";
@@ -25,6 +26,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         <HowItWorks />
         <ReviewSpotlight />
         <Features />
+        <PromoVideo />
         <HowItsBuilt />
         <Faq />
         <ClosingCta visitor={visitor} />

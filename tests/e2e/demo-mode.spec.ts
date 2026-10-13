@@ -144,6 +144,38 @@ test.describe("landing page, signed out", () => {
     await expect(page.getByRole("button", { name: "Pause animation" })).toHaveCount(0);
   });
 
+  test("loads the YouTube promo only after the visitor presses play", async ({ page }) => {
+    const youtubeRequests: string[] = [];
+    // Never reach YouTube from CI: record the requests and abort them.
+    await page.route(/youtube/, (route) => {
+      youtubeRequests.push(route.request().url());
+      return route.abort();
+    });
+    await page.goto("/");
+
+    const section = page.getByRole("region", {
+      name: "From a card to an acked plan in 28 seconds.",
+    });
+    await expect(section.getByRole("link", { name: /Watch on YouTube/ })).toHaveAttribute(
+      "href",
+      "https://www.youtube.com/watch?v=-wruYYEdhg4",
+    );
+    expect(youtubeRequests).toHaveLength(0);
+    await expect(section.locator("iframe")).toHaveCount(0);
+    await section.getByRole("button", { name: "Watch the 28s demo" }).click();
+
+    const player = section.locator('iframe[title="ackboard demo video"]');
+    await expect(player).toBeFocused();
+    await expect(player).toHaveAttribute(
+      "src",
+      /^https:\/\/www\.youtube-nocookie\.com\/embed\/-wruYYEdhg4\?autoplay=1/,
+    );
+    await expect.poll(() => youtubeRequests.length).toBeGreaterThan(0);
+    expect(
+      youtubeRequests.every((url) => url.startsWith("https://www.youtube-nocookie.com/")),
+    ).toBe(true);
+  });
+
   test("?error=demo shows a friendly alert and keeps the demo button", async ({ page }) => {
     await page.goto("/?error=demo");
 
