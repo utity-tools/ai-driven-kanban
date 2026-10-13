@@ -1,6 +1,5 @@
 "use client";
 
-import { PauseIcon, PlayIcon } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
@@ -8,6 +7,7 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { cn } from "@/lib/utils";
 
 import type { LandingVideoName } from "./content";
+import { PlayPauseButton } from "./play-pause-button";
 
 const THEMES = ["light", "dark"] as const;
 
@@ -112,14 +112,11 @@ export function LandingVideo({
           </div>
         ))}
       </div>
-      <button
-        type="button"
-        onClick={() => setChoice(shouldPlay ? "pause" : "play")}
-        aria-label={shouldPlay ? "Pause animation" : "Play animation"}
-        className="absolute right-2 bottom-2 grid size-8 place-items-center rounded-full border bg-background/80 text-muted-foreground backdrop-blur-sm transition-colors outline-none hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-      >
-        {shouldPlay ? <PauseIcon className="size-3.5" /> : <PlayIcon className="size-3.5" />}
-      </button>
+      <PlayPauseButton
+        playing={shouldPlay}
+        onToggle={() => setChoice(shouldPlay ? "pause" : "play")}
+        className="absolute right-2 bottom-2"
+      />
     </div>
   );
 }

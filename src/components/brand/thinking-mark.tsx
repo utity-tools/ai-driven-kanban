@@ -28,8 +28,8 @@ type ThinkingMarkProps = {
 /**
  * The animated "Thinking" mark. In the app it shows while the AI works, and the state is
  * said in words next to it; on the landing page it is decorative branding. Hidden from
- * assistive technology either way. With reduced motion the static mark replaces the
- * animation (CSS only, so server and client render the same markup).
+ * assistive technology either way. With reduced motion, or inside a paused MotionScope, the
+ * static mark replaces the animation (CSS only, so server and client render the same markup).
  */
 export function ThinkingMark({ size = 16, sizeEm, className }: ThinkingMarkProps) {
   // The image's viewBox is wider than the mark's, so its box is larger than the mark's.
@@ -49,9 +49,12 @@ export function ThinkingMark({ size = 16, sizeEm, className }: ThinkingMarkProps
         src={THINKING_MARK_SRC}
         alt=""
         style={{ width: image, height: image }}
-        className="max-w-none shrink-0 motion-reduce:hidden"
+        className="max-w-none shrink-0 in-data-[motion-paused]:hidden motion-reduce:hidden"
       />
-      <BrandMark style={{ width: box }} className="hidden text-ai motion-reduce:block" />
+      <BrandMark
+        style={{ width: box }}
+        className="hidden text-ai in-data-[motion-paused]:block motion-reduce:block"
+      />
     </span>
   );
 }
