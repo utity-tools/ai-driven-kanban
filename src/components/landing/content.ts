@@ -32,22 +32,35 @@ export const BUILT_WITH: string[] = [
   "Tailwind CSS",
 ];
 
-export const STEPS: { eyebrow: string; title: string; description: string; ai?: boolean }[] = [
+/** The product loops in public/landing (see LandingVideo). */
+export type LandingVideoName =
+  "how-it-works-1-write" | "how-it-works-2-draft" | "how-it-works-3-ack" | "review-spotlight";
+
+export const STEPS: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  video: LandingVideoName;
+  ai?: boolean;
+}[] = [
   {
     eyebrow: "Step 1",
     title: "Write the card",
     description: "Describe the work the way you'd brief a teammate.",
+    video: "how-it-works-1-write",
   },
   {
     eyebrow: "Step 2",
     title: "Get a draft",
     description: "Subtasks, estimates and blocked-by links, streamed in seconds.",
+    video: "how-it-works-2-draft",
     ai: true,
   },
   {
     eyebrow: "Step 3",
     title: "Ack what's right",
     description: "Accept, edit or discard each item. Only what you ack is saved.",
+    video: "how-it-works-3-ack",
   },
 ];
 
@@ -79,9 +92,15 @@ export const PROBLEM = {
   body: "Auto-generated tasks look productive until someone has to clean them up. ackboard keeps the AI in draft mode. It suggests, you decide, and your board only holds work a person signed off on.",
 };
 
-export const REVIEW_SPOTLIGHT = {
+export const REVIEW_SPOTLIGHT: {
+  eyebrow: string;
+  title: string;
+  video: LandingVideoName;
+  body: string;
+} = {
   eyebrow: "Human in the loop",
   title: "The review is the product.",
+  video: "review-spotlight",
   body: "Every proposal arrives as a draft you can edit inline. Change an estimate, rename a subtask or drop a dependency, then ack. ackboard never proposes a link that would create a cycle.",
 };
 

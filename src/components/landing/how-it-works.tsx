@@ -1,7 +1,7 @@
 import { BrandMark } from "@/components/brand/brand-mark";
 
 import { HOW_IT_WORKS_ID, STEPS } from "./content";
-import { MediaPlaceholder } from "./media-placeholder";
+import { LandingVideo } from "./landing-video";
 import { SectionContainer } from "./section-container";
 
 export function HowItWorks() {
@@ -19,7 +19,7 @@ export function HowItWorks() {
           How it works
         </h2>
         <ol className="grid gap-4 md:grid-cols-3">
-          {STEPS.map(({ eyebrow, title, description, ai }) => (
+          {STEPS.map(({ eyebrow, title, description, video, ai }) => (
             <li
               key={title}
               className="grid content-between gap-8 rounded-2xl bg-muted/40 p-6 sm:p-8"
@@ -32,7 +32,11 @@ export function HowItWorks() {
                 <h3 className="font-heading text-2xl font-bold tracking-[-0.02em]">{title}</h3>
                 <p className="max-w-sm text-muted-foreground">{description}</p>
               </div>
-              <MediaPlaceholder className="aspect-[4/3]" />
+              <LandingVideo
+                name={video}
+                sizes="(min-width: 768px) 33vw, 100vw"
+                className="aspect-[4/3]"
+              />
             </li>
           ))}
         </ol>

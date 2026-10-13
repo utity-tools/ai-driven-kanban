@@ -35,6 +35,6 @@ export const config = {
     // Everything except Next.js internals, static assets and the generated icon routes, which
     // must be public. Those two are anchored so a future route sharing the prefix still gets
     // auth and the nonce CSP (Next versions them in the query string, not the path).
-    "/((?!_next/static|_next/image|favicon.ico|apple-icon$|opengraph-image$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|apple-icon$|opengraph-image$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|mp4|webm)$).*)",
   ],
 };

@@ -90,6 +90,60 @@ test.describe("landing page, signed out", () => {
     await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
   });
 
+  test("serves every product loop and shows one per frame in each theme", async ({
+    page,
+    request,
+  }) => {
+    await page.goto("/");
+
+    // Four frames, one video per theme, two sources each. A missing or renamed file would
+    // otherwise only show up as a blank frame.
+    const sources = await page
+      .locator("video source")
+      .evaluateAll((elements) => elements.map((element) => element.getAttribute("src") ?? ""));
+    expect(sources).toHaveLength(16);
+    for (const src of sources) {
+      const video = await request.head(src);
+      expect(video.ok(), src).toBe(true);
+      expect(video.headers()["content-type"], src).toMatch(/^video\//);
+
+      const poster = src.replace(/\.(webm|mp4)$/, ".png");
+      const image = await request.head(poster);
+      expect(image.ok(), poster).toBe(true);
+      expect(image.headers()["content-type"], poster).toBe("image/png");
+    }
+
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme });
+      await expect(page.locator("video:visible")).toHaveCount(4);
+      await expect(page.locator(`video:visible source[src$="-${colorScheme}.webm"]`)).toHaveCount(
+        4,
+      );
+    }
+  });
+
+  test("every product loop can be paused, and starts paused with reduced motion", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const frame = page.locator("#how-it-works li").first();
+    const pause = frame.getByRole("button", { name: "Pause animation" });
+    await pause.scrollIntoViewIfNeeded();
+
+    await pause.click();
+    await expect(frame.getByRole("button", { name: "Play animation" })).toBeVisible();
+    await expect
+      .poll(() =>
+        frame.locator("video:visible").evaluate((video: HTMLVideoElement) => video.paused),
+      )
+      .toBe(true);
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Play animation" })).toHaveCount(4);
+    await expect(page.getByRole("button", { name: "Pause animation" })).toHaveCount(0);
+  });
+
   test("?error=demo shows a friendly alert and keeps the demo button", async ({ page }) => {
     await page.goto("/?error=demo");
 
