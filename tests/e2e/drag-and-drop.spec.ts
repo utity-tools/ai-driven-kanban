@@ -329,3 +329,120 @@ test.describe("keyboard", () => {
     await expect(cardTitles(page, "To do")).toHaveText(["Alpha card"]);
   });
 });
+
+// A phone shows one 272px column and a ~75px sliver of the next one (the columns
+// sit at x = 16, 300, 584 inside the scrolling list). Dragging a card onto that
+// sliver used to make the auto-scroll fly to the last column in a blink, and the
+// card landed in "Done". Touch is the real path, so the drag is driven through
+// CDP; the sensors differ but collision and auto-scroll are shared with the mouse.
+test.describe("phone", () => {
+  test.use({ viewport: { width: 375, height: 812 }, hasTouch: true });
+
+  const columns = (page: Page): Locator => page.getByRole("list", { name: "Columns" });
+  const scrollLeft = (page: Page): Promise<number> =>
+    columns(page).evaluate((list) => list.scrollLeft);
+
+  /**
+   * Drags with one finger through CDP: touch down, hold past the touch sensor's
+   * 200ms delay (it must not move meanwhile, beyond its 8px tolerance), glide to
+   * `to` in small steps, stay there `holdMs` (moving by a pixel now and then, as
+   * a real finger does) and lift.
+   */
+  async function touchDrag(page: Page, from: Point, to: Point, holdMs: number): Promise<void> {
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type: "touchStart" | "touchMove" | "touchEnd", at?: Point) =>
+      cdp.send("Input.dispatchTouchEvent", {
+        type,
+        touchPoints: at ? [{ x: at.x, y: at.y }] : [],
+      });
+
+    try {
+      await touch("touchStart", from);
+      // The long press is time itself: there is nothing in the DOM to wait for.
+      await page.waitForTimeout(350);
+      const steps = 20;
+      for (let i = 1; i <= steps; i++) {
+        await touch("touchMove", {
+          x: from.x + ((to.x - from.x) * i) / steps,
+          y: from.y + ((to.y - from.y) * i) / steps,
+        });
+      }
+      // Staying on the sliver is what used to trigger the runaway scroll.
+      for (let i = 0; i < 10; i++) {
+        await page.waitForTimeout(holdMs / 10);
+        await touch("touchMove", { x: to.x + (i % 2), y: to.y });
+      }
+      await touch("touchEnd");
+    } finally {
+      await cdp.detach();
+    }
+  }
+
+  test("a card dropped on the sliver of the next column lands there, not in the last one", async ({
+    boardPage: page,
+  }) => {
+    const actions = trackServerActions(page);
+    await seedCards(page, actions, "To do", ["Alpha card", "Bravo card"]);
+    await columns(page).evaluate((list) => list.scrollTo({ left: 0 }));
+    const before = actions.started();
+
+    const alpha = await centerOf(cardLink(page, "Alpha card"));
+    const second = await column(page, "In progress").boundingBox();
+    if (!second) throw new Error("column has no bounding box");
+    // Inside the viewport, right of the second column's edge and left of the
+    // 10% auto-scroll band at the right edge (x > 337).
+    const sliver = { x: second.x + 20, y: alpha.y };
+    expect(sliver.x).toBeLessThan(375 * 0.9);
+
+    await touchDrag(page, alpha, sliver, 500);
+
+    await expect(cardTitles(page, "In progress")).toHaveText(["Alpha card"]);
+    await expect(cardTitles(page, "To do")).toHaveText(["Bravo card"]);
+    await expect(cardTitles(page, "Done")).toHaveCount(0);
+    // The sliver is outside the auto-scroll band: the list did not scroll at all
+    // (it used to fly to the last column).
+    expect(await scrollLeft(page)).toBeLessThan(50);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    await actions.settled(before + 1);
+    await page.reload();
+    await expect(cardTitles(page, "To do")).toHaveText(["Bravo card"]);
+    await expect(cardTitles(page, "In progress")).toHaveText(["Alpha card"]);
+    await expect(cardTitles(page, "Done")).toHaveCount(0);
+  });
+
+  test("a card dropped on the sliver of a column with cards goes where the finger is", async ({
+    boardPage: page,
+  }) => {
+    const actions = trackServerActions(page);
+    await seedCards(page, actions, "In progress", ["Delta card"]);
+    await seedCards(page, actions, "To do", ["Alpha card"]);
+    await columns(page).evaluate((list) => list.scrollTo({ left: 0 }));
+    const before = actions.started();
+
+    const alpha = await cardLink(page, "Alpha card").boundingBox();
+    const delta = await column(page, "In progress")
+      .getByRole("listitem")
+      .filter({ has: page.getByRole("link", { name: "Delta card", exact: true }) })
+      .boundingBox();
+    const second = await column(page, "In progress").boundingBox();
+    if (!alpha || !delta || !second) throw new Error("element has no bounding box");
+
+    // The finger, not the card's rect, decides: Alpha is grabbed near its
+    // bottom (its top well above the finger) and the finger ends in the space
+    // below "Delta card", so Alpha goes after it (on Delta it would take its place).
+    const grip = { x: alpha.x + alpha.width / 2, y: alpha.y + alpha.height - 6 };
+    await touchDrag(page, grip, { x: second.x + 20, y: delta.y + delta.height + 24 }, 500);
+
+    await expect(cardTitles(page, "In progress")).toHaveText(["Delta card", "Alpha card"]);
+    await expect(cardTitles(page, "To do")).toHaveCount(0);
+    await expect(cardTitles(page, "Done")).toHaveCount(0);
+    expect(await scrollLeft(page)).toBeLessThan(50);
+
+    await actions.settled(before + 1);
+    await page.reload();
+    await expect(cardTitles(page, "To do")).toHaveCount(0);
+    await expect(cardTitles(page, "In progress")).toHaveText(["Delta card", "Alpha card"]);
+    await expect(cardTitles(page, "Done")).toHaveCount(0);
+  });
+});
