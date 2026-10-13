@@ -3,7 +3,6 @@ import {
   GitBranchIcon,
   GripVerticalIcon,
   RadioIcon,
-  ShieldCheckIcon,
   type LucideIcon,
 } from "lucide-react";
 
@@ -16,7 +15,7 @@ export const HOW_IT_WORKS_ID = "how-it-works";
 export const FEATURES_ID = "features";
 
 const README_URL = `${REPO_URL}#readme`;
-const ADR_URL = `${REPO_URL}/tree/main/docs/adr`;
+export const ADR_URL = `${REPO_URL}/tree/main/docs/adr`;
 
 export const HEADER_NAV: NavLink[] = [
   { label: "How it works", href: `#${HOW_IT_WORKS_ID}` },
@@ -36,54 +35,99 @@ export const BUILT_WITH: string[] = [
 export const STEPS: { eyebrow: string; title: string; description: string; ai?: boolean }[] = [
   {
     eyebrow: "Step 1",
-    title: "Describe the work",
-    description: "Write a card the way you would for a teammate.",
+    title: "Write the card",
+    description: "Describe the work the way you'd brief a teammate.",
   },
   {
     eyebrow: "Step 2",
-    title: "AI proposes",
-    description: "Subtasks with estimates, and the cards that block it.",
+    title: "Get a draft",
+    description: "Subtasks, estimates and blocked-by links, streamed in seconds.",
     ai: true,
   },
   {
     eyebrow: "Step 3",
-    title: "You review",
-    description: "Accept, edit or discard each proposal. Nothing is saved until you do.",
-  },
-  {
-    eyebrow: "Step 4",
-    title: "Plan with confidence",
-    description: "See what is blocked and where the bottlenecks are.",
+    title: "Ack what's right",
+    description: "Accept, edit or discard each item. Only what you ack is saved.",
   },
 ];
 
 export const FEATURES: { icon: LucideIcon; title: string; description: string }[] = [
   {
-    icon: GripVerticalIcon,
-    title: "Drag and drop",
-    description: "Reorder cards and columns with mouse, touch or keyboard.",
-  },
-  {
-    icon: FileTextIcon,
-    title: "Rich cards",
-    description: "Markdown, labels, due dates and members.",
-  },
-  {
     icon: GitBranchIcon,
-    title: "Dependencies",
+    title: "Dependencies that mean something",
     description: "Blocked-by links, cycle checks and a bottlenecks panel.",
   },
   {
     icon: RadioIcon,
-    title: "Real time",
-    description: "Changes and presence sync live across your team.",
+    title: "Built for the whole team",
+    description: "Changes and presence sync live for everyone on the board.",
   },
   {
-    icon: ShieldCheckIcon,
-    title: "Private by default",
-    description: "Postgres Row Level Security on every board.",
+    icon: FileTextIcon,
+    title: "Cards with depth",
+    description: "Markdown, labels, due dates and members.",
+  },
+  {
+    icon: GripVerticalIcon,
+    title: "Move fast",
+    description: "Reorder cards and columns with mouse, touch or keyboard.",
   },
 ];
+
+export const PROBLEM = {
+  title: "AI that writes straight to your board is a liability.",
+  body: "Auto-generated tasks look productive until someone has to clean them up. ackboard keeps the AI in draft mode. It suggests, you decide, and your board only holds work a person signed off on.",
+};
+
+export const REVIEW_SPOTLIGHT = {
+  eyebrow: "Human in the loop",
+  title: "The review is the product.",
+  body: "Every proposal arrives as a draft you can edit inline. Change an estimate, rename a subtask or drop a dependency, then ack. ackboard never proposes a link that would create a cycle.",
+};
+
+export const HOW_ITS_BUILT = {
+  title: "How it's built",
+  intro:
+    "Designed, built and shipped end to end by one person, in production at kanban.utitytools.com.",
+  pillars: [
+    {
+      title: "Design",
+      description:
+        'A review-first interface. Orange always means "needs your call", from the logo to the last proposal. The mark is the AI\'s thinking state, frozen.',
+    },
+    {
+      title: "Frontend",
+      description:
+        "Streaming drafts, keyboard drag and drop, live presence. Accessible, responsive and mobile-first.",
+    },
+    {
+      title: "Engineering",
+      description:
+        "Every AI response validated against a schema. Row Level Security on every table. Unit and E2E tests on every PR, plus an eval suite for AI quality.",
+    },
+  ],
+  adrLabel: "Read the architecture decisions",
+};
+
+export const FAQ: { question: string; answer: string }[] = [
+  {
+    question: 'What does "ack" mean?',
+    answer:
+      'Short for acknowledge. Engineers use it to say "seen it, approved". In ackboard, nothing the AI suggests is saved until you ack it.',
+  },
+  {
+    question: "Is it free?",
+    answer:
+      "Yes. ackboard is a portfolio project. AI drafts have a daily limit to keep costs in check.",
+  },
+  {
+    question: "Can I see the code?",
+    answer:
+      "Yes. The source is on GitHub under the MIT license, with an ADR for every major decision.",
+  },
+];
+
+export const CREDIT = "utity tools by héctor arrieta";
 
 export const FOOTER_COLUMNS: {
   heading: string;

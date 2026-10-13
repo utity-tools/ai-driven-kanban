@@ -1,3 +1,4 @@
+import { ThinkingMark } from "@/components/brand/thinking-mark";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DEMO_RETENTION_DAYS, type Visitor } from "@/lib/auth/demo";
 
@@ -19,18 +20,15 @@ export function Hero({ visitor, pageError }: Props) {
           <span className="block">
             AI{" "}
             <span className="rounded-full bg-ai/10 px-[0.35em] pb-[0.08em]">
-              <span
-                aria-hidden="true"
-                className="mr-[0.18em] inline-block size-[0.22em] rounded-full bg-ai align-middle"
-              />
+              <ThinkingMark sizeEm={0.62} className="mr-[0.1em] align-[-0.04em]" />
               proposes.
             </span>
           </span>{" "}
           <span className="block">You ack.</span>
         </h1>
         <p className="max-w-2xl text-lg text-pretty text-muted-foreground sm:text-xl">
-          A kanban board where AI drafts subtasks, estimates and dependencies. Nothing is saved
-          until you accept it.
+          A kanban board where AI drafts the subtasks, estimates and dependencies. You review every
+          line. Nothing touches your board until you ack it.
         </p>
         {pageError ? (
           <Alert variant="destructive" className="max-w-xl text-left">

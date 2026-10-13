@@ -3,7 +3,14 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { MARK_BOUNDS, MARK_COLUMN, MARK_PATHS, MARK_VIEW_BOX, thinkingImageSize } from "./mark";
+import {
+  MARK_BOUNDS,
+  MARK_COLUMN,
+  MARK_PATHS,
+  MARK_VIEW_BOX,
+  THINKING_IMAGE_RATIO,
+  thinkingImageSize,
+} from "./mark";
 
 const read = (path: string) => readFileSync(resolve(__dirname, path), "utf8");
 
@@ -82,5 +89,14 @@ describe("thinkingImageSize", () => {
     // 16px static mark = 16/112 px per unit; the image spans 124 units.
     expect(thinkingImageSize(16)).toBe(18);
     expect(thinkingImageSize(112)).toBe(124);
+  });
+});
+
+describe("THINKING_IMAGE_RATIO", () => {
+  it("is the image's viewBox over the mark's, the same scale thinkingImageSize uses", () => {
+    expect(THINKING_IMAGE_RATIO).toBeCloseTo(124 / 112);
+    for (const size of [16, 20, 37, 112]) {
+      expect(Math.round(size * THINKING_IMAGE_RATIO)).toBe(thinkingImageSize(size));
+    }
   });
 });

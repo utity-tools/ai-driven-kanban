@@ -8,7 +8,7 @@ export function Features() {
         <h2 id="features-heading" className="text-lg font-medium text-muted-foreground">
           Everything on the board
         </h2>
-        <ul className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map(({ icon: Icon, title, description }) => (
             <li key={title} className="grid content-start gap-3 rounded-xl border p-5">
               <Icon className="size-5" aria-hidden />

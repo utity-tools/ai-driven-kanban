@@ -11,8 +11,11 @@ export function ClosingCta({ visitor }: { visitor: Visitor }) {
           id="closing-heading"
           className="font-heading text-4xl font-bold tracking-[-0.03em] text-balance sm:text-5xl lg:text-6xl"
         >
-          Try it on a real board
+          Try it on a real board.
         </h2>
+        <p className="text-lg text-muted-foreground sm:text-xl">
+          Your first AI draft is one card away.
+        </p>
         <LandingCta visitor={visitor} />
       </SectionContainer>
     </section>
