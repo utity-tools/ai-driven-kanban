@@ -23,20 +23,26 @@ export function BoardHeader() {
 
   return (
     <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 px-4">
-      <div className="grid min-w-0 flex-1 gap-1">
+      {/*
+        At least 20rem (or the full width) before the actions share its row:
+        on a phone they wrap below instead of squeezing the title.
+      */}
+      <div className="grid min-w-[min(100%,20rem)] flex-1 gap-1">
         <Link
           href="/boards"
-          className="flex w-fit items-center gap-1 rounded-md text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="flex w-fit items-center gap-1 rounded-md text-sm whitespace-nowrap text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <ArrowLeftIcon className="size-3.5" aria-hidden />
           All boards
         </Link>
-        <h1 className="truncate font-heading text-2xl font-bold tracking-[-0.02em]">
+        {/* Long titles wrap: the whole name stays readable. */}
+        <h1 className="font-heading text-2xl font-bold tracking-[-0.02em] break-words">
           {permissions.canEdit ? (
             <InlineEdit
               value={title}
               label="Board title"
               hint="Rename board"
+              multiline
               maxLength={BOARD_TITLE_MAX}
               onSave={(next) =>
                 mutate({ type: "renameBoard", title: next }, () =>
@@ -49,7 +55,7 @@ export function BoardHeader() {
           )}
         </h1>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         {realtimePaused ? (
           <p role="status" className="text-xs text-muted-foreground">
             Live updates paused
