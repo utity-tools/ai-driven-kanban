@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "port": 3000
+    },
+    {
+      "name": "dev-ai",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["AI_DECOMPOSITION_ENABLED=true", "pnpm", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "dev-3001",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev", "--port", "3001"],
+      "port": 3001
+    }
+  ]
+}

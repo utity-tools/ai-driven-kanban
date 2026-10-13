@@ -10,6 +10,12 @@ describe("contentSecurityPolicy", () => {
     expect(csp).toContain("base-uri 'self'");
   });
 
+  it("allows frames only from the YouTube embed", () => {
+    expect(contentSecurityPolicy(undefined)).toContain(
+      "frame-src https://www.youtube-nocookie.com;",
+    );
+  });
+
   it("lets forms reach Supabase Auth and GitHub for the OAuth redirect chain", () => {
     expect(contentSecurityPolicy("https://abc.supabase.co/some/path")).toContain(
       "form-action 'self' https://github.com https://abc.supabase.co",

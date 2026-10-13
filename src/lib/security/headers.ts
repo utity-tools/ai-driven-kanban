@@ -24,6 +24,12 @@ function formActionSources(supabaseUrl: string | undefined): string[] {
   return sources;
 }
 
+/**
+ * The only origin the site may embed: the landing's promo video, mounted after a click (see
+ * src/components/landing/promo-video-player.tsx).
+ */
+export const FRAME_SOURCES = ["https://www.youtube-nocookie.com"];
+
 export type ScriptPolicy = {
   /** Per-request nonce; Next.js reads it from the request's CSP and adds it to its scripts. */
   nonce: string;
@@ -47,6 +53,7 @@ export function contentSecurityPolicy(
 ): string {
   const directives = [
     "frame-ancestors 'none'",
+    `frame-src ${FRAME_SOURCES.join(" ")}`,
     "object-src 'none'",
     "base-uri 'self'",
     `form-action ${formActionSources(supabaseUrl).join(" ")}`,
